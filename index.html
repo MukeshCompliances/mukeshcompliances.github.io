@@ -165,6 +165,8 @@ async function admit(user){
   try{await fs.collection("users").doc(uid).set({name:user.displayName||email,email,at:new Date().toISOString()},{merge:true})}catch(e){}
   let cfg=null;try{const c=await fs.doc("config/app").get();cfg=c.exists?c.data():null}catch(e){}
   if(!cfg){try{await fs.doc("config/app").set({owner:uid,ownerEmail:email,at:new Date().toISOString()});cfg={owner:uid}}catch(e){}}
+  if(!cfg){gate("⚙ सेटअप अधूरा है: Firebase में सुरक्षा नियम (Firestore → Rules) अभी नहीं डले, या उनमें मालिक का Gmail <b>"+email+"</b> नहीं लिखा।<br><span style='font-size:12px'>Setup incomplete: publish the Firestore rules with the owner's Gmail, then reload.</span>","",false);
+    $g("sgSmall").innerHTML='<a href="#" id="sgRe">दोबारा कोशिश करें / retry</a>';$g("sgRe").onclick=e=>{e.preventDefault();location.reload()};return}
   ownerUid=cfg&&cfg.owner||null;
   if(ownerUid!==uid){let ok=false;
     try{ok=(await fs.collection("members").doc(uid).get()).exists}catch(e){}
