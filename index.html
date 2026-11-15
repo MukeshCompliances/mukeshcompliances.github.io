@@ -222,10 +222,13 @@ function signupScreen(user,email){return new Promise(res=>{gate.out=true;
    "<label style='font-size:13px;display:flex;gap:6px;align-items:flex-start;margin-bottom:8px'><input type='checkbox' id='sgAgree' style='width:auto;margin-top:2px'><span>मैं ऊपर लिखी बात से सहमत हूँ / I agree to the above</span></label>"+
    "<button id='sgMk'>अनुमति माँगें / Request access</button></div>"+
    "<div style='font-size:12px;color:#666;margin-top:10px'>आपकी फ़र्म पहले से यह ऐप चलाती है? तो अपने एडमिन से कहें कि टीम टैब में यह ईमेल जोड़ें, फिर यह पेज दोबारा खोलें।<br>Your firm already uses this app? Ask your admin to add this email, then reload.</div>","",false);
+  /* keep what was typed if the page is refreshed */
+  const KEEP="__site_req";try{const k=JSON.parse(sessionStorage.getItem(KEEP)||"{}");$g("sgFirm").value=k.f||"";$g("sgPhone").value=k.p||"";$g("sgNote").value=k.n||""}catch(e){}
+  ["sgFirm","sgPhone","sgNote"].forEach(id=>$g(id).oninput=()=>{try{sessionStorage.setItem(KEEP,JSON.stringify({f:$g("sgFirm").value,p:$g("sgPhone").value,n:$g("sgNote").value}))}catch(e){}});
   $g("sgMk").onclick=async()=>{const nm=$g("sgFirm").value.trim();if(nm.length<2){$g("sgErr").textContent="फ़र्म का नाम लिखें। / Enter the firm name.";return}if(!$g("sgAgree").checked){$g("sgErr").textContent="सहमति का टिक लगाएँ। / Tick the consent box.";return}
     const ph=$g("sgPhone").value.trim();if(ph.replace(/\D/g,"").length<8){$g("sgErr").textContent="मोबाइल नंबर लिखें। / Enter your mobile number.";return}
     $g("sgMk").disabled=true;try{await fs.doc("firms/"+uid).set({name:nm.slice(0,80),owner:uid,ownerEmail:email,ownerName:(user.displayName||"").slice(0,60),phone:ph.slice(0,20),note:$g("sgNote").value.trim().slice(0,200),status:"pending",createdAt:iso(),consentAt:iso()});res(uid)}
-    catch(e){$g("sgMk").disabled=false;$g("sgErr").textContent="अनुरोध नहीं भेजा जा सका — दोबारा कोशिश करें। / Could not send the request — try again."}}})}
+    catch(e){$g("sgMk").disabled=false;$g("sgErr").textContent=(e&&e.code==="permission-denied")?"अनुरोध नहीं भेजा जा सका: साइट के सुरक्षा नियम अभी पुराने हैं। ऐप चलाने वाले को बताएँ। / Could not send: the site's security rules are not updated yet — tell the provider. [permission-denied]":"अनुरोध नहीं भेजा जा सका — इंटरनेट देखकर दोबारा कोशिश करें। / Could not send the request — check the internet and try again. ["+((e&&e.code)||"error")+"]"}}})}
 async function admit(user){
   try{sessionStorage.removeItem("__site_idleout")}catch(e){}
   uid=user.uid;const email=(user.email||"").toLowerCase();site.email=email;
