@@ -139,12 +139,12 @@ details.tg[open]>summary::after{transform:rotate(90deg)}
 #siteGate input{width:100%;box-sizing:border-box;padding:12px;border-radius:10px;border:1px solid #ccd;font-size:16px;margin-bottom:8px}#siteGate button.alt{background:#fff;color:#1a56db;border:1px solid #1a56db}#siteGate .lnk{font-size:13px;margin:10px 0}#siteGate .lnk a{color:#1a56db}#siteGate .or{color:#999;font-size:12px;margin:8px 0}
 #siteGate .err{color:#c00;font-size:13px;margin-top:10px;min-height:16px}#siteGate .small{font-size:12px;color:#777;margin-top:12px}
 </style>
-<div id="siteGate"><div class="box"><h1>📋 कंप्लायंस रिकॉर्ड</h1><p id="sgMsg">अपनी ID और पासवर्ड से लॉगिन करें<br><span style="font-size:12px">Sign in with your ID and password</span></p>
-<div id="sgForm"><input id="sgId" type="email" autocomplete="username" placeholder="ID (ईमेल) / Email ID"><input id="sgPw" type="password" autocomplete="current-password" placeholder="पासवर्ड / Password">
+<div id="siteGate"><div class="box"><h1>📋 कंप्लायंस रिकॉर्ड</h1><p id="sgMsg">जाँच रहा है…<br><span style="font-size:12px">Checking…</span></p>
+<div id="sgForm" style="display:none"><input id="sgId" type="email" autocomplete="username" placeholder="ID (ईमेल) / Email ID"><div style="position:relative"><input id="sgPw" type="password" autocomplete="current-password" placeholder="पासवर्ड / Password" style="padding-right:44px"><a href="#" id="sgEye" title="दिखाएँ / show" style="position:absolute;right:10px;top:10px;text-decoration:none;font-size:18px">👁</a></div>
 <button id="sgIn">लॉगिन करें / Sign in</button>
 <div class="lnk"><a href="#" id="sgNew">पहली बार? पासवर्ड बनाएँ</a> · <a href="#" id="sgFg">पासवर्ड भूल गए?</a></div>
 <div class="or">— या / or —</div></div>
-<button id="sgBtn" class="alt">G &nbsp;Google से लॉगिन करें</button><button id="sgOut" class="alt" style="display:none;margin-top:8px">दूसरी ID से लॉगिन / Use another ID</button><div class="err" id="sgErr"></div><div class="small" id="sgSmall"></div></div></div>
+<button id="sgBtn" class="alt" style="display:none">G &nbsp;Google से लॉगिन करें</button><button id="sgOut" class="alt" style="display:none;margin-top:8px">दूसरी ID से लॉगिन / Use another ID</button><div class="err" id="sgErr"></div><div class="small" id="sgSmall"></div></div></div>
 <script>
 (function(){
 const CFG={"apiKey":"AIzaSyA4CIpI1H6J3QweeS75S2bb1LXpD9eUN1Y","authDomain":"mukeshcompliances.firebaseapp.com","projectId":"mukeshcompliances","storageBucket":"mukeshcompliances.firebasestorage.app","messagingSenderId":"227692883629","appId":"1:227692883629:web:b0020d78879f544c33a024"}
@@ -152,6 +152,7 @@ const CFG={"apiKey":"AIzaSyA4CIpI1H6J3QweeS75S2bb1LXpD9eUN1Y","authDomain":"muke
 const MAXB=10*1024*1024,CH=700000;
 firebase.initializeApp(CFG);
 const auth=firebase.auth(),fs=firebase.firestore();
+try{auth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(()=>{})}catch(e){}
 try{fs.settings({ignoreUndefinedProperties:true,merge:true})}catch(e){}
 fs.enablePersistence({synchronizeTabs:true}).catch(()=>{});
 let ready,readyRes;ready=new Promise(r=>readyRes=r);
@@ -162,6 +163,7 @@ const EMSG={"auth/invalid-credential":"ID या पासवर्ड ग़ल
 const emsg=e=>EMSG[e&&e.code]||(e&&e.message)||"Login failed";
 const idpw=()=>({id:$g("sgId").value.trim().toLowerCase(),pw:$g("sgPw").value});
 $g("sgIn").onclick=async()=>{const{id,pw}=idpw();$g("sgErr").textContent="";if(!id||!pw){$g("sgErr").textContent="ID और पासवर्ड दोनों लिखें। / Enter both ID and password.";return}try{await auth.signInWithEmailAndPassword(id,pw)}catch(e){$g("sgErr").textContent=emsg(e)}};
+$g("sgEye").onclick=e=>{e.preventDefault();const p=$g("sgPw");p.type=p.type==="password"?"text":"password"};
 $g("sgPw").onkeydown=e=>{if(e.key==="Enter")$g("sgIn").click()};
 $g("sgNew").onclick=async ev=>{ev.preventDefault();const{id,pw}=idpw();$g("sgErr").textContent="";if(!id||!pw){$g("sgErr").textContent="ऊपर अपनी ID (ईमेल) और नया पासवर्ड लिखें, फिर यह दबाएँ। / Type your ID (email) and a new password above, then tap this.";return}try{const c=await auth.createUserWithEmailAndPassword(id,pw);try{await c.user.sendEmailVerification()}catch(e){}}catch(e){$g("sgErr").textContent=emsg(e)}};
 $g("sgFg").onclick=async ev=>{ev.preventDefault();const{id}=idpw();if(!id){$g("sgErr").textContent="पहले ऊपर अपनी ID (ईमेल) लिखें। / Enter your ID (email) above first.";return}try{await auth.sendPasswordResetEmail(id);$g("sgErr").textContent="✅ पासवर्ड बदलने का लिंक "+id+" पर भेज दिया। / Password reset link sent."}catch(e){$g("sgErr").textContent=emsg(e)}};
@@ -176,7 +178,7 @@ const TRIAL_DAYS=30;
 const site=window.__site={invites:[],
   invite:async(email,role)=>{email=email.toLowerCase();await fs.doc(F("invites/"+email)).set({role,by:uid,at:iso()});await fs.collection("invidx").doc(email).set({fid,firm:firm&&firm.name||"",at:iso()})},
   uninvite:async email=>{email=email.toLowerCase();await fs.doc(F("invites/"+email)).delete();try{await fs.collection("invidx").doc(email).delete()}catch(e){}},
-  signOut:async()=>{await auth.signOut();location.reload()},email:null,firm:null,isSuper:false};
+  signOut:async()=>{try{localStorage.removeItem(IK)}catch(e){}await auth.signOut();location.reload()},email:null,firm:null,isSuper:false};
 const daysLeft=f=>{if(!f||f.status!=="trial"||!f.trialEnds)return null;return Math.ceil((new Date(f.trialEnds).getTime()-Date.now())/864e5)};
 /* one-time move of the first owner's data (kept at the top level before firms existed) into their own firm. Copies only — nothing is deleted. */
 async function migrateLegacy(){let n=0;const cp=async(from,to)=>{const s=await fs.collection(from).get();for(const d of s.docs){await fs.doc(to+"/"+d.id).set(d.data());n++}return s.docs};
@@ -198,6 +200,7 @@ function signupScreen(user,email){return new Promise(res=>{gate.out=true;
     $g("sgMk").disabled=true;try{await fs.doc("firms/"+uid).set({name:nm.slice(0,80),owner:uid,ownerEmail:email,status:"trial",trialEnds:new Date(Date.now()+TRIAL_DAYS*864e5).toISOString(),trialEndsMs:Date.now()+TRIAL_DAYS*864e5,createdAt:iso(),consentAt:iso()});res(uid)}
     catch(e){$g("sgMk").disabled=false;$g("sgErr").textContent="फ़र्म नहीं बन पाई — दोबारा कोशिश करें। / Could not create the firm — try again."}}})}
 async function admit(user){
+  try{sessionStorage.removeItem("__site_idleout")}catch(e){}
   uid=user.uid;const email=(user.email||"").toLowerCase();site.email=email;
   if(!user.emailVerified){try{await user.reload()}catch(e){}
     if(!auth.currentUser||!auth.currentUser.emailVerified){gate.out=true;gate("📧 <b>"+email+"</b><br>इस ईमेल पर एक लिंक भेजा गया है। उसे एक बार खोलें (Spam भी देखें), फिर यह पेज दोबारा खोलें।<br><span style='font-size:12px'>A link was sent to this email. Open it once (check Spam too), then reload this page.</span><br><a href='#' id='sgRs'>लिंक दोबारा भेजें / Resend</a> · <a href='#' onclick='location.reload();return false'>🔄 Reload</a>","",false);
@@ -245,8 +248,29 @@ function topBar(){let b=$g("siteBar");if(!b){b=document.createElement("div");b.i
   const dl=site.firm.daysLeft;let msg="🏢 "+(firm.name||"");
   if(expired){msg+=" · ⛔ डेमो ख़त्म — अब सिर्फ़ देख सकते हैं। चालू कराने के लिए संपर्क करें"+(site.support?": "+site.support:"")+" / Demo over — view only";b.style.background="#fde8e8"}
   else if(dl!=null){msg+=" · डेमो: "+dl+" दिन बाक़ी / demo: "+dl+" days left";if(dl<=5)b.style.background="#fff3cd"}
-  b.innerHTML="<span></span>"+(isSuper?"<button id='sbSuper' style='border:1px solid #1a56db;background:#fff;color:#1a56db;border-radius:8px;padding:2px 8px;font-size:12px;cursor:pointer;white-space:nowrap'>🛠 फ़र्में</button>":"");b.firstChild.textContent=msg;
-  if(isSuper)$g("sbSuper").onclick=superPanel}
+  const bs="border:1px solid #1a56db;background:#fff;color:#1a56db;border-radius:8px;padding:2px 8px;font-size:12px;cursor:pointer;white-space:nowrap";
+  b.innerHTML="<span style='flex:1;min-width:0'></span>"+(isSuper?"<button id='sbSuper' style=\""+bs+"\">🛠 फ़र्में</button>":"")+"<button id='sbMe' style=\""+bs+";max-width:42vw;overflow:hidden;text-overflow:ellipsis\"></button>";b.firstChild.textContent=msg;$g("sbMe").textContent="👤 "+site.email.split("@")[0]+" ▾";
+  if(isSuper)$g("sbSuper").onclick=superPanel;$g("sbMe").onclick=meMenu;idleStart()}
+function meMenu(){let m=$g("siteMenu");if(m){m.remove();return}m=document.createElement("div");m.id="siteMenu";m.style.cssText="position:fixed;top:30px;right:8px;z-index:8000;background:#fff;border:1px solid #d5dcf5;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.15);padding:12px;width:min(300px,92vw);font:14px system-ui,'Noto Sans Devanagari',sans-serif";
+  const pw=(auth.currentUser.providerData||[]).some(p=>p.providerId==="password");
+  m.innerHTML="<div style='font-weight:600;word-break:break-all'>"+site.email+"</div><div style='font-size:12px;color:#666;margin-bottom:10px'>🏢 "+(firm.name||"")+" · "+(isSuper?"सुपर-एडमिन":uid===ownerUid?"फ़र्म के मालिक / owner":"टीम सदस्य / member")+"</div>"+
+   "<div id='smPw'><input id='smNew' type='password' autocomplete='new-password' placeholder='"+(pw?"नया पासवर्ड / New password":"पासवर्ड बनाएँ / Set a password")+"' style='width:100%;box-sizing:border-box;padding:9px;border:1px solid #ccd;border-radius:8px;margin-bottom:6px'><button id='smPwGo' style='width:100%;padding:9px;border-radius:8px;border:1px solid #1a56db;background:#fff;color:#1a56db;cursor:pointer'>🔑 पासवर्ड बदलें / Change password</button><div id='smMsg' style='font-size:12px;color:#9a6700;min-height:16px;margin:4px 0'></div></div>"+
+   "<button id='smOut' style='width:100%;padding:10px;border-radius:8px;border:0;background:#c0392b;color:#fff;cursor:pointer;font-size:15px'>⎋ लॉग आउट / Log out</button><div style='font-size:11px;color:#888;margin-top:8px'>20 मिनट कोई हलचल न हो तो अपने-आप लॉग आउट हो जाएगा। / Auto log-out after 20 minutes of no activity.</div>";
+  document.body.appendChild(m);
+  $g("smOut").onclick=()=>site.signOut();
+  $g("smPwGo").onclick=async()=>{const v=$g("smNew").value;if(v.length<6){$g("smMsg").textContent="कम से कम 6 अक्षर। / At least 6 characters.";return}
+    try{await auth.currentUser.updatePassword(v);$g("smNew").value="";$g("smMsg").style.color="#1a7f37";$g("smMsg").textContent="✅ पासवर्ड बदल गया। / Password changed."}
+    catch(e){if(e&&e.code==="auth/requires-recent-login"){try{await auth.sendPasswordResetEmail(site.email);$g("smMsg").textContent="सुरक्षा के लिए लिंक "+site.email+" पर भेजा है — उससे बदलें। / For safety a link was emailed — use it."}catch(x){$g("smMsg").textContent=emsg(x)}}else $g("smMsg").textContent=emsg(e)}};
+  setTimeout(()=>document.addEventListener("click",function h(ev){if(!m.contains(ev.target)&&ev.target.id!=="sbMe"){m.remove();document.removeEventListener("click",h)}}),0)}
+/* auto log-out after 20 minutes without activity (shared across tabs) */
+const IDLE_MS=20*60*1000,WARN_MS=60*1000,IK="__site_last";
+const touch=()=>{try{localStorage.setItem(IK,String(Date.now()))}catch(e){}idleStart.t=Date.now()};
+function idleStart(){if(idleStart.on)return;idleStart.on=true;touch();let last=0;const act=()=>{const n=Date.now();if(n-last>5000){last=n;touch();const w=$g("siteIdle");if(w)w.remove()}};
+  ["click","keydown","touchstart","scroll","mousemove"].forEach(ev=>window.addEventListener(ev,act,{passive:true,capture:true}));
+  setInterval(()=>{let t=idleStart.t;try{t=Math.max(t,+localStorage.getItem(IK)||0)}catch(e){}const idle=Date.now()-t;
+    if(idle>=IDLE_MS){try{sessionStorage.setItem("__site_idleout","1")}catch(e){}site.signOut();return}
+    if(idle>=IDLE_MS-WARN_MS&&!$g("siteIdle")){const w=document.createElement("div");w.id="siteIdle";w.style.cssText="position:fixed;left:50%;bottom:80px;transform:translateX(-50%);z-index:9500;background:#222;color:#fff;border-radius:12px;padding:12px 16px;font:14px system-ui,'Noto Sans Devanagari',sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.3);text-align:center;width:min(320px,90vw)";
+      w.innerHTML="⏳ 1 मिनट में अपने-आप लॉग आउट हो जाएगा।<br><span style='font-size:12px'>You will be logged out in 1 minute.</span><br><button style='margin-top:8px;padding:8px 14px;border-radius:8px;border:0;background:#1a56db;color:#fff;cursor:pointer'>मैं यहीं हूँ / I'm here</button>";document.body.appendChild(w);w.querySelector("button").onclick=()=>{touch();w.remove()}}},15000)}
 async function superPanel(){let o=$g("sitePanel");if(!o){o=document.createElement("div");o.id="sitePanel";o.style.cssText="position:fixed;inset:0;z-index:9000;background:#f6f7fb;overflow:auto;padding:14px;font:14px system-ui,'Noto Sans Devanagari',sans-serif";document.body.appendChild(o)}
   const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));const d8=s=>s?new Date(s).toLocaleDateString("en-IN"):"–";
   o.innerHTML="<div style='max-width:720px;margin:auto'><div style='display:flex;justify-content:space-between;align-items:center'><h2 style='margin:4px 0'>🛠 सारी फ़र्में (सुपर-एडमिन)</h2><button id='spX' style='padding:6px 12px'>✕ बंद</button></div><div id='spB'>लोड हो रहा है…</div></div>";
@@ -266,7 +290,9 @@ async function superPanel(){let o=$g("sitePanel");if(!o){o=document.createElemen
     if(a==="trial"){const ms=Math.max(Date.now(),f.status==="trial"&&f.trialEnds?new Date(f.trialEnds).getTime():0)+TRIAL_DAYS*864e5;up={status:"trial",trialEnds:new Date(ms).toISOString(),trialEndsMs:ms}}else up={status:a};
     if(a==="stopped"&&id===uid){b.textContent="अपनी फ़र्म नहीं रोक सकते";return}
     try{await fs.doc("firms/"+id).set(Object.assign(up,{changedAt:iso()}),{merge:true});superPanel()}catch(e){b.textContent="✖ नहीं हुआ"}})}
-auth.onAuthStateChanged(u=>{if(u)admit(u);else gate(null,"",true)});
+auth.onAuthStateChanged(u=>{let stale=false;try{const t=+localStorage.getItem(IK)||0;stale=!!u&&t>0&&Date.now()-t>IDLE_MS}catch(e){}
+  if(u&&stale){try{localStorage.removeItem(IK);sessionStorage.setItem("__site_idleout","1")}catch(e){}auth.signOut();return}
+  if(u)admit(u);else{let io=false;try{io=sessionStorage.getItem("__site_idleout")==="1"}catch(e){}gate("अपनी ID और पासवर्ड से लॉगिन करें<br><span style='font-size:12px'>Sign in with your ID and password</span>",io?"⏳ 20 मिनट कोई हलचल नहीं थी, इसलिए लॉग आउट कर दिया गया। दोबारा लॉगिन करें। / Logged out after 20 minutes of no activity.":"",true)}});
 auth.getRedirectResult().catch(e=>{$g("sgErr").textContent=(e&&e.message)||""});
 /* file store: files are split into parts inside Firestore (no paid storage needed) */
 const toB64=async blob=>{const u=new Uint8Array(await blob.arrayBuffer());let s="";for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(s)};
