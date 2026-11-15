@@ -137,12 +137,25 @@ details.tg[open]>summary::after{transform:rotate(90deg)}
 #siteGate h1{font-size:22px;margin:0 0 6px}#siteGate p{color:#555;font-size:14px;margin:6px 0 16px}
 #siteGate button{width:100%;padding:12px;border-radius:10px;border:0;background:#1a56db;color:#fff;font-size:16px;cursor:pointer}
 #siteGate input{width:100%;box-sizing:border-box;padding:12px;border-radius:10px;border:1px solid #ccd;font-size:16px;margin-bottom:8px}#siteGate button.alt{background:#fff;color:#1a56db;border:1px solid #1a56db}#siteGate .lnk{font-size:13px;margin:10px 0}#siteGate .lnk a{color:#1a56db}#siteGate .or{color:#999;font-size:12px;margin:8px 0}
+#siteGate label{display:block;text-align:left;font-size:12px;color:#555;margin:2px 2px 3px}#siteGate .tabs{display:flex;margin-bottom:14px;border-bottom:2px solid #e3e7f5}#siteGate .tabs a{flex:1;padding:9px 4px;text-decoration:none;color:#667;font-size:14px;border-bottom:3px solid transparent;margin-bottom:-2px}#siteGate .tabs a.on{color:#1a56db;border-bottom-color:#1a56db;font-weight:600}#siteGate .eye{position:absolute;right:10px;top:10px;text-decoration:none;font-size:18px}
 #siteGate .err{color:#c00;font-size:13px;margin-top:10px;min-height:16px}#siteGate .small{font-size:12px;color:#777;margin-top:12px}
 </style>
 <div id="siteGate"><div class="box"><h1>📋 कंप्लायंस रिकॉर्ड</h1><p id="sgMsg">जाँच रहा है…<br><span style="font-size:12px">Checking…</span></p>
-<div id="sgForm" style="display:none"><input id="sgId" type="email" autocomplete="username" placeholder="ID (ईमेल) / Email ID"><div style="position:relative"><input id="sgPw" type="password" autocomplete="current-password" placeholder="पासवर्ड / Password" style="padding-right:44px"><a href="#" id="sgEye" title="दिखाएँ / show" style="position:absolute;right:10px;top:10px;text-decoration:none;font-size:18px">👁</a></div>
+<div id="sgForm" style="display:none">
+<div class="tabs"><a href="#" id="tbIn" class="on">लॉगिन / Sign in</a><a href="#" id="tbUp">नया खाता / Sign up</a></div>
+<div id="vIn"><label>ID (ईमेल) / Email</label><input id="sgId" type="email" autocomplete="username" placeholder="name@example.com">
+<label>पासवर्ड / Password</label><div style="position:relative"><input id="sgPw" type="password" autocomplete="current-password" style="padding-right:44px"><a href="#" class="eye" data-f="sgPw">👁</a></div>
 <button id="sgIn">लॉगिन करें / Sign in</button>
-<div class="lnk"><a href="#" id="sgNew">पहली बार? पासवर्ड बनाएँ</a> · <a href="#" id="sgFg">पासवर्ड भूल गए?</a></div>
+<div class="lnk"><a href="#" id="sgFg">पासवर्ड भूल गए? / Forgot password?</a></div></div>
+<div id="vUp" style="display:none"><label>आपका नाम / Your name</label><input id="suName" autocomplete="name">
+<label>ईमेल (यही आपकी ID होगी) / Email (this will be your ID)</label><input id="suId" type="email" autocomplete="username" placeholder="name@example.com">
+<label>पासवर्ड (कम से कम 6 अक्षर) / Password (min 6)</label><div style="position:relative"><input id="suPw" type="password" autocomplete="new-password" style="padding-right:44px"><a href="#" class="eye" data-f="suPw">👁</a></div>
+<label>पासवर्ड दोबारा / Confirm password</label><input id="suPw2" type="password" autocomplete="new-password">
+<button id="suGo">खाता बनाएँ / Create account</button>
+<div class="lnk" style="color:#666">खाता बनने पर आपके ईमेल पर पुष्टि का लिंक आएगा। / A confirmation link will be emailed to you.</div></div>
+<div id="vFg" style="display:none"><div style="font-size:13px;color:#555;margin-bottom:8px;text-align:left">अपनी ID (ईमेल) लिखें — नया पासवर्ड बनाने का लिंक उस पर भेजा जाएगा।<br>Enter your ID (email) — a link to set a new password will be sent.</div>
+<label>ID (ईमेल) / Email</label><input id="fgId" type="email" autocomplete="username">
+<button id="fgGo">लिंक भेजें / Send link</button><div class="lnk"><a href="#" id="fgBk">‹ लॉगिन पर वापस / Back to sign in</a></div></div>
 <div class="or">— या / or —</div></div>
 <button id="sgBtn" class="alt" style="display:none">G &nbsp;Google से लॉगिन करें</button><button id="sgOut" class="alt" style="display:none;margin-top:8px">दूसरी ID से लॉगिन / Use another ID</button><div class="err" id="sgErr"></div><div class="small" id="sgSmall"></div></div></div>
 <script>
@@ -159,14 +172,27 @@ let ready,readyRes;ready=new Promise(r=>readyRes=r);
 let uid=null,ownerUid=null,profile={};
 const $g=id=>document.getElementById(id);
 const gate=(msg,err,showBtn)=>{$g("siteGate").style.display="flex";if(msg!=null)$g("sgMsg").innerHTML=msg;$g("sgErr").textContent=err||"";$g("sgBtn").style.display=showBtn===false?"none":"block";$g("sgForm").style.display=showBtn===false?"none":"block";$g("sgOut").style.display=showBtn===false&&gate.out?"block":"none";gate.out=false};
-const EMSG={"auth/invalid-credential":"ID या पासवर्ड ग़लत है। / Wrong ID or password.","auth/wrong-password":"ID या पासवर्ड ग़लत है। / Wrong ID or password.","auth/user-not-found":"यह ID नहीं मिली — पहले 'पासवर्ड बनाएँ' दबाएँ। / ID not found — tap 'create password' first.","auth/invalid-email":"ID में पूरा ईमेल लिखें। / Enter the full email as ID.","auth/email-already-in-use":"इस ID का पासवर्ड पहले से बना है — लॉगिन करें, या 'पासवर्ड भूल गए' दबाएँ। / This ID already exists — sign in or tap 'forgot password'.","auth/weak-password":"पासवर्ड कम से कम 6 अक्षर का रखें। / Password must be at least 6 characters.","auth/operation-not-allowed":"ID-पासवर्ड लॉगिन अभी Firebase में चालू नहीं है (Authentication → Sign-in method → Email/Password)। / Email-password sign-in is not enabled in Firebase yet.","auth/too-many-requests":"बहुत बार कोशिश हुई — थोड़ी देर बाद करें। / Too many tries — wait a little.","auth/popup-closed-by-user":"Google की खिड़की बंद हो गई — दोबारा दबाएँ, या ID-पासवर्ड से लॉगिन करें। / Google window was closed — try again or use ID and password.","auth/network-request-failed":"इंटरनेट नहीं चल रहा। / No internet."};
+const EMSG={"auth/invalid-credential":"ID या पासवर्ड ग़लत है। / Wrong ID or password.","auth/wrong-password":"ID या पासवर्ड ग़लत है। / Wrong ID or password.","auth/user-not-found":"यह ID नहीं मिली — 'नया खाता' से बनाएँ। / ID not found — use 'Sign up'.","auth/invalid-email":"ID में पूरा ईमेल लिखें। / Enter the full email as ID.","auth/email-already-in-use":"इस ईमेल का खाता पहले से है — 'लॉगिन' से अंदर जाएँ, या 'पासवर्ड भूल गए' दबाएँ। / This email already has an account — sign in, or use 'Forgot password'.","auth/weak-password":"पासवर्ड कम से कम 6 अक्षर का रखें। / Password must be at least 6 characters.","auth/operation-not-allowed":"ID-पासवर्ड लॉगिन अभी Firebase में चालू नहीं है (Authentication → Sign-in method → Email/Password)। / Email-password sign-in is not enabled in Firebase yet.","auth/too-many-requests":"बहुत बार कोशिश हुई — थोड़ी देर बाद करें। / Too many tries — wait a little.","auth/popup-closed-by-user":"Google की खिड़की बंद हो गई — दोबारा दबाएँ, या ID-पासवर्ड से लॉगिन करें। / Google window was closed — try again or use ID and password.","auth/network-request-failed":"इंटरनेट नहीं चल रहा। / No internet."};
 const emsg=e=>EMSG[e&&e.code]||(e&&e.message)||"Login failed";
-const idpw=()=>({id:$g("sgId").value.trim().toLowerCase(),pw:$g("sgPw").value});
-$g("sgIn").onclick=async()=>{const{id,pw}=idpw();$g("sgErr").textContent="";if(!id||!pw){$g("sgErr").textContent="ID और पासवर्ड दोनों लिखें। / Enter both ID and password.";return}try{await auth.signInWithEmailAndPassword(id,pw)}catch(e){$g("sgErr").textContent=emsg(e)}};
-$g("sgEye").onclick=e=>{e.preventDefault();const p=$g("sgPw");p.type=p.type==="password"?"text":"password"};
+const LOGIN_MSG="अपनी ID और पासवर्ड से लॉगिन करें<br><span style='font-size:12px'>Sign in with your ID and password</span>";
+const view=v=>{["In","Up","Fg"].forEach(k=>$g("v"+k).style.display=k===v?"block":"none");$g("tbIn").className=v==="Up"?"":"on";$g("tbUp").className=v==="Up"?"on":"";$g("sgErr").textContent="";$g("sgErr").style.color="";
+  $g("sgMsg").innerHTML=v==="Up"?"नया खाता बनाएँ<br><span style='font-size:12px'>Create a new account</span>":v==="Fg"?"पासवर्ड भूल गए<br><span style='font-size:12px'>Forgot password</span>":LOGIN_MSG};
+const err=(m,ok)=>{$g("sgErr").style.color=ok?"#1a7f37":"";$g("sgErr").textContent=m};
+$g("tbIn").onclick=e=>{e.preventDefault();view("In")};$g("tbUp").onclick=e=>{e.preventDefault();view("Up");if(!$g("suId").value)$g("suId").value=$g("sgId").value};
+$g("sgFg").onclick=e=>{e.preventDefault();view("Fg");$g("fgId").value=$g("sgId").value};$g("fgBk").onclick=e=>{e.preventDefault();view("In")};
+document.querySelectorAll("#siteGate .eye").forEach(a=>a.onclick=e=>{e.preventDefault();const p=$g(a.dataset.f);p.type=p.type==="password"?"text":"password"});
+const okMail=m=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m);
+$g("sgIn").onclick=async()=>{const id=$g("sgId").value.trim().toLowerCase(),pw=$g("sgPw").value;err("");if(!id||!pw){err("ID और पासवर्ड दोनों लिखें। / Enter both ID and password.");return}
+  $g("sgIn").disabled=true;try{await auth.signInWithEmailAndPassword(id,pw)}catch(e){err(emsg(e))}$g("sgIn").disabled=false};
 $g("sgPw").onkeydown=e=>{if(e.key==="Enter")$g("sgIn").click()};
-$g("sgNew").onclick=async ev=>{ev.preventDefault();const{id,pw}=idpw();$g("sgErr").textContent="";if(!id||!pw){$g("sgErr").textContent="ऊपर अपनी ID (ईमेल) और नया पासवर्ड लिखें, फिर यह दबाएँ। / Type your ID (email) and a new password above, then tap this.";return}try{const c=await auth.createUserWithEmailAndPassword(id,pw);try{await c.user.sendEmailVerification()}catch(e){}}catch(e){$g("sgErr").textContent=emsg(e)}};
-$g("sgFg").onclick=async ev=>{ev.preventDefault();const{id}=idpw();if(!id){$g("sgErr").textContent="पहले ऊपर अपनी ID (ईमेल) लिखें। / Enter your ID (email) above first.";return}try{await auth.sendPasswordResetEmail(id);$g("sgErr").textContent="✅ पासवर्ड बदलने का लिंक "+id+" पर भेज दिया। / Password reset link sent."}catch(e){$g("sgErr").textContent=emsg(e)}};
+$g("suGo").onclick=async()=>{const nm=$g("suName").value.trim(),id=$g("suId").value.trim().toLowerCase(),pw=$g("suPw").value,p2=$g("suPw2").value;err("");
+  if(nm.length<2){err("अपना नाम लिखें। / Enter your name.");return}if(!okMail(id)){err("पूरा ईमेल लिखें। / Enter a full email.");return}
+  if(pw.length<6){err("पासवर्ड कम से कम 6 अक्षर का रखें। / Password must be at least 6 characters.");return}if(pw!==p2){err("दोनों पासवर्ड एक जैसे नहीं हैं। / The passwords do not match.");return}
+  $g("suGo").disabled=true;try{const c=await auth.createUserWithEmailAndPassword(id,pw);try{await c.user.updateProfile({displayName:nm.slice(0,60)})}catch(e){}try{await c.user.sendEmailVerification()}catch(e){}}
+  catch(e){err(emsg(e))}$g("suGo").disabled=false};
+$g("suPw2").onkeydown=e=>{if(e.key==="Enter")$g("suGo").click()};
+$g("fgGo").onclick=async()=>{const id=$g("fgId").value.trim().toLowerCase();if(!okMail(id)){err("पूरा ईमेल लिखें। / Enter a full email.");return}
+  try{await auth.sendPasswordResetEmail(id);err("✅ लिंक "+id+" पर भेज दिया। ईमेल देखें (Spam भी)। / Link sent — check your email.",true)}catch(e){err(e&&e.code==="auth/user-not-found"?"यह ID नहीं मिली। / ID not found.":emsg(e))}};
 $g("sgOut").onclick=async()=>{await auth.signOut();location.reload()};
 $g("sgBtn").onclick=async()=>{$g("sgErr").textContent="";const pr=new firebase.auth.GoogleAuthProvider();pr.setCustomParameters({prompt:"select_account"});
   try{await auth.signInWithPopup(pr)}catch(e){if(e&&(e.code==="auth/popup-blocked"||e.code==="auth/operation-not-supported-in-this-environment"))await auth.signInWithRedirect(pr);else $g("sgErr").textContent=emsg(e)}};
@@ -292,7 +318,7 @@ async function superPanel(){let o=$g("sitePanel");if(!o){o=document.createElemen
     try{await fs.doc("firms/"+id).set(Object.assign(up,{changedAt:iso()}),{merge:true});superPanel()}catch(e){b.textContent="✖ नहीं हुआ"}})}
 auth.onAuthStateChanged(u=>{let stale=false;try{const t=+localStorage.getItem(IK)||0;stale=!!u&&t>0&&Date.now()-t>IDLE_MS}catch(e){}
   if(u&&stale){try{localStorage.removeItem(IK);sessionStorage.setItem("__site_idleout","1")}catch(e){}auth.signOut();return}
-  if(u)admit(u);else{let io=false;try{io=sessionStorage.getItem("__site_idleout")==="1"}catch(e){}gate("अपनी ID और पासवर्ड से लॉगिन करें<br><span style='font-size:12px'>Sign in with your ID and password</span>",io?"⏳ 20 मिनट कोई हलचल नहीं थी, इसलिए लॉग आउट कर दिया गया। दोबारा लॉगिन करें। / Logged out after 20 minutes of no activity.":"",true)}});
+  if(u)admit(u);else{let io=false;try{io=sessionStorage.getItem("__site_idleout")==="1"}catch(e){}view("In");gate(LOGIN_MSG,io?"⏳ 20 मिनट कोई हलचल नहीं थी, इसलिए लॉग आउट कर दिया गया। दोबारा लॉगिन करें। / Logged out after 20 minutes of no activity.":"",true)}});
 auth.getRedirectResult().catch(e=>{$g("sgErr").textContent=(e&&e.message)||""});
 /* file store: files are split into parts inside Firestore (no paid storage needed) */
 const toB64=async blob=>{const u=new Uint8Array(await blob.arrayBuffer());let s="";for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(s)};
