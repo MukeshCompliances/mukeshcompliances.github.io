@@ -233,12 +233,16 @@ async function admit(user){
     if(!auth.currentUser||!auth.currentUser.emailVerified){gate.out=true;gate("📧 <b>"+email+"</b><br>इस ईमेल पर एक लिंक भेजा गया है। उसे एक बार खोलें (Spam भी देखें), फिर यह पेज दोबारा खोलें।<br><span style='font-size:12px'>A link was sent to this email. Open it once (check Spam too), then reload this page.</span><br><a href='#' id='sgRs'>लिंक दोबारा भेजें / Resend</a> · <a href='#' onclick='location.reload();return false'>🔄 Reload</a>","",false);
       const rs=$g("sgRs");if(rs)rs.onclick=async ev=>{ev.preventDefault();try{await user.sendEmailVerification();$g("sgErr").textContent="✅ भेज दिया / Sent"}catch(e){$g("sgErr").textContent=emsg(e)}};return}}
   gate("लॉगिन हो रहा है…<br><span style='font-size:12px'>Signing in…</span>","",false);
+  try{const tk=await user.getIdTokenResult();if(!tk.claims||tk.claims.email_verified!==true){await user.getIdToken(true);await new Promise(r=>setTimeout(r,400))}}catch(e){}
   const uname=user.displayName||email;let me0={};
   try{const u=await fs.collection("users").doc(uid).get();me0=u.exists?u.data():{}}catch(e){}
   try{await fs.collection("users").doc(uid).set({name:uname,email,at:iso()},{merge:true})}catch(e){}
-  let cfg=null;try{const c=await fs.doc("config/app").get();cfg=c.exists?c.data():null}catch(e){}
-  if(!cfg){try{await fs.doc("config/app").set({owner:uid,ownerEmail:email,at:iso()});cfg={owner:uid}}catch(e){}}
-  if(!cfg){gate.out=true;gate("⚙ सेटअप अधूरा है: Firebase में सुरक्षा नियम (Firestore → Rules) अभी नहीं डले, या उनमें मालिक का ईमेल नहीं लिखा।<br><span style='font-size:12px'>Setup incomplete: publish the Firestore rules with the owner's email, then reload.</span>","",false);return}
+  let cfg=null,cerr="";const rd=async()=>{try{const c=await fs.doc("config/app").get();cfg=c.exists?c.data():null;cerr=c.exists?"":"no-config"}catch(e){cerr=(e&&e.code)||"error"}};
+  await rd();
+  if(!cfg&&cerr!=="no-config"){try{await user.getIdToken(true);await new Promise(r=>setTimeout(r,800))}catch(e){}await rd()}
+  if(!cfg&&cerr==="no-config"){try{await fs.doc("config/app").set({owner:uid,ownerEmail:email,at:iso()});cfg={owner:uid}}catch(e){cerr="first-setup"}}
+  if(!cfg){gate.out=true;gate(cerr==="first-setup"?"⚙ साइट अभी चालू नहीं हुई है — पहले इसके मालिक को अपने ईमेल से एक बार लॉगिन करना होगा।<br><span style='font-size:12px'>The site is not set up yet — its owner must sign in once first.</span>"
+     :"⚠ अभी अंदर नहीं जा पाए।<br>एक बार <b>लॉग आउट करके दोबारा लॉगिन</b> करें (ईमेल का लिंक खोलने के बाद ऐसा कभी-कभी ज़रूरी होता है)। फिर भी न खुले तो इंटरनेट देखें।<br><span style='font-size:12px'>Could not get in. Sign out and sign in again (sometimes needed right after confirming your email).</span><br><span style='font-size:11px;color:#999'>"+cerr+"</span><br><a href='#' onclick='location.reload();return false'>🔄 दोबारा कोशिश / Retry</a>","",false);return}
   isSuper=site.isSuper=cfg.owner===uid;site.support=cfg.support||"";
   /* which firm does this ID belong to? */
   fid=me0.firm||null;
