@@ -168,50 +168,126 @@ $g("sgFg").onclick=async ev=>{ev.preventDefault();const{id}=idpw();if(!id){$g("s
 $g("sgOut").onclick=async()=>{await auth.signOut();location.reload()};
 $g("sgBtn").onclick=async()=>{$g("sgErr").textContent="";const pr=new firebase.auth.GoogleAuthProvider();pr.setCustomParameters({prompt:"select_account"});
   try{await auth.signInWithPopup(pr)}catch(e){if(e&&(e.code==="auth/popup-blocked"||e.code==="auth/operation-not-supported-in-this-environment"))await auth.signInWithRedirect(pr);else $g("sgErr").textContent=emsg(e)}};
+let fid=null,firm=null,isSuper=false,expired=false;
+const iso=()=>new Date().toISOString();
+const F=p=>"firms/"+fid+"/"+p;
+const LEGACY=["compliances","clients","parties","vault","vault_items","vault_log","settings","access_requests","law_updates","law_reads","manual_notes","error_cases","insurance","notices","app_feedback","i18n_zh","kb_asked","kb_learn","kb_extra","tds_recon","adv_tax"];
+const TRIAL_DAYS=30;
 const site=window.__site={invites:[],
-  invite:async(email,role)=>{await fs.collection("invites").doc(email.toLowerCase()).set({role,by:uid,at:new Date().toISOString()})},
-  uninvite:async email=>{await fs.collection("invites").doc(email.toLowerCase()).delete()},
-  signOut:async()=>{await auth.signOut();location.reload()},email:null};
+  invite:async(email,role)=>{email=email.toLowerCase();await fs.doc(F("invites/"+email)).set({role,by:uid,at:iso()});await fs.collection("invidx").doc(email).set({fid,firm:firm&&firm.name||"",at:iso()})},
+  uninvite:async email=>{email=email.toLowerCase();await fs.doc(F("invites/"+email)).delete();try{await fs.collection("invidx").doc(email).delete()}catch(e){}},
+  signOut:async()=>{await auth.signOut();location.reload()},email:null,firm:null,isSuper:false};
+const daysLeft=f=>{if(!f||f.status!=="trial"||!f.trialEnds)return null;return Math.ceil((new Date(f.trialEnds).getTime()-Date.now())/864e5)};
+/* one-time move of the first owner's data (kept at the top level before firms existed) into their own firm. Copies only — nothing is deleted. */
+async function migrateLegacy(){let n=0;const cp=async(from,to)=>{const s=await fs.collection(from).get();for(const d of s.docs){await fs.doc(to+"/"+d.id).set(d.data());n++}return s.docs};
+  for(const c of LEGACY){try{await cp(c,F(c))}catch(e){}}
+  try{const bl=await cp("blobs",F("blobs"));for(const b of bl){try{await cp("blobs/"+b.id+"/p",F("blobs/"+b.id+"/p"))}catch(e){}}}catch(e){}
+  try{const ms=await fs.collection("members").get();for(const d of ms.docs){if(d.id===uid)continue;await fs.doc(F("members/"+d.id)).set(d.data());let em=(d.data().email||"").toLowerCase();if(!em){try{const u=await fs.collection("users").doc(d.id).get();em=u.exists?(u.data().email||"").toLowerCase():""}catch(e){}}if(em)try{await fs.collection("invidx").doc(em).set({fid,at:iso()})}catch(e){}}}catch(e){}
+  try{const iv=await fs.collection("invites").get();for(const d of iv.docs){await fs.doc(F("invites/"+d.id)).set(d.data());await fs.collection("invidx").doc(d.id).set({fid,at:iso()})}}catch(e){}
+  return n}
+function signupScreen(user,email){return new Promise(res=>{gate.out=true;
+  gate("<b>"+email+"</b><br>यह ID अभी किसी फ़र्म से नहीं जुड़ी है।<br><span style='font-size:12px'>This ID is not linked to any firm yet.</span>"+
+   "<div style='text-align:left;margin-top:12px'><b>नई फ़र्म शुरू करें — "+TRIAL_DAYS+" दिन का मुफ़्त डेमो</b><br><span style='font-size:12px'>Start a new firm — "+TRIAL_DAYS+"-day free demo</span>"+
+   "<input id='sgFirm' placeholder='फ़र्म का नाम / Firm name' style='margin-top:8px'>"+
+   "<div style='font-size:12px;color:#444;background:#f4f6fb;border-radius:8px;padding:8px;margin-bottom:8px'><b>आपके डेटा के बारे में / About your data</b><br>• हम रखते हैं: आपका नाम, ईमेल, और जो ग्राहक-डेटा व फ़ाइलें आप खुद डालते हैं।<br>• किसलिए: सिर्फ़ यह ऐप आपको चलाकर देने के लिए।<br>• कहाँ: Google Firebase पर; आपकी फ़र्म का डेटा दूसरी फ़र्में नहीं देख सकतीं, और ऐप चलाने वाला भी आपके ग्राहकों का डेटा नहीं खोलता।<br>• आप कभी भी पूरा डेटा डाउनलोड कर सकते हैं और मिटवाने को कह सकते हैं।"+(site.support?"<br>• संपर्क / शिकायत: "+site.support:"")+
+   "<br><span style='color:#666'>We keep your name, email and the client data and files you add, only to run this app for you, on Google Firebase. Other firms cannot see it. You can download or ask to delete it any time.</span></div>"+
+   "<label style='font-size:13px;display:flex;gap:6px;align-items:flex-start;margin-bottom:8px'><input type='checkbox' id='sgAgree' style='width:auto;margin-top:2px'><span>मैं ऊपर लिखी बात से सहमत हूँ / I agree to the above</span></label>"+
+   "<button id='sgMk'>डेमो शुरू करें / Start demo</button></div>"+
+   "<div style='font-size:12px;color:#666;margin-top:10px'>आपकी फ़र्म पहले से यह ऐप चलाती है? तो अपने एडमिन से कहें कि टीम टैब में यह ईमेल जोड़ें, फिर यह पेज दोबारा खोलें।<br>Your firm already uses this app? Ask your admin to add this email, then reload.</div>","",false);
+  $g("sgMk").onclick=async()=>{const nm=$g("sgFirm").value.trim();if(nm.length<2){$g("sgErr").textContent="फ़र्म का नाम लिखें। / Enter the firm name.";return}if(!$g("sgAgree").checked){$g("sgErr").textContent="सहमति का टिक लगाएँ। / Tick the consent box.";return}
+    $g("sgMk").disabled=true;try{await fs.doc("firms/"+uid).set({name:nm.slice(0,80),owner:uid,ownerEmail:email,status:"trial",trialEnds:new Date(Date.now()+TRIAL_DAYS*864e5).toISOString(),trialEndsMs:Date.now()+TRIAL_DAYS*864e5,createdAt:iso(),consentAt:iso()});res(uid)}
+    catch(e){$g("sgMk").disabled=false;$g("sgErr").textContent="फ़र्म नहीं बन पाई — दोबारा कोशिश करें। / Could not create the firm — try again."}}})}
 async function admit(user){
   uid=user.uid;const email=(user.email||"").toLowerCase();site.email=email;
   if(!user.emailVerified){try{await user.reload()}catch(e){}
     if(!auth.currentUser||!auth.currentUser.emailVerified){gate.out=true;gate("📧 <b>"+email+"</b><br>इस ईमेल पर एक लिंक भेजा गया है। उसे एक बार खोलें (Spam भी देखें), फिर यह पेज दोबारा खोलें।<br><span style='font-size:12px'>A link was sent to this email. Open it once (check Spam too), then reload this page.</span><br><a href='#' id='sgRs'>लिंक दोबारा भेजें / Resend</a> · <a href='#' onclick='location.reload();return false'>🔄 Reload</a>","",false);
       const rs=$g("sgRs");if(rs)rs.onclick=async ev=>{ev.preventDefault();try{await user.sendEmailVerification();$g("sgErr").textContent="✅ भेज दिया / Sent"}catch(e){$g("sgErr").textContent=emsg(e)}};return}}
   gate("लॉगिन हो रहा है…<br><span style='font-size:12px'>Signing in…</span>","",false);
-  try{await fs.collection("users").doc(uid).set({name:user.displayName||email,email,at:new Date().toISOString()},{merge:true})}catch(e){}
+  const uname=user.displayName||email;let me0={};
+  try{const u=await fs.collection("users").doc(uid).get();me0=u.exists?u.data():{}}catch(e){}
+  try{await fs.collection("users").doc(uid).set({name:uname,email,at:iso()},{merge:true})}catch(e){}
   let cfg=null;try{const c=await fs.doc("config/app").get();cfg=c.exists?c.data():null}catch(e){}
-  if(!cfg){try{await fs.doc("config/app").set({owner:uid,ownerEmail:email,at:new Date().toISOString()});cfg={owner:uid}}catch(e){}}
-  if(!cfg){gate.out=true;gate("⚙ सेटअप अधूरा है: Firebase में सुरक्षा नियम (Firestore → Rules) अभी नहीं डले, या उनमें मालिक का Gmail <b>"+email+"</b> नहीं लिखा।<br><span style='font-size:12px'>Setup incomplete: publish the Firestore rules with the owner's Gmail, then reload.</span>","",false);
-    $g("sgSmall").innerHTML='<a href="#" id="sgRe">दोबारा कोशिश करें / retry</a>';$g("sgRe").onclick=e=>{e.preventDefault();location.reload()};return}
-  ownerUid=cfg&&cfg.owner||null;
-  if(ownerUid!==uid){let ok=false;
-    try{ok=(await fs.collection("members").doc(uid).get()).exists}catch(e){}
-    if(!ok){try{const iv=await fs.collection("invites").doc(email).get();if(iv.exists){await fs.collection("members").doc(uid).set({role:iv.data().role||"junior",email,joinedAt:new Date().toISOString()});ok=true}}catch(e){}}
-    if(!ok){gate.out=true;gate("❌ "+email+"<br>आपको अभी टीम में नहीं जोड़ा गया है। एडमिन से कहें कि टीम टैब में आपका Gmail जोड़ें।<br><span style='font-size:12px'>You are not on the team yet — ask the admin to add your Gmail.</span>","",false);
-      $g("sgSmall").innerHTML='<a href="#" id="sgOut">दूसरे अकाउंट से लॉगिन करें / use another account</a>';$g("sgOut").onclick=e=>{e.preventDefault();site.signOut()};return}}
-  else{try{await fs.collection("members").doc(uid).set({role:"admin",email},{merge:true})}catch(e){}}
-  fs.collection("invites").onSnapshot(s=>{site.invites=s.docs.map(d=>Object.assign({email:d.id},d.data()));if(typeof renderTeam==="function")try{renderTeam()}catch(e){}},()=>{});
+  if(!cfg){try{await fs.doc("config/app").set({owner:uid,ownerEmail:email,at:iso()});cfg={owner:uid}}catch(e){}}
+  if(!cfg){gate.out=true;gate("⚙ सेटअप अधूरा है: Firebase में सुरक्षा नियम (Firestore → Rules) अभी नहीं डले, या उनमें मालिक का ईमेल नहीं लिखा।<br><span style='font-size:12px'>Setup incomplete: publish the Firestore rules with the owner's email, then reload.</span>","",false);return}
+  isSuper=site.isSuper=cfg.owner===uid;site.support=cfg.support||"";
+  /* which firm does this ID belong to? */
+  fid=me0.firm||null;
+  if(!fid&&isSuper)fid=uid;
+  if(!fid){try{const ix=await fs.collection("invidx").doc(email).get();if(ix.exists)fid=ix.data().fid}catch(e){}}
+  if(!fid){try{if((await fs.doc("firms/"+uid).get()).exists)fid=uid}catch(e){}}
+  if(!fid)fid=await signupScreen(user,email);
+  gate("खुल रहा है…<br><span style='font-size:12px'>Opening…</span>","",false);
+  try{const f=await fs.doc("firms/"+fid).get();firm=f.exists?f.data():null}catch(e){firm=null}
+  if(!firm&&isSuper&&fid===uid){ /* the first owner: their existing data becomes firm no. 1 */
+    gate("आपका मौजूदा डेटा आपकी फ़र्म में रखा जा रहा है… (एक बार)<br><span style='font-size:12px'>Moving your existing data into your firm… (one time)</span>","",false);
+    firm={name:cfg.firmName||"ADDENDA",owner:uid,ownerEmail:email,status:"active",createdAt:iso(),first:true};
+    try{await fs.doc("firms/"+fid).set(firm);await fs.doc(F("members/"+uid)).set({role:"admin",email,name:uname});const n=await migrateLegacy();await fs.doc("config/app").set({migratedAt:iso(),migrated:n},{merge:true})}catch(e){firm=null}}
+  if(!firm){gate.out=true;gate("❌ "+email+"<br>आपकी फ़र्म नहीं खुल पाई। एडमिन से कहें कि टीम टैब में आपका ईमेल दोबारा जोड़ें।<br><span style='font-size:12px'>Could not open your firm — ask your admin to add your email again.</span>","",false);try{await fs.collection("users").doc(uid).set({firm:null},{merge:true})}catch(e){}return}
+  ownerUid=firm.owner;
+  if(ownerUid!==uid){let ok=false,mref=fs.doc(F("members/"+uid));
+    try{ok=(await mref.get()).exists}catch(e){}
+    if(!ok){try{const iv=await fs.doc(F("invites/"+email)).get();if(iv.exists){await mref.set({role:iv.data().role||"junior",email,name:uname,joinedAt:iso()});ok=true}}catch(e){}}
+    if(!ok){gate.out=true;gate("❌ "+email+"<br>आपको अभी टीम में नहीं जोड़ा गया है। एडमिन से कहें कि टीम टैब में आपका ईमेल जोड़ें।<br><span style='font-size:12px'>You are not on the team yet — ask the admin to add your email.</span>","",false);return}
+    try{await mref.set({name:uname,email},{merge:true})}catch(e){}}
+  else{try{await fs.doc(F("members/"+uid)).set({role:"admin",email,name:uname},{merge:true})}catch(e){}}
+  if(me0.firm!==fid){try{await fs.collection("users").doc(uid).set({firm:fid},{merge:true})}catch(e){}}
+  if(firm.status==="stopped"&&!isSuper){gate.out=true;gate("⏸ <b>"+(firm.name||"")+"</b><br>यह फ़र्म अभी रोकी गई है। चालू कराने के लिए ऐप चलाने वाले से संपर्क करें।"+(site.support?"<br>"+site.support:"")+"<br><span style='font-size:12px'>This firm is paused. Contact the app provider to resume.</span>","",false);return}
+  const dl=daysLeft(firm);expired=firm.status==="stopped"||(dl!=null&&dl<=0);site.firm=Object.assign({id:fid,daysLeft:dl,expired},firm);
+  fs.collection(F("invites")).onSnapshot(s=>{site.invites=s.docs.map(d=>Object.assign({email:d.id},d.data()));if(typeof renderTeam==="function")try{renderTeam()}catch(e){}},()=>{});
   /* law updates published by the daily search as a file next to this page */
-  fetch("law_updates.json",{cache:"no-store"}).then(r=>r.ok?r.json():[]).then(async L=>{for(const u of (L||[])){if(!u||!u.id)continue;try{const ref=fs.collection("law_updates").doc(u.id);if(!(await ref.get()).exists){const d=Object.assign({},u);delete d.id;await ref.set(d)}}catch(e){}}}).catch(()=>{});
-  $g("siteGate").style.display="none";readyRes();
+  if(!expired)fetch("law_updates.json",{cache:"no-store"}).then(r=>r.ok?r.json():[]).then(async L=>{for(const u of (L||[])){if(!u||!u.id)continue;try{const ref=fs.doc(F("law_updates/"+u.id));if(!(await ref.get()).exists){const d=Object.assign({},u);delete d.id;await ref.set(d)}}catch(e){}}}).catch(()=>{});
+  $g("siteGate").style.display="none";topBar();readyRes();
+  /* light usage figures for the provider: counts only, never client data */
+  if(!expired&&(ownerUid===uid))setTimeout(async()=>{try{const[a,b]=await Promise.all([fs.collection(F("parties")).get(),fs.collection(F("members")).get()]);await fs.doc("firms/"+fid).set({stats:{clients:a.docs.length,users:b.docs.length,at:iso()},lastSeen:iso()},{merge:true})}catch(e){}},8000);
 }
+/* thin bar on top: firm name, demo days, and (for the provider only) the firms panel */
+function topBar(){let b=$g("siteBar");if(!b){b=document.createElement("div");b.id="siteBar";b.style.cssText="position:sticky;top:0;z-index:50;font:12px system-ui,'Noto Sans Devanagari',sans-serif;padding:4px 10px;display:flex;gap:8px;align-items:center;justify-content:space-between;background:#eef2ff;color:#223;border-bottom:1px solid #d5dcf5";document.body.insertBefore(b,document.body.firstChild)}
+  const dl=site.firm.daysLeft;let msg="🏢 "+(firm.name||"");
+  if(expired){msg+=" · ⛔ डेमो ख़त्म — अब सिर्फ़ देख सकते हैं। चालू कराने के लिए संपर्क करें"+(site.support?": "+site.support:"")+" / Demo over — view only";b.style.background="#fde8e8"}
+  else if(dl!=null){msg+=" · डेमो: "+dl+" दिन बाक़ी / demo: "+dl+" days left";if(dl<=5)b.style.background="#fff3cd"}
+  b.innerHTML="<span></span>"+(isSuper?"<button id='sbSuper' style='border:1px solid #1a56db;background:#fff;color:#1a56db;border-radius:8px;padding:2px 8px;font-size:12px;cursor:pointer;white-space:nowrap'>🛠 फ़र्में</button>":"");b.firstChild.textContent=msg;
+  if(isSuper)$g("sbSuper").onclick=superPanel}
+async function superPanel(){let o=$g("sitePanel");if(!o){o=document.createElement("div");o.id="sitePanel";o.style.cssText="position:fixed;inset:0;z-index:9000;background:#f6f7fb;overflow:auto;padding:14px;font:14px system-ui,'Noto Sans Devanagari',sans-serif";document.body.appendChild(o)}
+  const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));const d8=s=>s?new Date(s).toLocaleDateString("en-IN"):"–";
+  o.innerHTML="<div style='max-width:720px;margin:auto'><div style='display:flex;justify-content:space-between;align-items:center'><h2 style='margin:4px 0'>🛠 सारी फ़र्में (सुपर-एडमिन)</h2><button id='spX' style='padding:6px 12px'>✕ बंद</button></div><div id='spB'>लोड हो रहा है…</div></div>";
+  $g("spX").onclick=()=>o.remove();
+  let L=[];try{L=(await fs.collection("firms").get()).docs.map(d=>Object.assign({id:d.id},d.data()))}catch(e){$g("spB").textContent="सूची नहीं खुली — Firebase के नए नियम डले हैं? / Could not load — are the new rules published?";return}
+  L.sort((a,b)=>(b.createdAt||"")<(a.createdAt||"")?-1:1);
+  const stT={active:"✅ चालू",trial:"🧪 डेमो",stopped:"⏸ रुकी"};
+  $g("spB").innerHTML="<div style='color:#555;font-size:12px;margin-bottom:8px'>यहाँ सिर्फ़ फ़र्म का नाम, स्थिति और गिनती दिखती है। किसी फ़र्म के ग्राहकों का डेटा यहाँ से नहीं खुलता।</div>"+
+   "<div style='background:#fff;border-radius:10px;padding:10px;margin-bottom:10px'>संपर्क / शिकायत का पता (नए साइन-अप और रुकी फ़र्मों को दिखेगा): <input id='spSup' value=\""+esc(site.support)+"\" placeholder='ईमेल या फ़ोन' style='width:60%;padding:6px'> <button id='spSupS'>सेव</button></div>"+
+   L.map(f=>{const dl=daysLeft(f);return "<div style='background:#fff;border-radius:10px;padding:10px;margin-bottom:8px;border-left:4px solid "+(f.status==="active"?"#1a7f37":f.status==="stopped"?"#c00":dl<=0?"#c00":"#d4a200")+"'><b>"+esc(f.name)+"</b>"+(f.id===uid?" <span style='font-size:11px;background:#eef;padding:1px 6px;border-radius:6px'>आपकी फ़र्म</span>":"")+
+     "<div style='font-size:12px;color:#555'>"+esc(f.ownerEmail)+" · बनी "+d8(f.createdAt)+" · "+(stT[f.status]||f.status)+(f.status==="trial"?" ("+(dl>0?dl+" दिन बाक़ी":"ख़त्म")+", "+d8(f.trialEnds)+" तक)":"")+"</div>"+
+     "<div style='font-size:12px;color:#555'>ग्राहक: "+(f.stats?f.stats.clients:"–")+" · लोग: "+(f.stats?f.stats.users:"–")+" · आख़िरी बार: "+d8(f.lastSeen)+"</div>"+
+     "<div style='margin-top:6px;display:flex;gap:6px;flex-wrap:wrap'><button class='spA' data-id='"+f.id+"' data-a='active'>✅ चालू करें</button><button class='spA' data-id='"+f.id+"' data-a='trial'>🧪 डेमो +"+TRIAL_DAYS+" दिन</button><button class='spA' data-id='"+f.id+"' data-a='stopped'>⏸ रोकें</button><button class='spA' data-id='"+f.id+"' data-a='name'>✎ नाम</button></div></div>"}).join("")+(L.length?"":"कोई फ़र्म नहीं।");
+  $g("spSupS").onclick=async()=>{try{await fs.doc("config/app").set({support:$g("spSup").value.trim().slice(0,120)},{merge:true});site.support=$g("spSup").value.trim();$g("spSupS").textContent="✔"}catch(e){$g("spSupS").textContent="✖"}};
+  o.querySelectorAll(".spA").forEach(b=>b.onclick=async()=>{const id=b.dataset.id,a=b.dataset.a,f=L.find(x=>x.id===id);let up;
+    if(a==="name"){const box=document.createElement("span");box.innerHTML=" <input value=\""+esc(f.name)+"\" style='padding:4px'> <button>सेव</button>";b.after(box);box.querySelector("button").onclick=async()=>{try{await fs.doc("firms/"+id).set({name:box.querySelector("input").value.trim().slice(0,80)},{merge:true});superPanel()}catch(e){}};return}
+    if(a==="trial"){const ms=Math.max(Date.now(),f.status==="trial"&&f.trialEnds?new Date(f.trialEnds).getTime():0)+TRIAL_DAYS*864e5;up={status:"trial",trialEnds:new Date(ms).toISOString(),trialEndsMs:ms}}else up={status:a};
+    if(a==="stopped"&&id===uid){b.textContent="अपनी फ़र्म नहीं रोक सकते";return}
+    try{await fs.doc("firms/"+id).set(Object.assign(up,{changedAt:iso()}),{merge:true});superPanel()}catch(e){b.textContent="✖ नहीं हुआ"}})}
 auth.onAuthStateChanged(u=>{if(u)admit(u);else gate(null,"",true)});
 auth.getRedirectResult().catch(e=>{$g("sgErr").textContent=(e&&e.message)||""});
 /* file store: files are split into parts inside Firestore (no paid storage needed) */
 const toB64=async blob=>{const u=new Uint8Array(await blob.arrayBuffer());let s="";for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(s)};
 const assets={upload:async blob=>{if(blob.size>MAXB)throw Object.assign(new Error("too_large"),{code:"too_large"});
-  const ref=fs.collection("blobs").doc();const b64=await toB64(blob);const n=Math.ceil(b64.length/CH)||1;
+  const ref=fs.collection(F("blobs")).doc();const b64=await toB64(blob);const n=Math.ceil(b64.length/CH)||1;
   for(let i=0;i<n;i++)await ref.collection("p").doc(String(i)).set({d:b64.slice(i*CH,(i+1)*CH)});
-  await ref.set({type:blob.type||"application/octet-stream",size:blob.size,n,name:blob.name||"",by:uid,at:new Date().toISOString()});
+  await ref.set({type:blob.type||"application/octet-stream",size:blob.size,n,name:blob.name||"",by:uid,at:iso()});
   return{id:ref.id,url:""}}};
 const cache=new Map();
-window.__blobGet=async id=>{if(cache.has(id))return cache.get(id);const ref=fs.collection("blobs").doc(id);const m=await ref.get();if(!m.exists)throw new Error("missing");const meta=m.data();let b64="";
+window.__blobGet=async id=>{if(cache.has(id))return cache.get(id);const ref=fs.collection(F("blobs")).doc(id);const m=await ref.get();if(!m.exists)throw new Error("missing");const meta=m.data();let b64="";
   for(let i=0;i<meta.n;i++){const p=await ref.collection("p").doc(String(i)).get();b64+=p.data().d}
   const s=atob(b64),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);const b=new Blob([u],{type:meta.type});cache.set(id,b);return b};
 const downloads={save:async({filename,data})=>{const blob=data instanceof Blob?data:new Blob([data]);const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename||"file";document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(url);a.remove()},4000)}};
-const user={id:async()=>uid,isOwner:()=>!!uid&&uid===ownerUid,
-  profiles:async ids=>{const out={};for(const id of ids||[]){try{const d=await fs.collection("users").doc(id).get();if(d.exists)out[id]={name:d.data().name||d.data().email||""}}catch(e){}}return out}};
-const caps={db:fs,user,assets,downloads};
+/* the app sees only its own firm: every path is placed under firms/<this firm>/ */
+const viewOnly=snap=>({docs:snap.docs.map(d=>({id:d.id,exists:true,ref:d.ref,data:()=>Object.assign({},d.data(),{role:"viewer"})})),metadata:snap.metadata});
+const scoped={collection:name=>{const c=fs.collection(F(name));if(name!=="members"||!expired)return c;
+    return{doc:id=>{const r=c.doc(id);return{id:r.id,get:async()=>{const d=await r.get();return{id:d.id,exists:d.exists,data:()=>d.exists?Object.assign({},d.data(),{role:"viewer"}):undefined}},set:(...a)=>r.set(...a),update:(...a)=>r.update(...a),delete:()=>r.delete(),onSnapshot:(...a)=>r.onSnapshot(...a)}},get:async()=>viewOnly(await c.get()),onSnapshot:(cb,er)=>c.onSnapshot(s=>cb(viewOnly(s)),er),add:d=>c.add(d)}},
+  doc:path=>fs.doc(F(path))};
+const user={id:async()=>uid,isOwner:()=>!expired&&!!uid&&uid===ownerUid,
+  profiles:async ids=>{const out={};for(const id of ids||[]){try{const d=await fs.doc(F("members/"+id)).get();if(d.exists)out[id]={name:d.data().name||d.data().email||""}}catch(e){}}return out}};
+const caps={db:scoped,user,assets,downloads};
 window.claude={use:name=>ready.then(()=>caps[name]||null)};
 })();
 </script>
