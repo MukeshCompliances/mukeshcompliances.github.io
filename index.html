@@ -277,6 +277,8 @@ async function admit(user){
   /* law updates published by the daily search as a file next to this page */
   if(!expired)fetch("law_updates.json",{cache:"no-store"}).then(r=>r.ok?r.json():[]).then(async L=>{for(const u of (L||[])){if(!u||!u.id)continue;try{const ref=fs.doc(F("law_updates/"+u.id));if(!(await ref.get()).exists){const d=Object.assign({},u);delete d.id;await ref.set(d)}}catch(e){}}}).catch(()=>{});
   $g("siteGate").style.display="none";topBar();readyRes();
+  /* services the provider turns on / off reach the firm at once; a change of status re-opens the page */
+  fs.doc("firms/"+fid).onSnapshot(d=>{if(!d.exists)return;const n=d.data();if(n.status!==firm.status||n.trialEndsMs!==firm.trialEndsMs){location.reload();return}firm=n;Object.assign(site.firm,n);if(typeof window.ftRefresh==="function")try{window.ftRefresh()}catch(e){}},()=>{});
   /* light usage figures for the provider: counts only, never client data */
   if(!expired&&(ownerUid===uid))setTimeout(async()=>{try{const[a,b]=await Promise.all([fs.collection(F("parties")).get(),fs.collection(F("members")).get()]);await fs.doc("firms/"+fid).set({stats:{clients:a.docs.length,users:b.docs.length,at:iso()},lastSeen:iso()},{merge:true})}catch(e){}},8000);
 }
@@ -323,10 +325,16 @@ async function superPanel(){let o=$g("sitePanel");if(!o){o=document.createElemen
      "<div style='font-size:12px;color:#555'>"+(f.ownerName?esc(f.ownerName)+" · ":"")+esc(f.ownerEmail)+(f.phone?" · 📞 "+esc(f.phone):"")+(f.note?"<br>📝 "+esc(f.note):"")+"</div><div style='font-size:12px;color:#555'>बनी "+d8(f.createdAt)+" · "+(f.status==="trial"&&f.plan==="paid"?"💳 सदस्यता":(stT[f.status]||f.status))+(f.status==="trial"?" ("+(dl>0?dl+" दिन बाक़ी":"ख़त्म")+", "+d8(f.trialEnds)+" तक)":"")+"</div>"+
      ((f.pays||[]).length?"<div style='font-size:12px;color:#555'>💳 "+f.pays.slice(-3).map(p=>d8(p.at)+" → "+d8(p.until)+(p.note?" ("+esc(p.note)+")":"")).join(" · ")+"</div>":"")+
      "<div style='font-size:12px;color:#555'>ग्राहक: "+(f.stats?f.stats.clients:"–")+" · लोग: "+(f.stats?f.stats.users:"–")+" · आख़िरी बार: "+d8(f.lastSeen)+"</div>"+
-     "<div style='margin-top:6px;display:flex;gap:6px;flex-wrap:wrap'>"+(f.status==="pending"?"<button class='spA' data-id='"+f.id+"' data-a='trial' style='background:#1a56db;color:#fff;border:0;border-radius:6px;padding:5px 9px'>👍 मंज़ूर: "+TRIAL_DAYS+" दिन का डेमो</button><button class='spA' data-id='"+f.id+"' data-a='rejected'>✖ नामंज़ूर</button>":"")+"<button class='spA' data-id='"+f.id+"' data-a='paid'>💳 सदस्यता दें / बढ़ाएँ</button><button class='spA' data-id='"+f.id+"' data-a='active'>♾ हमेशा के लिए</button><button class='spA' data-id='"+f.id+"' data-a='trial'>🧪 डेमो +"+TRIAL_DAYS+" दिन</button><button class='spA' data-id='"+f.id+"' data-a='stopped'>⏸ रोकें</button><button class='spA' data-id='"+f.id+"' data-a='name'>✎ नाम</button></div></div>"}).join("")+(L.length?"":"कोई फ़र्म नहीं।");
+     "<div style='margin-top:6px;display:flex;gap:6px;flex-wrap:wrap'>"+(f.status==="pending"?"<button class='spA' data-id='"+f.id+"' data-a='trial' style='background:#1a56db;color:#fff;border:0;border-radius:6px;padding:5px 9px'>👍 मंज़ूर: "+TRIAL_DAYS+" दिन का डेमो</button><button class='spA' data-id='"+f.id+"' data-a='rejected'>✖ नामंज़ूर</button>":"")+"<button class='spA' data-id='"+f.id+"' data-a='ft'>🧩 सेवाएँ ("+(f.features?Object.keys(f.features).filter(k=>f.features[k]===true).length+"/"+(window.__FT||[]).length:"सभी")+")</button><button class='spA' data-id='"+f.id+"' data-a='paid'>💳 सदस्यता दें / बढ़ाएँ</button><button class='spA' data-id='"+f.id+"' data-a='active'>♾ हमेशा के लिए</button><button class='spA' data-id='"+f.id+"' data-a='trial'>🧪 डेमो +"+TRIAL_DAYS+" दिन</button><button class='spA' data-id='"+f.id+"' data-a='stopped'>⏸ रोकें</button><button class='spA' data-id='"+f.id+"' data-a='name'>✎ नाम</button></div></div>"}).join("")+(L.length?"":"कोई फ़र्म नहीं।");
   $g("spSupS").onclick=async()=>{try{await fs.doc("config/app").set({support:$g("spSup").value.trim().slice(0,120)},{merge:true});site.support=$g("spSup").value.trim();$g("spSupS").textContent="✔"}catch(e){$g("spSupS").textContent="✖"}};
   o.querySelectorAll(".spA").forEach(b=>b.onclick=async()=>{const id=b.dataset.id,a=b.dataset.a,f=L.find(x=>x.id===id);let up;
     if(a==="name"){const box=document.createElement("span");box.innerHTML=" <input value=\""+esc(f.name)+"\" style='padding:4px'> <button>सेव</button>";b.after(box);box.querySelector("button").onclick=async()=>{try{await fs.doc("firms/"+id).set({name:box.querySelector("input").value.trim().slice(0,80)},{merge:true});superPanel()}catch(e){}};return}
+    if(a==="ft"){if(b.parentNode.querySelector(".spFt")){b.parentNode.querySelector(".spFt").remove();return}const FTL=window.__FT||[],cur=f.features,box=document.createElement("div");box.className="spFt";box.style.cssText="flex-basis:100%;background:#f4f6fb;border-radius:8px;padding:8px;font-size:13px";
+      const line=x=>"<label style='display:flex;gap:6px;align-items:flex-start;margin:3px 0'><input type='checkbox' data-k='"+x.k+"' "+((!cur||cur[x.k]===true)?"checked":"")+" style='margin-top:3px'><span>"+esc(x.n[0])+"<br><span style='color:#777;font-size:11px'>"+esc(x.d[0])+"</span></span></label>";
+      box.innerHTML="<div style='margin-bottom:4px'>इस फ़र्म को क्या-क्या देना है? (सौदे के हिसाब से टिक लगाएँ)</div><b>कंप्लायंस</b>"+FTL.filter(x=>x.t==="comp").map(line).join("")+"<b>सुविधाएँ</b>"+FTL.filter(x=>x.t==="mod").map(line).join("")+
+       "<div style='color:#777;font-size:11px;margin:4px 0'>जो चीज़ आप बाद में नई टिक करेंगे, वह फ़र्म को \"🆕 नया अपडेट\" बनकर दिखेगी और उनके \"चालू करें\" दबाने पर खुलेगी। टिक हटाते ही वह चीज़ तुरंत बंद हो जाती है (डेटा नहीं मिटता)।</div><button class='fa' type='button'>सब टिक</button> <button class='fn' type='button'>सब हटाएँ</button> <button class='fg' style='background:#1a7f37;color:#fff;border:0;border-radius:6px;padding:7px 12px'>✔ सेव करें</button> <span class='fm' style='color:#c00'></span>";
+      b.parentNode.appendChild(box);box.querySelector(".fa").onclick=()=>box.querySelectorAll("input").forEach(i=>i.checked=true);box.querySelector(".fn").onclick=()=>box.querySelectorAll("input").forEach(i=>i.checked=false);
+      box.querySelector(".fg").onclick=async()=>{const m={};box.querySelectorAll("input[data-k]").forEach(i=>m[i.dataset.k]=i.checked);try{await fs.doc("firms/"+id).update({features:m,featuresAt:iso()});superPanel()}catch(e){box.querySelector(".fm").textContent="✖ सेव नहीं हुआ"}};return}
     if(a==="paid"){if(b.nextSibling&&b.nextSibling.className==="spPay"){b.nextSibling.remove();return}const box=document.createElement("div");box.className="spPay";box.style.cssText="flex-basis:100%;background:#f4f6fb;border-radius:8px;padding:8px;font-size:13px";
       const cur=f.status==="trial"&&f.plan==="paid"&&f.trialEnds&&new Date(f.trialEnds).getTime()>Date.now()?new Date(f.trialEnds).getTime():Date.now();const dstr=ms=>{const d=new Date(ms);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};const addM=(ms,m)=>{const d=new Date(ms);d.setMonth(d.getMonth()+m);return d.getTime()};
       box.innerHTML="<div style='margin-bottom:6px'>कब तक चालू रखना है? "+(cur>Date.now()+864e5?"(अभी "+d8(new Date(cur).toISOString())+" तक है — आगे उसी से जुड़ेगा)":"")+"</div><div style='display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px'><button data-m='1'>+1 महीना</button><button data-m='3'>+3 महीने</button><button data-m='6'>+6 महीने</button><button data-m='12'>+1 साल</button><button data-m='24'>+2 साल</button></div>तारीख़ तक: <input type='date' class='pu' value='"+dstr(addM(cur,12))+"' style='padding:5px'><br><input class='pn' placeholder='नोट: रकम, भुगतान की तारीख़, रसीद नं. (सिर्फ़ आपको दिखेगा)' style='width:100%;box-sizing:border-box;padding:6px;margin:6px 0'><button class='pg' style='background:#1a7f37;color:#fff;border:0;border-radius:6px;padding:7px 12px'>✔ सेव करें</button> <span class='pm' style='color:#c00'></span>";
@@ -666,7 +674,7 @@ async function init(){
   const timer=setTimeout(()=>setBanner("slowBanner"),10000);
   dbRef.onSnapshot(s=>{
     if(!s.metadata.fromCache){clearTimeout(timer);if(banner&&banner.k==="slowBanner")setBanner(null)}
-    items=s.docs.map(d=>Object.assign({id:d.id},d.data()));render();resolveNames();
+    itemsRaw=s.docs.map(d=>Object.assign({id:d.id},d.data()));items=typeof ftItemOn==="function"?itemsRaw.filter(ftItemOn):itemsRaw;render();resolveNames();
   },e=>{clearTimeout(timer);setBanner("loadErr",e.code)});
   clientRef.onSnapshot(s=>{const c={};s.docs.forEach(d=>c[d.id]=d.data());clients=c},()=>{});
   initTeam(db);emInit(db);accInit(db);
@@ -4887,6 +4895,61 @@ function openAt(pid,fy){atInit();const p=parties.find(x=>x.id===pid);if(!p){clos
     d.challans.sort((x,y)=>(x.date||"9")<(y.date||"9")?-1:1);atSt.msg=bt(`✅ ${fl.length} में से ${ok} चालान जुड़े।`,`✅ ${ok} of ${fl.length} challans added.`)+(dup?bt(` ${dup} पहले से थे।`,` ${dup} were already there.`):"")+(bad?bt(` ${bad} पूरे नहीं पढ़े गए — पीले में रखे हैं, ख़ाली जगह भर दें।`,` ${bad} not fully read — kept in yellow, fill the blanks.`):"");await sv()};
 }
 const _atOpenClient=openClient;openClient=function(pid){_atOpenClient(pid);atInit();const p=parties.find(x=>x.id===pid),a=document.querySelector("#sheet #trCB")||document.querySelector("#sheet #apBtn");if(!p||!a||document.querySelector("#sheet #atCB"))return;a.insertAdjacentHTML("afterend",atClientBtn(p));$("#atCB").onclick=()=>openAt(pid)};
+
+/* ===== ft: which services a firm gets (set by the provider) and new updates the firm turns on ===== */
+const FT=[
+ {k:"c_gst",t:"comp",n:["GST के कंप्लायंस","GST compliances"],d:["GSTR-1, 3B, PMT-06, GSTR-9/9C, ITC-04, LUT","GSTR-1, 3B, PMT-06, GSTR-9/9C, ITC-04, LUT"]},
+ {k:"c_tds",t:"comp",n:["TDS / TCS के कंप्लायंस","TDS / TCS compliances"],d:["TDS जमा, तिमाही रिटर्न, फ़ॉर्म 16 / 16A","TDS deposit, quarterly returns, Form 16 / 16A"]},
+ {k:"c_it",t:"comp",n:["आयकर के कंप्लायंस","Income-tax compliances"],d:["ITR, टैक्स ऑडिट, एडवांस टैक्स की किश्तें","ITR, tax audit, advance-tax instalments"]},
+ {k:"c_roc",t:"comp",n:["ROC / कंपनी के कंप्लायंस","ROC / company compliances"],d:["AOC-4, MGT-7, ADT-1, DIR-3 KYC, DPT-3, LLP, MSME-1","AOC-4, MGT-7, ADT-1, DIR-3 KYC, DPT-3, LLP, MSME-1"]},
+ {k:"c_pay",t:"comp",n:["PF · ESI · PT · LWF","PF · ESI · PT · LWF"],d:["वेतन से जुड़े मासिक / छमाही भुगतान","Monthly / half-yearly payroll dues"]},
+ {k:"c_lic",t:"comp",n:["लाइसेंस और FSSAI","Licences and FSSAI"],d:["FSSAI रिटर्न, लाइसेंस नवीनीकरण, IEC","FSSAI returns, licence renewals, IEC"]},
+ {k:"c_fs",t:"comp",n:["बैलेंस शीट और P&L (जाँच सहित)","Balance Sheet & P&L (with checker)"],d:["वित्तीय विवरण का कंप्लायंस, जाँच, UDIN","Financial-statement entry, checker, UDIN"]},
+ {k:"m_nt",t:"mod",n:["📮 नोटिस ट्रैकर","📮 Notice tracker"],d:["नोटिस, केस का इतिहास, रिमाइंडर","Notices, case history, reminders"]},
+ {k:"m_ins",t:"mod",n:["🛡 बीमा ट्रैकर","🛡 Insurance tracker"],d:["पॉलिसी, नवीनीकरण के रिमाइंडर","Policies, renewal reminders"]},
+ {k:"m_vault",t:"mod",n:["🔐 पासवर्ड तिजोरी","🔐 Password vault"],d:["पोर्टल के लॉगिन सुरक्षित रखना","Safe storage of portal logins"]},
+ {k:"m_lu",t:"mod",n:["📰 कानून के नए बदलाव","📰 Law updates"],d:["नए नियम और तारीख़ों के बदलाव","New rules and date changes"]},
+ {k:"m_mn",t:"mod",n:["📘 सीखें और सवाल-जवाब","📘 Learn and question bank"],d:["भरने के तरीक़े, सवालों के जवाब, एरर मदद","Filing manuals, answers, error help"]},
+ {k:"m_tr",t:"mod",n:["🧮 TDS जाँच","🧮 TDS check"],d:["वर्किंग ↔ चालान ↔ सर्टिफ़िकेट","Working ↔ challans ↔ certificates"]},
+ {k:"m_at",t:"mod",n:["🧾 एडवांस टैक्स जाँच","🧾 Advance-tax check"],d:["टैक्स कितना बनता था ↔ कितना भरा","Tax due ↔ tax paid"]}];
+window.__FT=FT;
+let ftSeen=null,ftRef=null,itemsRaw=null;
+const ftSite=()=>window.__site&&window.__site.firm?window.__site.firm:null;
+function ftAllowed(k){const f=ftSite();if(!f)return true;const m=f.features;return !m||m[k]===true}
+function ftOn(k){const f=ftSite();if(!f)return true;if(!ftAllowed(k))return false;return !ftSeen||!!ftSeen[k]}
+function ftKeyOfCode(code){code=String(code||"");if(/^NOTICE-/.test(code))return"m_nt";if(/^INS-/.test(code))return"m_ins";if(/^(FS|UDIN-FS)$/.test(code))return"c_fs";
+  if(/^(GSTR|CMP-08|PMT-06|ITC-04|LUT)/.test(code))return"c_gst";if(/^(TDS-|F16)/.test(code))return"c_tds";if(/^(ITR|TAR|ADV)/.test(code))return"c_it";
+  if(/^(AOC-4|MGT-7|ADT-1|DIR-3|DPT-3|LLP-|MSME-)/.test(code))return"c_roc";if(/^(PF|ESI|PT-|LWF-)/.test(code))return"c_pay";if(/^(FSSAI-|LIC-|IEC-)/.test(code))return"c_lic";return""}
+const ftItemOn=i=>{const k=ftKeyOfCode(i.code);return !k||ftOn(k)};
+function ftNew(){if(!ftSite()||!ftSeen)return[];return FT.filter(f=>ftAllowed(f.k)&&!ftSeen[f.k])}
+function ftRefresh(){try{ftPrune()}catch(e){}if(itemsRaw){items=itemsRaw.filter(ftItemOn)}try{render()}catch(e){}}
+window.ftRefresh=ftRefresh;
+function ftInit(){if(ftInit.done||!ftSite()||!appDb)return;ftInit.done=true;ftRef=appDb.doc("settings/features");
+  ftRef.onSnapshot(async d=>{if(d.exists){ftSeen=(d.data()||{}).seen||{};ftPrune();ftRefresh();return}
+    /* first time: everything the firm has today is simply on; only later additions come as updates */
+    const seen={};FT.forEach(f=>{if(ftAllowed(f.k))seen[f.k]=new Date().toISOString()});ftSeen=seen;ftRefresh();if(myRole()==="admin"){try{await ftRef.set({seen,at:Date.now()})}catch(e){}}},()=>{})}
+/* something the provider took away is forgotten here, so if it is given again it arrives as a fresh update */
+function ftPrune(){if(!ftSeen||!ftRef||myRole()!=="admin")return;const gone=Object.keys(ftSeen).filter(k=>!ftAllowed(k));if(!gone.length)return;const seen=Object.assign({},ftSeen);gone.forEach(k=>delete seen[k]);ftSeen=seen;ftRef.set({seen,at:Date.now()}).catch(()=>{})}
+function ftApplyUi(){const f=ftSite();if(!f)return;ftInit();
+  [["nNt","m_nt"],["nIns","m_ins"],["nVault","m_vault"],["nLu","m_lu"],["nMn","m_mn"]].forEach(([id,k])=>{const e=document.getElementById(id);if(e)e.style.display=ftOn(k)?"":"none"});
+  const d=document.getElementById("dash");if(!d||d.hidden)return;let b=document.getElementById("ftBan");const N=ftNew();
+  if(!N.length){if(b)b.remove();return}if(!b){b=document.createElement("div");b.id="ftBan";b.className="note";b.style.cssText="background:#e8f5e9;cursor:pointer;margin-bottom:10px";d.insertBefore(b,d.firstChild)}
+  b.innerHTML=`<b>🆕 ${N.length} ${esc(bt("नया अपडेट उपलब्ध","new update(s) available"))}</b>: ${esc(N.map(x=>bt(x.n[0],x.n[1])).join(", "))} — <u>${esc(bt("देखें और चालू करें","see and turn on"))}</u>`;b.onclick=openFt}
+function openFt(){const f=ftSite();if(!f)return;const adm=myRole()==="admin",N=ftNew().map(x=>x.k);
+  const row=x=>{const al=ftAllowed(x.k),on=ftOn(x.k),nw=N.includes(x.k);return `<div class="item" style="cursor:default"><div class="main"><div class="t">${esc(bt(x.n[0],x.n[1]))} ${nw?`<span class="badge b-late">${esc(bt("नया","new"))}</span>`:""}</div><div class="m">${esc(bt(x.d[0],x.d[1]))}</div></div>
+    ${on?`<span style="color:var(--green);white-space:nowrap">✔ ${esc(bt("चालू","on"))}</span>`:nw?(adm?`<button class="btn ftOk" data-k="${x.k}">${esc(bt("चालू करें","Turn on"))}</button>`:`<span class="m">${esc(bt("एडमिन चालू करेंगे","admin will turn on"))}</span>`):`<span class="m" style="white-space:nowrap">🔒 ${esc(bt("आपकी सेवा में नहीं","not in your plan"))}</span>`}</div>`};
+  openSheet(`<h3>${esc(bt("🧩 आपकी सेवाएँ और अपडेट","🧩 Your services and updates"))}</h3><div class="m">${esc(f.name||"")}</div>
+   ${N.length?`<div class="note" style="background:#e8f5e9">${esc(bt("नीचे \"नया\" लिखी चीज़ें आपके लिए खोली गई हैं। \"चालू करें\" दबाते ही वे ऐप में आ जाएँगी।","Items marked \"new\" have been opened for you. Tap \"Turn on\" and they appear in the app."))}</div>`:""}
+   <h2>${esc(bt("कंप्लायंस","Compliances"))}</h2>${FT.filter(x=>x.t==="comp").map(row).join("")}<h2>${esc(bt("सुविधाएँ","Features"))}</h2>${FT.filter(x=>x.t==="mod").map(row).join("")}
+   <div class="m" style="margin-top:8px">${esc(bt("🔒 वाली चीज़ें चाहिए हों तो ऐप चलाने वाले से संपर्क करें","To get the 🔒 items, contact the app provider"))}${window.__site.support?": "+esc(window.__site.support):""}</div>
+   <div class="actions">${adm&&N.length>1?`<button class="btn" id="ftAll">${esc(bt("सब चालू करें","Turn on all"))}</button>`:""}<button class="btn ghost" id="ftX">${esc(t("close"))}</button></div>`,{k:"ft"});
+  $("#ftX").onclick=closeSheet;const ok=async ks=>{const seen=Object.assign({},ftSeen||{});ks.forEach(k=>seen[k]=new Date().toISOString());ftSeen=seen;try{await ftRef.set({seen,at:Date.now(),by:me.id||""})}catch(e){toast(t("saveFail"))}ftRefresh();openFt()};
+  document.querySelectorAll(".ftOk").forEach(b=>b.onclick=()=>ok([b.dataset.k]));const al=$("#ftAll");if(al)al.onclick=()=>ok(N)}
+/* wiring: the app shows only what is on */
+const _ftRender=render;render=function(){_ftRender();try{ftApplyUi()}catch(e){}};
+const _ftGenerate=generate;generate=function(p,s,to){return _ftGenerate(p,s,to).filter(x=>ftItemOn(x))};
+const _ftOpenClient=openClient;openClient=function(pid){_ftOpenClient(pid);if(!ftSite())return;[["trCB","m_tr"],["atCB","m_at"],["ntCB","m_nt"],["inCB","m_ins"]].forEach(([id,k])=>{const e=document.querySelector("#sheet #"+id);if(e&&!ftOn(k))e.remove()})};
+const _ftRenderTeam=renderTeam;renderTeam=function(){_ftRenderTeam();const el=document.getElementById("team");if(!ftSite()||!el||el.hidden||el.querySelector("#ftOpen"))return;el.insertAdjacentHTML("afterbegin",`<button class="btn ghost" id="ftOpen" style="width:100%;text-align:left;margin-bottom:10px">${esc(bt("🧩 आपकी सेवाएँ और अपडेट","🧩 Your services and updates"))}${ftNew().length?` <span class="badge b-late">${ftNew().length} ${esc(bt("नया","new"))}</span>`:""}</button>`);$("#ftOpen").onclick=openFt};
 
 paintStatic();render();init();
 </script>
