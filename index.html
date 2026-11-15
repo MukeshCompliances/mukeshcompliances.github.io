@@ -215,16 +215,17 @@ async function migrateLegacy(){let n=0;const cp=async(from,to)=>{const s=await f
   return n}
 function signupScreen(user,email){return new Promise(res=>{gate.out=true;
   gate("<b>"+email+"</b><br>यह ID अभी किसी फ़र्म से नहीं जुड़ी है।<br><span style='font-size:12px'>This ID is not linked to any firm yet.</span>"+
-   "<div style='text-align:left;margin-top:12px'><b>नई फ़र्म शुरू करें — "+TRIAL_DAYS+" दिन का मुफ़्त डेमो</b><br><span style='font-size:12px'>Start a new firm — "+TRIAL_DAYS+"-day free demo</span>"+
-   "<input id='sgFirm' placeholder='फ़र्म का नाम / Firm name' style='margin-top:8px'>"+
+   "<div style='text-align:left;margin-top:12px'><b>अपनी फ़र्म के लिए इस्तेमाल की अनुमति माँगें</b><br><span style='font-size:12px'>Request access for your firm — it opens after the provider approves</span>"+
+   "<input id='sgFirm' placeholder='फ़र्म का नाम / Firm name' style='margin-top:8px'><input id='sgPhone' type='tel' placeholder='मोबाइल नंबर / Mobile number'><input id='sgNote' placeholder='कुछ बताना हो (शहर, किसने बताया…) / Note (optional)'>"+
    "<div style='font-size:12px;color:#444;background:#f4f6fb;border-radius:8px;padding:8px;margin-bottom:8px'><b>आपके डेटा के बारे में / About your data</b><br>• हम रखते हैं: आपका नाम, ईमेल, और जो ग्राहक-डेटा व फ़ाइलें आप खुद डालते हैं।<br>• किसलिए: सिर्फ़ यह ऐप आपको चलाकर देने के लिए।<br>• कहाँ: Google Firebase पर; आपकी फ़र्म का डेटा दूसरी फ़र्में नहीं देख सकतीं, और ऐप चलाने वाला भी आपके ग्राहकों का डेटा नहीं खोलता।<br>• आप कभी भी पूरा डेटा डाउनलोड कर सकते हैं और मिटवाने को कह सकते हैं।"+(site.support?"<br>• संपर्क / शिकायत: "+site.support:"")+
    "<br><span style='color:#666'>We keep your name, email and the client data and files you add, only to run this app for you, on Google Firebase. Other firms cannot see it. You can download or ask to delete it any time.</span></div>"+
    "<label style='font-size:13px;display:flex;gap:6px;align-items:flex-start;margin-bottom:8px'><input type='checkbox' id='sgAgree' style='width:auto;margin-top:2px'><span>मैं ऊपर लिखी बात से सहमत हूँ / I agree to the above</span></label>"+
-   "<button id='sgMk'>डेमो शुरू करें / Start demo</button></div>"+
+   "<button id='sgMk'>अनुमति माँगें / Request access</button></div>"+
    "<div style='font-size:12px;color:#666;margin-top:10px'>आपकी फ़र्म पहले से यह ऐप चलाती है? तो अपने एडमिन से कहें कि टीम टैब में यह ईमेल जोड़ें, फिर यह पेज दोबारा खोलें।<br>Your firm already uses this app? Ask your admin to add this email, then reload.</div>","",false);
   $g("sgMk").onclick=async()=>{const nm=$g("sgFirm").value.trim();if(nm.length<2){$g("sgErr").textContent="फ़र्म का नाम लिखें। / Enter the firm name.";return}if(!$g("sgAgree").checked){$g("sgErr").textContent="सहमति का टिक लगाएँ। / Tick the consent box.";return}
-    $g("sgMk").disabled=true;try{await fs.doc("firms/"+uid).set({name:nm.slice(0,80),owner:uid,ownerEmail:email,status:"trial",trialEnds:new Date(Date.now()+TRIAL_DAYS*864e5).toISOString(),trialEndsMs:Date.now()+TRIAL_DAYS*864e5,createdAt:iso(),consentAt:iso()});res(uid)}
-    catch(e){$g("sgMk").disabled=false;$g("sgErr").textContent="फ़र्म नहीं बन पाई — दोबारा कोशिश करें। / Could not create the firm — try again."}}})}
+    const ph=$g("sgPhone").value.trim();if(ph.replace(/\D/g,"").length<8){$g("sgErr").textContent="मोबाइल नंबर लिखें। / Enter your mobile number.";return}
+    $g("sgMk").disabled=true;try{await fs.doc("firms/"+uid).set({name:nm.slice(0,80),owner:uid,ownerEmail:email,ownerName:(user.displayName||"").slice(0,60),phone:ph.slice(0,20),note:$g("sgNote").value.trim().slice(0,200),status:"pending",createdAt:iso(),consentAt:iso()});res(uid)}
+    catch(e){$g("sgMk").disabled=false;$g("sgErr").textContent="अनुरोध नहीं भेजा जा सका — दोबारा कोशिश करें। / Could not send the request — try again."}}})}
 async function admit(user){
   try{sessionStorage.removeItem("__site_idleout")}catch(e){}
   uid=user.uid;const email=(user.email||"").toLowerCase();site.email=email;
@@ -252,6 +253,9 @@ async function admit(user){
     firm={name:cfg.firmName||"ADDENDA",owner:uid,ownerEmail:email,status:"active",createdAt:iso(),first:true};
     try{await fs.doc("firms/"+fid).set(firm);await fs.doc(F("members/"+uid)).set({role:"admin",email,name:uname});const n=await migrateLegacy();await fs.doc("config/app").set({migratedAt:iso(),migrated:n},{merge:true})}catch(e){firm=null}}
   if(!firm){gate.out=true;gate("❌ "+email+"<br>आपकी फ़र्म नहीं खुल पाई। एडमिन से कहें कि टीम टैब में आपका ईमेल दोबारा जोड़ें।<br><span style='font-size:12px'>Could not open your firm — ask your admin to add your email again.</span>","",false);try{await fs.collection("users").doc(uid).set({firm:null},{merge:true})}catch(e){}return}
+  if((firm.status==="pending"||firm.status==="rejected")&&!isSuper){gate.out=true;if(me0.firm!==fid){try{await fs.collection("users").doc(uid).set({firm:fid},{merge:true})}catch(e){}}
+    gate(firm.status==="pending"?"⏳ <b>"+(firm.name||"")+"</b><br>आपका अनुरोध भेज दिया गया है। ऐप चलाने वाले की मंज़ूरी मिलते ही यह खुल जाएगा — फिर इसी ID से लॉगिन करें।"+(site.support?"<br>जल्दी हो तो संपर्क करें: <b>"+site.support+"</b>":"")+"<br><span style='font-size:12px'>Your request has been sent. The app opens once the provider approves it — then sign in with this same ID.</span><br><a href='#' onclick='location.reload();return false'>🔄 दोबारा देखें / Check again</a>"
+      :"❌ <b>"+(firm.name||"")+"</b><br>यह अनुरोध मंज़ूर नहीं हुआ।"+(site.support?"<br>संपर्क: "+site.support:"")+"<br><span style='font-size:12px'>This request was not approved.</span>","",false);return}
   ownerUid=firm.owner;
   if(ownerUid!==uid){let ok=false,mref=fs.doc(F("members/"+uid));
     try{ok=(await mref.get()).exists}catch(e){}
@@ -276,7 +280,7 @@ function topBar(){let b=$g("siteBar");if(!b){b=document.createElement("div");b.i
   else if(dl!=null){msg+=" · डेमो: "+dl+" दिन बाक़ी / demo: "+dl+" days left";if(dl<=5)b.style.background="#fff3cd"}
   const bs="border:1px solid #1a56db;background:#fff;color:#1a56db;border-radius:8px;padding:2px 8px;font-size:12px;cursor:pointer;white-space:nowrap";
   b.innerHTML="<span style='flex:1;min-width:0'></span>"+(isSuper?"<button id='sbSuper' style=\""+bs+"\">🛠 फ़र्में</button>":"")+"<button id='sbMe' style=\""+bs+";max-width:42vw;overflow:hidden;text-overflow:ellipsis\"></button>";b.firstChild.textContent=msg;$g("sbMe").textContent="👤 "+site.email.split("@")[0]+" ▾";
-  if(isSuper)$g("sbSuper").onclick=superPanel;$g("sbMe").onclick=meMenu;idleStart()}
+  if(isSuper){$g("sbSuper").onclick=superPanel;fs.collection("firms").onSnapshot(q=>{const n=q.docs.filter(d=>d.data().status==="pending").length,bb=$g("sbSuper");if(bb){bb.textContent="🛠 फ़र्में"+(n?" ("+n+" नया)":"");bb.style.background=n?"#fff3cd":"#fff"}},()=>{})}$g("sbMe").onclick=meMenu;idleStart()}
 function meMenu(){let m=$g("siteMenu");if(m){m.remove();return}m=document.createElement("div");m.id="siteMenu";m.style.cssText="position:fixed;top:30px;right:8px;z-index:8000;background:#fff;border:1px solid #d5dcf5;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.15);padding:12px;width:min(300px,92vw);font:14px system-ui,'Noto Sans Devanagari',sans-serif";
   const pw=(auth.currentUser.providerData||[]).some(p=>p.providerId==="password");
   m.innerHTML="<div style='font-weight:600;word-break:break-all'>"+site.email+"</div><div style='font-size:12px;color:#666;margin-bottom:10px'>🏢 "+(firm.name||"")+" · "+(isSuper?"सुपर-एडमिन":uid===ownerUid?"फ़र्म के मालिक / owner":"टीम सदस्य / member")+"</div>"+
@@ -302,19 +306,19 @@ async function superPanel(){let o=$g("sitePanel");if(!o){o=document.createElemen
   o.innerHTML="<div style='max-width:720px;margin:auto'><div style='display:flex;justify-content:space-between;align-items:center'><h2 style='margin:4px 0'>🛠 सारी फ़र्में (सुपर-एडमिन)</h2><button id='spX' style='padding:6px 12px'>✕ बंद</button></div><div id='spB'>लोड हो रहा है…</div></div>";
   $g("spX").onclick=()=>o.remove();
   let L=[];try{L=(await fs.collection("firms").get()).docs.map(d=>Object.assign({id:d.id},d.data()))}catch(e){$g("spB").textContent="सूची नहीं खुली — Firebase के नए नियम डले हैं? / Could not load — are the new rules published?";return}
-  L.sort((a,b)=>(b.createdAt||"")<(a.createdAt||"")?-1:1);
-  const stT={active:"✅ चालू",trial:"🧪 डेमो",stopped:"⏸ रुकी"};
+  L.sort((a,b)=>((a.status==="pending"?0:1)-(b.status==="pending"?0:1))||((b.createdAt||"")<(a.createdAt||"")?-1:1));
+  const stT={active:"✅ चालू",trial:"🧪 डेमो",stopped:"⏸ रुकी",pending:"⏳ मंज़ूरी का इंतज़ार",rejected:"✖ नामंज़ूर"};
   $g("spB").innerHTML="<div style='color:#555;font-size:12px;margin-bottom:8px'>यहाँ सिर्फ़ फ़र्म का नाम, स्थिति और गिनती दिखती है। किसी फ़र्म के ग्राहकों का डेटा यहाँ से नहीं खुलता।</div>"+
    "<div style='background:#fff;border-radius:10px;padding:10px;margin-bottom:10px'>संपर्क / शिकायत का पता (नए साइन-अप और रुकी फ़र्मों को दिखेगा): <input id='spSup' value=\""+esc(site.support)+"\" placeholder='ईमेल या फ़ोन' style='width:60%;padding:6px'> <button id='spSupS'>सेव</button></div>"+
-   L.map(f=>{const dl=daysLeft(f);return "<div style='background:#fff;border-radius:10px;padding:10px;margin-bottom:8px;border-left:4px solid "+(f.status==="active"?"#1a7f37":f.status==="stopped"?"#c00":dl<=0?"#c00":"#d4a200")+"'><b>"+esc(f.name)+"</b>"+(f.id===uid?" <span style='font-size:11px;background:#eef;padding:1px 6px;border-radius:6px'>आपकी फ़र्म</span>":"")+
-     "<div style='font-size:12px;color:#555'>"+esc(f.ownerEmail)+" · बनी "+d8(f.createdAt)+" · "+(stT[f.status]||f.status)+(f.status==="trial"?" ("+(dl>0?dl+" दिन बाक़ी":"ख़त्म")+", "+d8(f.trialEnds)+" तक)":"")+"</div>"+
+   L.map(f=>{const dl=daysLeft(f);return "<div style='background:#fff;border-radius:10px;padding:10px;margin-bottom:8px;border-left:4px solid "+(f.status==="active"?"#1a7f37":f.status==="pending"?"#1a56db":f.status==="stopped"||f.status==="rejected"?"#c00":dl<=0?"#c00":"#d4a200")+(f.status==="pending"?";background:#eef4ff":"")+"'><b>"+esc(f.name)+"</b>"+(f.id===uid?" <span style='font-size:11px;background:#eef;padding:1px 6px;border-radius:6px'>आपकी फ़र्म</span>":"")+
+     "<div style='font-size:12px;color:#555'>"+(f.ownerName?esc(f.ownerName)+" · ":"")+esc(f.ownerEmail)+(f.phone?" · 📞 "+esc(f.phone):"")+(f.note?"<br>📝 "+esc(f.note):"")+"</div><div style='font-size:12px;color:#555'>बनी "+d8(f.createdAt)+" · "+(stT[f.status]||f.status)+(f.status==="trial"?" ("+(dl>0?dl+" दिन बाक़ी":"ख़त्म")+", "+d8(f.trialEnds)+" तक)":"")+"</div>"+
      "<div style='font-size:12px;color:#555'>ग्राहक: "+(f.stats?f.stats.clients:"–")+" · लोग: "+(f.stats?f.stats.users:"–")+" · आख़िरी बार: "+d8(f.lastSeen)+"</div>"+
-     "<div style='margin-top:6px;display:flex;gap:6px;flex-wrap:wrap'><button class='spA' data-id='"+f.id+"' data-a='active'>✅ चालू करें</button><button class='spA' data-id='"+f.id+"' data-a='trial'>🧪 डेमो +"+TRIAL_DAYS+" दिन</button><button class='spA' data-id='"+f.id+"' data-a='stopped'>⏸ रोकें</button><button class='spA' data-id='"+f.id+"' data-a='name'>✎ नाम</button></div></div>"}).join("")+(L.length?"":"कोई फ़र्म नहीं।");
+     "<div style='margin-top:6px;display:flex;gap:6px;flex-wrap:wrap'>"+(f.status==="pending"?"<button class='spA' data-id='"+f.id+"' data-a='trial' style='background:#1a56db;color:#fff;border:0;border-radius:6px;padding:5px 9px'>👍 मंज़ूर: "+TRIAL_DAYS+" दिन का डेमो</button><button class='spA' data-id='"+f.id+"' data-a='rejected'>✖ नामंज़ूर</button>":"")+"<button class='spA' data-id='"+f.id+"' data-a='active'>✅ चालू करें</button><button class='spA' data-id='"+f.id+"' data-a='trial'>🧪 डेमो +"+TRIAL_DAYS+" दिन</button><button class='spA' data-id='"+f.id+"' data-a='stopped'>⏸ रोकें</button><button class='spA' data-id='"+f.id+"' data-a='name'>✎ नाम</button></div></div>"}).join("")+(L.length?"":"कोई फ़र्म नहीं।");
   $g("spSupS").onclick=async()=>{try{await fs.doc("config/app").set({support:$g("spSup").value.trim().slice(0,120)},{merge:true});site.support=$g("spSup").value.trim();$g("spSupS").textContent="✔"}catch(e){$g("spSupS").textContent="✖"}};
   o.querySelectorAll(".spA").forEach(b=>b.onclick=async()=>{const id=b.dataset.id,a=b.dataset.a,f=L.find(x=>x.id===id);let up;
     if(a==="name"){const box=document.createElement("span");box.innerHTML=" <input value=\""+esc(f.name)+"\" style='padding:4px'> <button>सेव</button>";b.after(box);box.querySelector("button").onclick=async()=>{try{await fs.doc("firms/"+id).set({name:box.querySelector("input").value.trim().slice(0,80)},{merge:true});superPanel()}catch(e){}};return}
     if(a==="trial"){const ms=Math.max(Date.now(),f.status==="trial"&&f.trialEnds?new Date(f.trialEnds).getTime():0)+TRIAL_DAYS*864e5;up={status:"trial",trialEnds:new Date(ms).toISOString(),trialEndsMs:ms}}else up={status:a};
-    if(a==="stopped"&&id===uid){b.textContent="अपनी फ़र्म नहीं रोक सकते";return}
+    if((a==="stopped"||a==="rejected")&&id===uid){b.textContent="अपनी फ़र्म नहीं रोक सकते";return}
     try{await fs.doc("firms/"+id).set(Object.assign(up,{changedAt:iso()}),{merge:true});superPanel()}catch(e){b.textContent="✖ नहीं हुआ"}})}
 auth.onAuthStateChanged(u=>{let stale=false;try{const t=+localStorage.getItem(IK)||0;stale=!!u&&t>0&&Date.now()-t>IDLE_MS}catch(e){}
   if(u&&stale){try{localStorage.removeItem(IK);sessionStorage.setItem("__site_idleout","1")}catch(e){}auth.signOut();return}
