@@ -136,10 +136,15 @@ details.tg[open]>summary::after{transform:rotate(90deg)}
 #siteGate .box{background:#fff;border-radius:16px;box-shadow:0 6px 30px rgba(0,0,0,.08);padding:26px;max-width:380px;width:100%;text-align:center}
 #siteGate h1{font-size:22px;margin:0 0 6px}#siteGate p{color:#555;font-size:14px;margin:6px 0 16px}
 #siteGate button{width:100%;padding:12px;border-radius:10px;border:0;background:#1a56db;color:#fff;font-size:16px;cursor:pointer}
+#siteGate input{width:100%;box-sizing:border-box;padding:12px;border-radius:10px;border:1px solid #ccd;font-size:16px;margin-bottom:8px}#siteGate button.alt{background:#fff;color:#1a56db;border:1px solid #1a56db}#siteGate .lnk{font-size:13px;margin:10px 0}#siteGate .lnk a{color:#1a56db}#siteGate .or{color:#999;font-size:12px;margin:8px 0}
 #siteGate .err{color:#c00;font-size:13px;margin-top:10px;min-height:16px}#siteGate .small{font-size:12px;color:#777;margin-top:12px}
 </style>
-<div id="siteGate"><div class="box"><h1>📋 कंप्लायंस रिकॉर्ड</h1><p id="sgMsg">Google अकाउंट से लॉगिन करें<br><span style="font-size:12px">Sign in with Google</span></p>
-<button id="sgBtn">G &nbsp;Google से लॉगिन करें</button><div class="err" id="sgErr"></div><div class="small" id="sgSmall"></div></div></div>
+<div id="siteGate"><div class="box"><h1>📋 कंप्लायंस रिकॉर्ड</h1><p id="sgMsg">अपनी ID और पासवर्ड से लॉगिन करें<br><span style="font-size:12px">Sign in with your ID and password</span></p>
+<div id="sgForm"><input id="sgId" type="email" autocomplete="username" placeholder="ID (ईमेल) / Email ID"><input id="sgPw" type="password" autocomplete="current-password" placeholder="पासवर्ड / Password">
+<button id="sgIn">लॉगिन करें / Sign in</button>
+<div class="lnk"><a href="#" id="sgNew">पहली बार? पासवर्ड बनाएँ</a> · <a href="#" id="sgFg">पासवर्ड भूल गए?</a></div>
+<div class="or">— या / or —</div></div>
+<button id="sgBtn" class="alt">G &nbsp;Google से लॉगिन करें</button><button id="sgOut" class="alt" style="display:none;margin-top:8px">दूसरी ID से लॉगिन / Use another ID</button><div class="err" id="sgErr"></div><div class="small" id="sgSmall"></div></div></div>
 <script>
 (function(){
 const CFG={"apiKey":"AIzaSyA4CIpI1H6J3QweeS75S2bb1LXpD9eUN1Y","authDomain":"mukeshcompliances.firebaseapp.com","projectId":"mukeshcompliances","storageBucket":"mukeshcompliances.firebasestorage.app","messagingSenderId":"227692883629","appId":"1:227692883629:web:b0020d78879f544c33a024"}
@@ -152,26 +157,37 @@ fs.enablePersistence({synchronizeTabs:true}).catch(()=>{});
 let ready,readyRes;ready=new Promise(r=>readyRes=r);
 let uid=null,ownerUid=null,profile={};
 const $g=id=>document.getElementById(id);
-const gate=(msg,err,showBtn)=>{$g("siteGate").style.display="flex";if(msg!=null)$g("sgMsg").innerHTML=msg;$g("sgErr").textContent=err||"";$g("sgBtn").style.display=showBtn===false?"none":"block"};
+const gate=(msg,err,showBtn)=>{$g("siteGate").style.display="flex";if(msg!=null)$g("sgMsg").innerHTML=msg;$g("sgErr").textContent=err||"";$g("sgBtn").style.display=showBtn===false?"none":"block";$g("sgForm").style.display=showBtn===false?"none":"block";$g("sgOut").style.display=showBtn===false&&gate.out?"block":"none";gate.out=false};
+const EMSG={"auth/invalid-credential":"ID या पासवर्ड ग़लत है। / Wrong ID or password.","auth/wrong-password":"ID या पासवर्ड ग़लत है। / Wrong ID or password.","auth/user-not-found":"यह ID नहीं मिली — पहले 'पासवर्ड बनाएँ' दबाएँ। / ID not found — tap 'create password' first.","auth/invalid-email":"ID में पूरा ईमेल लिखें। / Enter the full email as ID.","auth/email-already-in-use":"इस ID का पासवर्ड पहले से बना है — लॉगिन करें, या 'पासवर्ड भूल गए' दबाएँ। / This ID already exists — sign in or tap 'forgot password'.","auth/weak-password":"पासवर्ड कम से कम 6 अक्षर का रखें। / Password must be at least 6 characters.","auth/operation-not-allowed":"ID-पासवर्ड लॉगिन अभी Firebase में चालू नहीं है (Authentication → Sign-in method → Email/Password)। / Email-password sign-in is not enabled in Firebase yet.","auth/too-many-requests":"बहुत बार कोशिश हुई — थोड़ी देर बाद करें। / Too many tries — wait a little.","auth/popup-closed-by-user":"Google की खिड़की बंद हो गई — दोबारा दबाएँ, या ID-पासवर्ड से लॉगिन करें। / Google window was closed — try again or use ID and password.","auth/network-request-failed":"इंटरनेट नहीं चल रहा। / No internet."};
+const emsg=e=>EMSG[e&&e.code]||(e&&e.message)||"Login failed";
+const idpw=()=>({id:$g("sgId").value.trim().toLowerCase(),pw:$g("sgPw").value});
+$g("sgIn").onclick=async()=>{const{id,pw}=idpw();$g("sgErr").textContent="";if(!id||!pw){$g("sgErr").textContent="ID और पासवर्ड दोनों लिखें। / Enter both ID and password.";return}try{await auth.signInWithEmailAndPassword(id,pw)}catch(e){$g("sgErr").textContent=emsg(e)}};
+$g("sgPw").onkeydown=e=>{if(e.key==="Enter")$g("sgIn").click()};
+$g("sgNew").onclick=async ev=>{ev.preventDefault();const{id,pw}=idpw();$g("sgErr").textContent="";if(!id||!pw){$g("sgErr").textContent="ऊपर अपनी ID (ईमेल) और नया पासवर्ड लिखें, फिर यह दबाएँ। / Type your ID (email) and a new password above, then tap this.";return}try{const c=await auth.createUserWithEmailAndPassword(id,pw);try{await c.user.sendEmailVerification()}catch(e){}}catch(e){$g("sgErr").textContent=emsg(e)}};
+$g("sgFg").onclick=async ev=>{ev.preventDefault();const{id}=idpw();if(!id){$g("sgErr").textContent="पहले ऊपर अपनी ID (ईमेल) लिखें। / Enter your ID (email) above first.";return}try{await auth.sendPasswordResetEmail(id);$g("sgErr").textContent="✅ पासवर्ड बदलने का लिंक "+id+" पर भेज दिया। / Password reset link sent."}catch(e){$g("sgErr").textContent=emsg(e)}};
+$g("sgOut").onclick=async()=>{await auth.signOut();location.reload()};
 $g("sgBtn").onclick=async()=>{$g("sgErr").textContent="";const pr=new firebase.auth.GoogleAuthProvider();pr.setCustomParameters({prompt:"select_account"});
-  try{await auth.signInWithPopup(pr)}catch(e){if(e&&(e.code==="auth/popup-blocked"||e.code==="auth/operation-not-supported-in-this-environment"))await auth.signInWithRedirect(pr);else $g("sgErr").textContent=(e&&e.message)||"Login failed"}};
+  try{await auth.signInWithPopup(pr)}catch(e){if(e&&(e.code==="auth/popup-blocked"||e.code==="auth/operation-not-supported-in-this-environment"))await auth.signInWithRedirect(pr);else $g("sgErr").textContent=emsg(e)}};
 const site=window.__site={invites:[],
   invite:async(email,role)=>{await fs.collection("invites").doc(email.toLowerCase()).set({role,by:uid,at:new Date().toISOString()})},
   uninvite:async email=>{await fs.collection("invites").doc(email.toLowerCase()).delete()},
   signOut:async()=>{await auth.signOut();location.reload()},email:null};
 async function admit(user){
   uid=user.uid;const email=(user.email||"").toLowerCase();site.email=email;
+  if(!user.emailVerified){try{await user.reload()}catch(e){}
+    if(!auth.currentUser||!auth.currentUser.emailVerified){gate.out=true;gate("📧 <b>"+email+"</b><br>इस ईमेल पर एक लिंक भेजा गया है। उसे एक बार खोलें (Spam भी देखें), फिर यह पेज दोबारा खोलें।<br><span style='font-size:12px'>A link was sent to this email. Open it once (check Spam too), then reload this page.</span><br><a href='#' id='sgRs'>लिंक दोबारा भेजें / Resend</a> · <a href='#' onclick='location.reload();return false'>🔄 Reload</a>","",false);
+      const rs=$g("sgRs");if(rs)rs.onclick=async ev=>{ev.preventDefault();try{await user.sendEmailVerification();$g("sgErr").textContent="✅ भेज दिया / Sent"}catch(e){$g("sgErr").textContent=emsg(e)}};return}}
   gate("लॉगिन हो रहा है…<br><span style='font-size:12px'>Signing in…</span>","",false);
   try{await fs.collection("users").doc(uid).set({name:user.displayName||email,email,at:new Date().toISOString()},{merge:true})}catch(e){}
   let cfg=null;try{const c=await fs.doc("config/app").get();cfg=c.exists?c.data():null}catch(e){}
   if(!cfg){try{await fs.doc("config/app").set({owner:uid,ownerEmail:email,at:new Date().toISOString()});cfg={owner:uid}}catch(e){}}
-  if(!cfg){gate("⚙ सेटअप अधूरा है: Firebase में सुरक्षा नियम (Firestore → Rules) अभी नहीं डले, या उनमें मालिक का Gmail <b>"+email+"</b> नहीं लिखा।<br><span style='font-size:12px'>Setup incomplete: publish the Firestore rules with the owner's Gmail, then reload.</span>","",false);
+  if(!cfg){gate.out=true;gate("⚙ सेटअप अधूरा है: Firebase में सुरक्षा नियम (Firestore → Rules) अभी नहीं डले, या उनमें मालिक का Gmail <b>"+email+"</b> नहीं लिखा।<br><span style='font-size:12px'>Setup incomplete: publish the Firestore rules with the owner's Gmail, then reload.</span>","",false);
     $g("sgSmall").innerHTML='<a href="#" id="sgRe">दोबारा कोशिश करें / retry</a>';$g("sgRe").onclick=e=>{e.preventDefault();location.reload()};return}
   ownerUid=cfg&&cfg.owner||null;
   if(ownerUid!==uid){let ok=false;
     try{ok=(await fs.collection("members").doc(uid).get()).exists}catch(e){}
     if(!ok){try{const iv=await fs.collection("invites").doc(email).get();if(iv.exists){await fs.collection("members").doc(uid).set({role:iv.data().role||"junior",email,joinedAt:new Date().toISOString()});ok=true}}catch(e){}}
-    if(!ok){gate("❌ "+email+"<br>आपको अभी टीम में नहीं जोड़ा गया है। एडमिन से कहें कि टीम टैब में आपका Gmail जोड़ें।<br><span style='font-size:12px'>You are not on the team yet — ask the admin to add your Gmail.</span>","",false);
+    if(!ok){gate.out=true;gate("❌ "+email+"<br>आपको अभी टीम में नहीं जोड़ा गया है। एडमिन से कहें कि टीम टैब में आपका Gmail जोड़ें।<br><span style='font-size:12px'>You are not on the team yet — ask the admin to add your Gmail.</span>","",false);
       $g("sgSmall").innerHTML='<a href="#" id="sgOut">दूसरे अकाउंट से लॉगिन करें / use another account</a>';$g("sgOut").onclick=e=>{e.preventDefault();site.signOut()};return}}
   else{try{await fs.collection("members").doc(uid).set({role:"admin",email},{merge:true})}catch(e){}}
   fs.collection("invites").onSnapshot(s=>{site.invites=s.docs.map(d=>Object.assign({email:d.id},d.data()));if(typeof renderTeam==="function")try{renderTeam()}catch(e){}},()=>{});
