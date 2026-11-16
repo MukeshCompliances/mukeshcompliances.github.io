@@ -1,0 +1,26 @@
+from playwright.sync_api import sync_playwright
+with sync_playwright() as p:
+    b=p.chromium.launch();pg=b.new_page(viewport={"width":400,"height":900})
+    errs=[];pg.on("pageerror",lambda e:errs.append(str(e)))
+    pg.goto("file:///home/claude/compliance-app/index.html");pg.wait_for_timeout(400)
+    pg.click("#firstClient");pg.click(".ent[data-e=pvt]");pg.fill("#w_name","ADDENDA CHEMICAL");pg.click("#wNext");pg.fill("#w_pan","AAPFU0939F");pg.click("#wNext")
+    pg.click(".yn[data-v='1']");pg.fill(".gIn2","27AAPFU0939F1ZV");pg.click("#addG");pg.locator(".gIn2").nth(1).fill("29AAGCB7383J1Z4");pg.click("#wNext")
+    pg.click(".yn[data-v='1']");pg.fill("#w_tanNo","JPRS12345A");pg.click("#wNext")
+    while pg.locator(".yn").count(): pg.click(".yn[data-v='0']")
+    pg.click("#wNext");pg.wait_for_timeout(200);pg.click("#cancel");pg.click("#cl")
+    pg.click("#nVault");pg.fill("#vm1","master123");pg.fill("#vm2","master123");pg.click("#vSetF button");pg.wait_for_timeout(1800)
+    print("ROWS:",pg.locator(".vst tbody tr").count())
+    pg.screenshot(path="/home/claude/tests/vsheet.png",full_page=True)
+    inputs=pg.locator(".vst tbody tr").nth(0).locator("input[data-f=username]");inputs.fill("addenda_mh")
+    pg.locator(".vst tbody tr").nth(0).locator("input[data-f=password]").fill("Mh@1")
+    pg.locator(".vst tbody tr").nth(2).locator("input[data-f=password]").fill("It@2")
+    print("SAVEBTN:",pg.inner_text("#vShSave"))
+    pg.click("#vShSave");pg.wait_for_timeout(1500);print("TOAST:",pg.inner_text("#toast"))
+    pg.click("#vShAdd");pg.wait_for_timeout(500);last=pg.locator(".vst tbody tr").last
+    last.locator("select[data-f=portal]").select_option("bank");last.locator("input[data-f=label]").fill("HDFC");last.locator("input[data-f=password]").fill("Bk@3")
+    print("DIRTY before save2:",pg.evaluate("vRows.filter(r=>r.dirty).map(r=>[r.portal,r.label,r.password])"))
+    pg.click("#vShSave");pg.wait_for_timeout(1500);print("TOAST2:",pg.inner_text("#toast"),"ERR:",pg.inner_text("#vShErr"))
+    # change a password -> history
+    pg.locator(".vst tbody tr").nth(0).locator("input[data-f=password]").fill("Mh@NEW");print("DIRTY3:",pg.evaluate("vRows.filter(r=>r.dirty).map(r=>[r.portal,r.label,r.password])"));pg.click("#vShSave");pg.wait_for_timeout(1500);print("ERR3:",pg.inner_text("#vShErr"))
+    pg.click("#vModeB");pg.wait_for_timeout(300);print("CARDS:",pg.inner_text("#vault")[:400])
+    print("ERR",errs);b.close()

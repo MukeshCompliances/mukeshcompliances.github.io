@@ -1,0 +1,16 @@
+from playwright.sync_api import sync_playwright
+PDF=open("/home/claude/tests/npm/node_modules/pdfjs-dist/build/pdf.min.js").read()
+PDFW=open("/home/claude/tests/npm/node_modules/pdfjs-dist/build/pdf.worker.min.js").read()
+def route(r): r.fulfill(status=200,content_type="application/javascript",body=PDFW if "worker" in r.request.url else PDF)
+with sync_playwright() as p:
+    b=p.chromium.launch();ctx=b.new_context(viewport={"width":400,"height":900});ctx.route("https://cdnjs.cloudflare.com/**",route)
+    pg=ctx.new_page();errs=[];pg.on("pageerror",lambda e:errs.append(str(e)))
+    pg.goto("file:///home/claude/compliance-app/index.html");pg.wait_for_timeout(400)
+    pg.evaluate("localStorage.setItem('compliance_parties_v1','[{\"id\":\"real1\",\"name\":\"REAL CO\",\"entity\":\"prop\",\"gsts\":[]}]')");pg.reload();pg.wait_for_timeout(300)
+    pg.click("#dmGo");pg.wait_for_timeout(1500)
+    print("BANNER:",pg.inner_text("#banner")[:80]);print("DASH:",pg.inner_text("#dash")[:300])
+    pg.click("#dmChk");pg.wait_for_timeout(2500)
+    print(pg.inner_text("#sheet")[:4000])
+    pg.click("#dmX");pg.click("#dmEx");pg.wait_for_timeout(800)
+    print("REAL after exit:",pg.evaluate("parties.map(p=>p.name).join(',')"))
+    print("ERR",errs);b.close()

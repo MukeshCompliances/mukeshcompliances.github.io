@@ -1,0 +1,71 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null && request.auth.token.email_verified == true; }
+    function myEmail() { return request.auth.token.email.lower(); }
+    function cfg() { return /databases/$(database)/documents/config/app; }
+    function isSuper() { return signedIn() && exists(cfg()) && get(cfg()).data.owner == request.auth.uid; }
+    function firm(fid) { return get(/databases/$(database)/documents/firms/$(fid)).data; }
+    function mem(fid) { return /databases/$(database)/documents/firms/$(fid)/members/$(request.auth.uid); }
+    function inv(fid) { return /databases/$(database)/documents/firms/$(fid)/invites/$(myEmail()); }
+    function isFirmOwner(fid) { return signedIn() && firm(fid).owner == request.auth.uid; }
+    function isMember(fid) { return signedIn() && exists(mem(fid)); }
+    function role(fid) { return get(mem(fid)).data.role; }
+    function inFirm(fid) { return isFirmOwner(fid) || isMember(fid); }
+    function isFirmAdmin(fid) { return isFirmOwner(fid) || (isMember(fid) && role(fid) == 'admin'); }
+    function live(fid) { return firm(fid).status == 'active' || (firm(fid).status == 'trial' && firm(fid).trialEndsMs > request.time.toMillis()); }
+    function canWrite(fid) { return live(fid) && (isFirmOwner(fid) || (isMember(fid) && role(fid) != 'viewer')); }
+
+    // The provider (super-admin): only this email can become it. Replace with your own email, in lower case.
+    match /config/app {
+      allow read: if signedIn();
+      allow create: if signedIn() && myEmail() == 'OWNER_GMAIL_HERE' && request.resource.data.owner == request.auth.uid;
+      allow update, delete: if isSuper();
+    }
+    // A person's own record (which firm they belong to)
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isSuper());
+      allow write: if signedIn() && request.auth.uid == uid;
+    }
+    // Lets an invited person find the firm that invited them
+    match /invidx/{email} {
+      allow read: if signedIn() && myEmail() == email;
+      allow create, update: if isFirmAdmin(request.resource.data.fid);
+      allow delete: if signedIn() && (myEmail() == email || isFirmAdmin(resource.data.fid));
+    }
+    // One firm = one separate box. The firm's id is its owner's user id, so one account can start only one firm.
+    match /firms/{fid} {
+      allow read: if isSuper() || (signedIn() && request.auth.uid == fid) || inFirm(fid) || (signedIn() && exists(inv(fid)));
+      allow create: if signedIn() && request.auth.uid == fid
+        && request.resource.data.owner == request.auth.uid
+        && request.resource.data.ownerEmail == myEmail()
+        && (isSuper() || request.resource.data.status == 'pending');
+      // the firm itself may change only its name and usage counts; status and demo dates are the provider's
+      allow update: if isSuper() || (isFirmAdmin(fid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'stats', 'lastSeen', 'phone']));
+      allow delete: if isSuper();
+
+      match /members/{uid} {
+        allow read: if inFirm(fid);
+        allow create: if isFirmOwner(fid) || (signedIn() && request.auth.uid == uid && exists(inv(fid))
+          && request.resource.data.role == get(inv(fid)).data.role);
+        allow update: if isFirmAdmin(fid) || (signedIn() && request.auth.uid == uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'email']));
+        allow delete: if isFirmAdmin(fid);
+      }
+      match /invites/{email} {
+        allow read: if isFirmAdmin(fid) || (signedIn() && myEmail() == email);
+        allow write: if isFirmAdmin(fid);
+      }
+      // all of the firm's work: clients, compliances, notices, vault, files …  (the provider is NOT let in here)
+      match /{coll}/{rest=**} {
+        allow read: if coll != 'members' && coll != 'invites' && inFirm(fid);
+        allow write: if coll != 'members' && coll != 'invites' && canWrite(fid);
+      }
+    }
+    // Data kept at the top level before firms existed: the provider may read it (to move it) and clear it. Nobody else.
+    match /{coll}/{rest=**} {
+      allow read, delete: if coll != 'firms' && coll != 'config' && coll != 'users' && coll != 'invidx' && isSuper();
+    }
+  }
+}

@@ -1,0 +1,17 @@
+from playwright.sync_api import sync_playwright
+with sync_playwright() as p:
+    b=p.chromium.launch();pg=b.new_page(viewport={"width":400,"height":900})
+    errs=[];pg.on("pageerror",lambda e:errs.append(str(e)))
+    pg.goto("file:///home/claude/compliance-app/index.html");pg.wait_for_timeout(400)
+    pg.click("#firstClient");pg.click(".ent[data-e=pvt]");pg.fill("#w_name","Sharma Pvt Ltd");pg.click("#wNext");pg.click("#wNext")
+    pg.click(".yn[data-v='1']");pg.fill(".gIn2","27AAPFU0939F1ZV");pg.click("#addG");pg.locator(".gIn2").nth(1).fill("29AAGCB7383J1Z4");pg.click("#wNext")
+    pg.click(".yn[data-v='0']")
+    for v in "11000000": pg.click(".yn[data-v='%s']"%v)
+    pg.click("#wNext");pg.wait_for_timeout(200);pg.click("#go");pg.wait_for_timeout(500)
+    pg.click("#nList")
+    print("CL:",pg.locator("#fcl option").all_inner_texts())
+    print("GST:",pg.locator("#fgst option").all_inner_texts())
+    total=pg.locator("#listBody .item").count()
+    pg.select_option("#fgst","29AAGCB7383J1Z4");print("total",total,"karnataka only",pg.locator("#listBody .item").count())
+    pg.select_option("#fgst","");print(pg.inner_text("#listBody")[:700]);pg.click("details.tg summary");pg.wait_for_timeout(200);pg.screenshot(path="/home/claude/tests/filter.png",full_page=False)
+    print("ERR",errs);b.close()

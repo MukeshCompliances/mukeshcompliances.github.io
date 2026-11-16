@@ -1,0 +1,25 @@
+import json
+from playwright.sync_api import sync_playwright
+PDF=open("/home/claude/tests/npm/node_modules/pdfjs-dist/build/pdf.min.js").read()
+PDFW=open("/home/claude/tests/npm/node_modules/pdfjs-dist/build/pdf.worker.min.js").read()
+def route(r): r.fulfill(status=200,content_type="application/javascript",body=PDFW if "worker" in r.request.url else PDF)
+P=[{"id":"p1","name":"ADDENDA CHEMICAL INDIA PRIVATE LIMITED","entity":"pvt","pan":"AAPCA8845F","assignee":"Mohd Shoeb Siddiqui","gsts":[{"gstin":"06AAPCA8845F1ZC","type":"regular","freq":"monthly"}]}]
+with sync_playwright() as p:
+    b=p.chromium.launch();ctx=b.new_context(viewport={"width":400,"height":900});ctx.route("https://cdnjs.cloudflare.com/**",route)
+    pg=ctx.new_page();errs=[];pg.on("pageerror",lambda e:errs.append(str(e)))
+    pg.goto("file:///home/claude/compliance-app/index.html")
+    pg.evaluate(f"localStorage.setItem('compliance_parties_v1',{json.dumps(json.dumps(P))})");pg.reload();pg.wait_for_timeout(400)
+    pg.evaluate("assets={upload:async f=>({id:'b'+Math.random().toString(36).slice(2)})}")
+    pg.click("#nNt");pg.wait_for_timeout(150);pg.click("#ntUpB");pg.set_input_files("#nuF","drc01a.pdf");pg.click("#nuGo");pg.wait_for_timeout(3000)
+    print("REVIEW:",pg.inner_text("#sheet")[:900])
+    pg.click("#nrSave");pg.wait_for_timeout(800);print("DETAIL:",pg.inner_text("#sheet")[:500])
+    print("ENTRY:",pg.evaluate("JSON.stringify(items.filter(i=>i.code.startsWith('NOTICE')).map(i=>[i.name,i.dueDate,i.category,i.assignee]))"))
+    pg.evaluate("""sampleCap=async(pr,o)=>{window._pr=pr;o.onText&&o.onText({text:'To,'});return {text:'To,\\nThe Superintendent...\\n---\\n- 2A का मिलान लगाएँ'}};1""")
+    pg.fill("#ntFa","अंतर इसलिए क्योंकि सप्लायर ने GSTR-1 देर से फ़ाइल की");pg.click("#ntDr");pg.wait_for_timeout(600)
+    print("DRAFT:",pg.input_value("#ntTx")[:80]);print("PROMPT ok:", "ZD0611260012345" in pg.evaluate("window._pr"))
+    pg.click("#ntAp");pg.wait_for_timeout(300)
+    pg.fill("#ntAk","ARN-REPLY-123");pg.click("#ntRp");pg.wait_for_timeout(400)
+    print("AFTER:",pg.inner_text("#sheet")[:200]);print("ENTRY2:",pg.evaluate("JSON.stringify(items.filter(i=>i.code.startsWith('NOTICE')).map(i=>[i.status,i.arn]))"))
+    pg.click("#ntHowB");pg.wait_for_timeout(200);print("HOW:",pg.inner_text("#sheet")[:60])
+    pg.evaluate("closeSheet();show('dash')");print("DASH:",pg.inner_text("#dash")[:80])
+    print("ERR",errs);b.close()

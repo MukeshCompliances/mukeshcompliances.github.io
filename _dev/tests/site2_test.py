@@ -1,0 +1,76 @@
+import json,subprocess,time
+from playwright.sync_api import sync_playwright
+FAKE=open("/home/claude/tests/site/fakefb.js").read()
+def gst(r): r.fulfill(status=200,content_type="application/javascript",body=FAKE)
+srv=subprocess.Popen(["python3","-m","http.server","8767"],cwd="/home/claude/compliance-app/site/out",stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL);time.sleep(0.8)
+U={"own":"{uid:'U1',email:'owner@gmail.com',emailVerified:true,displayName:'Mukesh'}","b":"{uid:'UB',email:'bfirm@x.com',emailVerified:true,displayName:'B Owner'}","jr":"{uid:'U3',email:'junior1@gmail.com',emailVerified:true,displayName:'Junior'}","old":"{uid:'U9',email:'oldmember@x.com',emailVerified:true,displayName:'Old'}"}
+try:
+ with sync_playwright() as p:
+    b=p.chromium.launch();ctx=b.new_context(viewport={"width":400,"height":900});ctx.route("https://www.gstatic.com/**",gst);ctx.route("https://cdnjs.cloudflare.com/**",lambda r:r.abort())
+    pg=ctx.new_page();errs=[];pg.on("pageerror",lambda e:errs.append(str(e)))
+    pg.add_init_script("window.__fakeUser=eval('('+(sessionStorage.getItem('fu')||'null')+')')")
+    def login(k,wait=1500):
+        pg.evaluate("u=>sessionStorage.setItem('fu',u)",U[k]);pg.goto("http://localhost:8767/");pg.wait_for_timeout(500);pg.click("#sgBtn");pg.wait_for_timeout(wait)
+    pg.goto("http://localhost:8767/");pg.wait_for_timeout(300)
+    # data from before firms existed, at the top level
+    pg.evaluate("""sessionStorage.setItem('__fakestore',JSON.stringify({'config/app':{owner:'U1',ownerEmail:'owner@gmail.com'},'members/U1':{role:'admin'},'members/U9':{role:'senior',email:'oldmember@x.com'},'invites/pending@x.com':{role:'junior'},
+      'parties/P0':{name:'ADDENDA PVT LTD',entity:'pvt',pan:'AAPCA8845F',gsts:[],docs:[]},'compliances/C0':{partyId:'P0',code:'ITR',name:'ITR',period:'FY 2025-26',due:'2026-11-21',status:'pending',proofs:[]},'vault/meta':{salt:'x'},'blobs/B1':{type:'application/pdf',size:3,n:1},'blobs/B1/p/0':{d:'QUJD'}}))""")
+    login("own",2500)
+    print("1 OWNER in:",not pg.is_visible("#siteGate"),"| bar:",pg.inner_text("#siteBar")[:40].replace("\n"," "))
+    print("  migrated:",pg.evaluate("JSON.stringify([__store['firms/U1'].name,__store['firms/U1'].status,!!__store['firms/U1/parties/P0'],!!__store['firms/U1/compliances/C0'],!!__store['firms/U1/vault/meta'],!!__store['firms/U1/blobs/B1/p/0'],__store['firms/U1/members/U9'].role,!!__store['firms/U1/invites/pending@x.com'],__store['invidx/pending@x.com'].fid,__store['users/U1'].firm,!!__store['parties/P0']])"))
+    print("  app sees:",pg.evaluate("JSON.stringify([parties.map(p=>p.name),items.length,myRole()])"),"| file:",pg.evaluate("(async()=>(await blobGet('B1')).size)()"))
+    pg.click("#nTeam");pg.wait_for_timeout(300);pg.fill("#ivE","junior1@gmail.com");pg.click("#ivGo");pg.wait_for_timeout(400);print("  invite:",pg.evaluate("JSON.stringify([!!__store['firms/U1/invites/junior1@gmail.com'],__store['invidx/junior1@gmail.com'].fid,__site.invites.length])"))
+    # second firm signs up
+    login("b");print("2 NEW ID signup screen:",pg.is_visible("#sgFirm"));pg.click("#sgMk");pg.wait_for_timeout(200);print("  no name:",pg.inner_text("#sgErr")[:25])
+    pg.fill("#sgFirm","B & Co");pg.click("#sgMk");pg.wait_for_timeout(200);print("  no consent:",pg.inner_text("#sgErr")[:25]);pg.check("#sgAgree");pg.click("#sgMk");pg.wait_for_timeout(200);print("  no phone:",pg.inner_text("#sgErr")[:22]);pg.fill("#sgPhone","9812345678");pg.fill("#sgNote","Delhi");pg.click("#sgMk");pg.wait_for_timeout(1500)
+    print("  WAITING gate:",pg.is_visible("#siteGate"),pg.inner_text("#sgMsg")[:45].replace("\n"," "),"| status:",pg.evaluate("__store['firms/UB'].status"))
+    login("own");print("  provider badge:",pg.inner_text("#sbSuper"));pg.click("#sbSuper");pg.wait_for_timeout(500);print("  panel shows phone:", "9812345678" in pg.inner_text("#sitePanel"));pg.locator(".spA[data-id='UB'][data-a='trial']").first.click();pg.wait_for_timeout(500);print("  approved ->",pg.evaluate("__store['firms/UB'].status"))
+    login("b",2000)
+    print("  B in:",not pg.is_visible("#siteGate"),"| bar:",pg.inner_text("#siteBar")[:60],"| sees clients:",pg.evaluate("parties.length"),"| super btn:",pg.locator("#sbSuper").count(),"| role:",pg.evaluate("myRole()"))
+    pg.evaluate("saveParty({id:'PB',name:'B CLIENT',entity:'prop',pan:'ABCPB1234F',gsts:[],docs:[]})");pg.wait_for_timeout(400)
+    print("  B data separate:",pg.evaluate("JSON.stringify([!!__store['firms/UB/parties/PB'],!!__store['firms/U1/parties/PB'],!!__store['parties/PB'],__store['firms/UB'].status])"))
+    # invited junior + migrated old member land in owner's firm
+    login("jr");print("3 JUNIOR in:",not pg.is_visible("#siteGate"),pg.evaluate("JSON.stringify([parties.map(p=>p.name),myRole(),__store['firms/U1/members/U3'].role,__store['users/U3'].firm])"))
+    login("old");print("  OLD MEMBER in:",not pg.is_visible("#siteGate"),pg.evaluate("JSON.stringify([parties.length,myRole()])"))
+    # provider panel
+    login("own");pg.click("#sbSuper");pg.wait_for_timeout(500);txt=pg.inner_text("#sitePanel");print("4 PANEL firms:",txt.count("बनी "),"| has B:", "B & Co" in txt,"| B clients shown:", "ग्राहक: " in txt)
+    pg.locator(".spA[data-id='UB'][data-a='stopped']").click();pg.wait_for_timeout(500);print("  stop B:",pg.evaluate("__store['firms/UB'].status"))
+    pg.screenshot(path="/tmp/panel.png")
+    login("b");print("5 B stopped gate:",pg.is_visible("#siteGate"),pg.inner_text("#sgMsg")[:40].replace("\n"," "))
+    # demo over -> view only
+    pg.evaluate("s=JSON.parse(sessionStorage.getItem('__fakestore'));s['firms/UB'].status='trial';s['firms/UB'].trialEnds=new Date(Date.now()-864e5).toISOString();sessionStorage.setItem('__fakestore',JSON.stringify(s))")
+    login("b");print("6 B expired in:",not pg.is_visible("#siteGate"),"| role:",pg.evaluate("myRole()"),"| bar:",pg.inner_text("#siteBar")[:45])
+    login("own");pg.click("#sbSuper");pg.wait_for_timeout(400);pg.locator(".spA[data-id='UB'][data-a='active']").click();pg.wait_for_timeout(400)
+    login("own");pg.click("#sbSuper");pg.wait_for_timeout(400);pg.locator(".spA[data-id='UB'][data-a='paid']").click();pg.wait_for_timeout(200);pg.locator(".spPay button[data-m='24']").click();pg.fill(".spPay .pn","Rs 12000 UPI 15-Nov");pg.click(".spPay .pg");pg.wait_for_timeout(600)
+    print("7a PAID:",pg.evaluate("(()=>{const f=__store['firms/UB'];return JSON.stringify([f.status,f.plan,Math.round((f.trialEndsMs-Date.now())/864e5),f.pays.length,f.pays[0].note])})()"),"| panel:", "सदस्यता" in pg.inner_text("#sitePanel"));pg.screenshot(path="/tmp/paid.png")
+    login("b");print("  B paid: role",pg.evaluate("myRole()"),"| bar:",pg.inner_text("#siteBar")[:40].replace("\n"," "))
+    pg.evaluate("s=JSON.parse(sessionStorage.getItem('__fakestore'));s['firms/UB'].trialEnds=new Date(Date.now()-864e5).toISOString();s['firms/UB'].trialEndsMs=Date.now()-864e5;sessionStorage.setItem('__fakestore',JSON.stringify(s))")
+    login("b");print("  B paid ended: role",pg.evaluate("myRole()"),"| bar:",pg.inner_text("#siteBar")[:60].replace("\n"," "))
+    login("own");pg.click("#sbSuper");pg.wait_for_timeout(400);pg.locator(".spA[data-id='UB'][data-a='active']").click();pg.wait_for_timeout(400)
+    login("b");print("7 B activated role:",pg.evaluate("myRole()"),"| bar:",pg.inner_text("#siteBar")[:30])
+    login("b");print("F0 first run all on:",pg.evaluate("JSON.stringify([ftOn('m_nt'),ftOn('c_roc'),ftNew().length,!!__store['firms/UB/settings/features']])"),"| nNt shown:",pg.is_visible("#nNt"))
+    login("own");pg.click("#sbSuper");pg.wait_for_timeout(400);pg.locator(".spA[data-id='UB'][data-a='ft']").click();pg.wait_for_timeout(200);print("F0b list boxes:",pg.locator(".spFt .fk").count(),"groups:",pg.locator(".spFt .fgAll").count());pg.uncheck(".spFt input[data-k='m_nt']");pg.uncheck(".spFt .fgAll[data-g='c_roc']");pg.uncheck(".spFt input[data-k='p_GSTR-9C']");pg.uncheck(".spFt input[data-k='m_at']");pg.screenshot(path="/tmp/ftpanel.png",full_page=True);pg.click(".spFt .fg");pg.wait_for_timeout(500)
+    print("F1 provider saved:",pg.evaluate("JSON.stringify([__store['firms/UB'].features.m_nt,__store['firms/UB'].features['p_GSTR-1'],__store['firms/UB'].features['p_AOC-4']])"),"| label:",pg.locator(".spA[data-id='UB'][data-a='ft']").inner_text())
+    login("b");print("F2 B: notices tab shown:",pg.is_visible("#nNt"),"| learn shown:",pg.is_visible("#nMn"),"| ROC item on:",pg.evaluate("ftItemOn({code:'AOC-4'})"),"| GSTR-3B on:",pg.evaluate("ftItemOn({code:'GSTR-3B'})"),"| 9C on:",pg.evaluate("ftItemOn({code:'GSTR-9C'})"),"| PT-MH on:",pg.evaluate("ftItemOn({code:'PT-MH'})"),"| updates:",pg.evaluate("ftNew().length"))
+    pg.evaluate("openClient('PB')");pg.wait_for_timeout(300);print("   client page: TDS btn",pg.locator("#sheet #trCB").count(),"adv-tax btn",pg.locator("#sheet #atCB").count(),"notice btn",pg.locator("#sheet #ntCB").count());pg.evaluate("closeSheet()")
+    # provider opens notices again later -> arrives as an update the firm must turn on
+    pg.evaluate("s=JSON.parse(sessionStorage.getItem('__fakestore'));s['firms/UB'].features.m_nt=true;sessionStorage.setItem('__fakestore',JSON.stringify(s))")
+    login("b");pg.click("#nDash");pg.wait_for_timeout(300);print("F3 B sees update banner:",pg.locator("#ftBan").count(),pg.inner_text("#ftBan")[:60] if pg.locator("#ftBan").count() else "","| tab still hidden:",not pg.is_visible("#nNt"))
+    pg.click("#ftBan");pg.wait_for_timeout(300);pg.screenshot(path="/tmp/ft.png",full_page=True);pg.click(".ftOk");pg.wait_for_timeout(500);pg.evaluate("closeSheet()");pg.wait_for_timeout(200);print("F4 after accept: tab shown:",pg.is_visible("#nNt"),"| banner:",pg.locator("#ftBan").count(),"| ROC still off:",not pg.evaluate("ftItemOn({code:'AOC-4'})"))
+    login("own");print("8 BAR:",pg.inner_text("#siteBar").replace("\n"," ")[:60]);pg.click("#sbMe");pg.wait_for_timeout(200);print("  MENU:",pg.inner_text("#siteMenu")[:70].replace("\n"," | "))
+    pg.fill("#smNew","abc");pg.click("#smPwGo");print("  short:",pg.inner_text("#smMsg")[:22]);pg.fill("#smNew","abcdef1");pg.click("#smPwGo");pg.wait_for_timeout(200);print("  changed:",pg.inner_text("#smMsg")[:22],pg.evaluate("window.__newpw"))
+    pg.screenshot(path="/tmp/menu.png")
+    # idle: pretend last activity was 19m20s ago -> warning; then 21 min -> logged out
+    pg.mouse.click(5,300);pg.evaluate("window.__o=Date.now;Date.now=()=>window.__o()+19.3*60000");pg.wait_for_timeout(16000);print("9 IDLE warn:",pg.locator("#siteIdle").count())
+    pg.evaluate("Date.now=()=>window.__o()+21*60000");pg.wait_for_timeout(16500);print("  after 21 min -> gate:",pg.is_visible("#siteGate"),"|",pg.inner_text("#sgErr")[:40])
+    pg.evaluate("localStorage.setItem('__site_last',String(Date.now()-30*60000))");pg.click("#sgBtn");pg.wait_for_timeout(800);print("  stale session on return -> gate:",pg.is_visible("#siteGate"),"|",pg.inner_text("#sgErr")[:25]);pg.click("#sgBtn");pg.wait_for_timeout(1500);print("  login again ok:",not pg.is_visible("#siteGate"))
+    pg.evaluate("sessionStorage.removeItem('fu')");pg.goto("http://localhost:8767/");pg.wait_for_timeout(600)
+    print("10 LOGIN view:",pg.is_visible("#vIn"),pg.is_visible("#vUp"));pg.click("#tbUp");pg.wait_for_timeout(100);print("  SIGNUP view:",pg.is_visible("#vUp"),pg.inner_text("#sgMsg")[:14])
+    pg.click("#suGo");print("  e1:",pg.inner_text("#sgErr")[:16]);pg.fill("#suName","Wang Li");pg.fill("#suId","wang@addenda.cn");pg.fill("#suPw","secret1");pg.fill("#suPw2","secret2");pg.click("#suGo");print("  e2:",pg.inner_text("#sgErr")[:28])
+    pg.screenshot(path="/tmp/signup.png")
+    pg.fill("#suPw2","secret1");pg.click("#suGo");pg.wait_for_timeout(600);print("  created -> verify:",pg.inner_text("#sgMsg")[:40].replace("\n"," "),"| name:",pg.evaluate("__accts['wang@addenda.cn'].u.displayName"),"| mail sent:",pg.evaluate("window.__verSent"))
+    pg.evaluate("firebase.auth().signOut()");pg.wait_for_timeout(300);pg.click("#sgFg");pg.wait_for_timeout(100);pg.fill("#fgId","wang@addenda.cn");pg.click("#fgGo");pg.wait_for_timeout(200);print("  forgot:",pg.inner_text("#sgErr")[:30],"|",pg.evaluate("window.__reset"));pg.click("#fgBk");print("  back:",pg.is_visible("#vIn"))
+    pg.evaluate("__accts['wang@addenda.cn'].u.emailVerified=true");pg.fill("#sgId","wang@addenda.cn");pg.fill("#sgPw","wrong");pg.click("#sgIn");pg.wait_for_timeout(200);print("  wrong pw:",pg.inner_text("#sgErr")[:22])
+    pg.fill("#sgPw","secret1");pg.click("#sgIn");pg.wait_for_timeout(1200);print("  login -> new firm screen:",pg.is_visible("#sgFirm"))
+    print("ERR",errs);b.close()
+finally: srv.terminate()
