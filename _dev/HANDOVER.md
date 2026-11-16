@@ -137,7 +137,7 @@ GSTR-1 11th, GSTR-3B 20th (QRMP 22/24), PMT-06 25th; GST late fee ₹50/day (nil
 
 ## Update 16 Nov 2026 (second chat)
 - Site: Google Search Console verified (meta tag added in site/build.py) and imported into Bing Webmaster Tools.
-- Tax Year (Income-tax Act 2025): proof check shows "Tax Year 2026-27 (= FY 2026-27)" for FY 2026-27 onwards, "AY … (= FY …)" before; label "Assessment year / Tax year". periodFacts already reads "Tax Year" as FY. Published to the Claude app (version 1794836188-9033); NOT yet on the site — waiting for his OK, then build + push.
+- Tax Year (Income-tax Act 2025): proof check shows "Tax Year 2026-27 (= FY 2026-27)" for FY 2026-27 onwards, "AY … (= FY …)" before; label "Assessment year / Tax year". periodFacts already reads "Tax Year" as FY. Published to the Claude app (version 1794836188-9033); On the site too (pushed after his OK, 16 Nov).
 - Invites work; the app sends no email. Person must Sign up on the site with the invited email. TODO: after inviting, show a ready WhatsApp message with sign-up steps.
 - New ideas agreed (not started):
   - Email reminders via Google Apps Script (free, ~100 mails/day). Team first; clients later (send in the CA firm's name, client email + opt-in tick).

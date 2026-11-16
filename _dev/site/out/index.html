@@ -1413,6 +1413,9 @@ const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","De
 const p2=n=>String(n).padStart(2,"0");
 function ymd(y,m,d){const x=new Date(y,m-1,1);const last=new Date(x.getFullYear(),x.getMonth()+1,0).getDate();return x.getFullYear()+"-"+p2(x.getMonth()+1)+"-"+p2(Math.min(d,last))}
 const fyl=s=>"FY "+s+"-"+String(s+1).slice(2);
+/* Income-tax Act, 2025 (from 1 Apr 2026): income of FY 2026-27 onwards is "Tax Year 2026-27" (same years as the FY);
+   up to FY 2025-26 the old Act applies and the return is for AY = FY+1. */
+const yrTag=fy=>fy>=2026?"Tax Year "+fy+"-"+String(fy+1).slice(2)+" (= "+fyl(fy)+")":"AY "+(fy+1)+"-"+String(fy+2).slice(2)+" (= "+fyl(fy)+")";
 const fyOf=(y,m)=>m>=4?y:y-1;
 const QN={6:1,9:2,12:3,3:4};
 /* startM = "YYYY-MM": monthly/quarterly items whose period ends in or after startM, and yearly items due on/after the 1st of startM */
@@ -2259,15 +2262,15 @@ function emWire(){const b=$("#emSave");if(!b)return;b.onclick=async()=>{const er
   try{if(mode==="db")await emRef.set(rec);else{emSet=rec;lset("compliance_email_v1",rec)}toast(t("emSaved"))}catch(e){err.textContent=t("saveFail")}}}
 
 /* ================= proof verification: read the PDF, match it to the entry ================= */
-Object.assign(I18N.hi,{proofRuleNoArn:"इसमें ARN नहीं होता — सही प्रूफ फ़ाइल लगते ही ये \"फाइल – प्रूफ सहित\" (हरी) हो जाएगी।",pcPan:"PAN",pcCin:"CIN / LLPIN",pcUdyam:"उद्यम नं.",pcPf:"PF कोड",pcEsi:"ESI कोड",pcAy:"असेसमेंट ईयर",pcT:"प्रूफ की जाँच",pcChecking:"फ़ाइल जाँची जा रही है…",pcOk:"✔ फ़ाइल एंट्री से मेल खाती है",pcBad:"✖ फ़ाइल एंट्री से मेल नहीं खाती",pcUnk:"⚠ इस फ़ाइल की जाँच नहीं हो सकी (फ़ोटो / स्कैन) — सीनियर देखेंगे",
+Object.assign(I18N.hi,{proofRuleNoArn:"इसमें ARN नहीं होता — सही प्रूफ फ़ाइल लगते ही ये \"फाइल – प्रूफ सहित\" (हरी) हो जाएगी।",pcPan:"PAN",pcCin:"CIN / LLPIN",pcUdyam:"उद्यम नं.",pcPf:"PF कोड",pcEsi:"ESI कोड",pcAy:"असेसमेंट ईयर / टैक्स ईयर",pcT:"प्रूफ की जाँच",pcChecking:"फ़ाइल जाँची जा रही है…",pcOk:"✔ फ़ाइल एंट्री से मेल खाती है",pcBad:"✖ फ़ाइल एंट्री से मेल नहीं खाती",pcUnk:"⚠ इस फ़ाइल की जाँच नहीं हो सकी (फ़ोटो / स्कैन) — सीनियर देखेंगे",
  pcField:"जाँच",pcEntry:"एंट्री में",pcPdf:"फ़ाइल में",pcGstin:"GSTIN",pcRet:"रिटर्न",pcPeriod:"अवधि",pcArn:"ARN",pcTan:"TAN",
  pcDup:"यह फ़ाइल पहले से \"{w}\" में लगी है",pcFix:"सही फ़ाइल चुनकर दोबारा सेव करें — या गड़बड़ के निशान के साथ सेव करें (सीनियर देखेंगे)।",pcSaveAnyway:"गड़बड़ के निशान के साथ सेव करें",
  pcIssue:"⚠ प्रूफ में गड़बड़",pcAccept:"✔ गड़बड़ के बावजूद मान्य करें",pcAcceptR:"मान्य करने का कारण",pcAccepted:"सीनियर ने प्रूफ मान्य किया",pcArnFill:"ARN फ़ाइल से भरा गया: {a}",pcRenamed:"फ़ाइल का नाम अपने-आप रखा गया",hPcBad:"प्रूफ की जाँच में गड़बड़: {x}",hPcOk:"प्रूफ की जाँच सही",hPcAcc:"सीनियर ने गड़बड़ के बावजूद प्रूफ मान्य किया: {r}"});
-Object.assign(I18N.en,{proofRuleNoArn:"This has no ARN — it turns \"Filed – with proof\" (green) as soon as a correct proof file is attached.",pcPan:"PAN",pcCin:"CIN / LLPIN",pcUdyam:"Udyam no.",pcPf:"PF code",pcEsi:"ESI code",pcAy:"Assessment year",pcT:"Proof check",pcChecking:"Checking the file…",pcOk:"✔ File matches the entry",pcBad:"✖ File does not match the entry",pcUnk:"⚠ This file couldn't be checked (photo / scan) — a senior will review",
+Object.assign(I18N.en,{proofRuleNoArn:"This has no ARN — it turns \"Filed – with proof\" (green) as soon as a correct proof file is attached.",pcPan:"PAN",pcCin:"CIN / LLPIN",pcUdyam:"Udyam no.",pcPf:"PF code",pcEsi:"ESI code",pcAy:"Assessment year / Tax year",pcT:"Proof check",pcChecking:"Checking the file…",pcOk:"✔ File matches the entry",pcBad:"✖ File does not match the entry",pcUnk:"⚠ This file couldn't be checked (photo / scan) — a senior will review",
  pcField:"Check",pcEntry:"Entry",pcPdf:"File",pcGstin:"GSTIN",pcRet:"Return",pcPeriod:"Period",pcArn:"ARN",pcTan:"TAN",
  pcDup:"This file is already attached to \"{w}\"",pcFix:"Choose the right file and save again — or save it flagged (a senior will review).",pcSaveAnyway:"Save with the issue flagged",
  pcIssue:"⚠ Proof issue",pcAccept:"✔ Accept despite the issue",pcAcceptR:"Reason for accepting",pcAccepted:"Senior accepted the proof",pcArnFill:"ARN filled from the file: {a}",pcRenamed:"File renamed automatically",hPcBad:"Proof check failed: {x}",hPcOk:"Proof check passed",hPcAcc:"Senior accepted the proof despite the issue: {r}"});
-Object.assign(I18N.zh,{proofRuleNoArn:"此项没有 ARN——附上正确的凭证文件后即变为\"已申报 – 有凭证\"（绿色）。",pcPan:"PAN",pcCin:"CIN / LLPIN",pcUdyam:"Udyam 号",pcPf:"PF 代码",pcEsi:"ESI 代码",pcAy:"评估年度",pcT:"凭证核对",pcChecking:"正在核对文件…",pcOk:"✔ 文件与条目一致",pcBad:"✖ 文件与条目不一致",pcUnk:"⚠ 无法核对此文件（照片 / 扫描件）——将由高级复核",
+Object.assign(I18N.zh,{proofRuleNoArn:"此项没有 ARN——附上正确的凭证文件后即变为\"已申报 – 有凭证\"（绿色）。",pcPan:"PAN",pcCin:"CIN / LLPIN",pcUdyam:"Udyam 号",pcPf:"PF 代码",pcEsi:"ESI 代码",pcAy:"评估年度 / 纳税年度",pcT:"凭证核对",pcChecking:"正在核对文件…",pcOk:"✔ 文件与条目一致",pcBad:"✖ 文件与条目不一致",pcUnk:"⚠ 无法核对此文件（照片 / 扫描件）——将由高级复核",
  pcField:"核对项",pcEntry:"条目",pcPdf:"文件",pcGstin:"GSTIN",pcRet:"申报",pcPeriod:"期间",pcArn:"ARN",pcTan:"TAN",
  pcDup:"此文件已附在\"{w}\"中",pcFix:"请选择正确的文件后重新保存——或标记问题后保存（由高级复核）。",pcSaveAnyway:"标记问题后保存",
  pcIssue:"⚠ 凭证有问题",pcAccept:"✔ 尽管有问题仍认可",pcAcceptR:"认可原因",pcAccepted:"高级已认可凭证",pcArnFill:"已从文件填入 ARN：{a}",pcRenamed:"文件已自动重命名",hPcBad:"凭证核对未通过：{x}",hPcOk:"凭证核对通过",hPcAcc:"高级在有问题的情况下认可凭证：{r}"});
@@ -2355,7 +2358,7 @@ function compareFacts(ctx,f){
   const pe=ctx.period;
   if(pe&&(pe.months||pe.fy)){
     const fyTxt=()=>f.ay&&!f.fys.length?"AY "+f.ay+"-"+String(f.ay+1).slice(2)+" (= "+fyl(f.ay-1)+")":(f.fyAll||[]).length?(f.fyAll||[]).slice(0,2).map(fyl).join(", ")+(f.ay?" · AY "+f.ay+"-"+String(f.ay+1).slice(2):""):"";
-    if(exp.ay&&pe.fy){rows.push({key:"pcAy",ev:"AY "+(pe.fy+1)+"-"+String(pe.fy+2).slice(2)+" (= "+fyl(pe.fy)+")",fv:fyTxt()||"—",ok:(f.fyAll||[]).length?f.fyAll.includes(pe.fy):null})}
+    if(exp.ay&&pe.fy){rows.push({key:"pcAy",ev:yrTag(pe.fy),fv:fyTxt()||"—",ok:(f.fyAll||[]).length?f.fyAll.includes(pe.fy):null})}
     else{const ev=(pe.months?pe.months.map(m=>MONTHS[m-1].slice(0,3)).join("/")+" ":"")+(pe.q?"Q"+pe.q+" ":"")+(pe.fy?fyl(pe.fy):"");
       /* month: from "Tax period: October", "Oct-2026", or a one-month date range — any of them is enough */
       const mys=(f.mys||[]).concat((f.ranges||[]).filter(x=>x[2]!=="q"));const myHit=pe.months&&pe.fy?mys.some(([y,mo])=>pe.months.includes(mo)&&fyOfYM(y,mo)===pe.fy):false;
