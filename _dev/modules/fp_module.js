@@ -97,7 +97,8 @@ const _fpRow=row;row=function(i){const h=_fpRow(i);if(i.code!=="FS")return h;con
   return h.replace('<div style="margin-top:6px">','<div style="margin-top:6px"><span class="badge '+(d===L?"b-filed":"b-up")+'" style="margin-right:4px">📑 '+d+"/"+L+"</span>")};
 
 /* ===== what's new: shown once per person; add a new entry at the top for each change ===== */
-const WHATS_NEW=[{id:"2026-11-16",items:[
+const WHATS_NEW=[{id:"2026-11-16b",items:[
+ ["📰 कानून के बदलाव में अब 📘 आसान भाषा में समझें, तैयार सवाल और अपना सवाल पूछने का डिब्बा — बिना Claude के जवाब।","📰 Law updates now have 📘 a plain-language summary, ready questions and an ask box — answered without Claude."]]},{id:"2026-11-16",items:[
  ["ITR में नया 'Tax Year' (इनकम-टैक्स एक्ट 2025) भी पहचाना जाता है — FY 2026-27 से।","ITR proof check now understands the new 'Tax Year' (Income-tax Act 2025) — from FY 2026-27."],
  ["बैलेंस शीट / P&L की जाँच: जोड़, राउंडिंग, असली आँकड़ों से मिलान, UDIN।","Balance Sheet / P&L checker: totals, rounding, match with actual figures, UDIN."],
  ["फ़ाइनेंशियल स्टेटमेंट के हिस्से अलग-अलग (✅ / ⏳), एक PDF से अपने-आप पहचान, और आपस में मिलान।","Financial statements in separate parts (✅ / ⏳), auto-detected from one PDF, and cross-checked."],
