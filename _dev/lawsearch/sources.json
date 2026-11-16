@@ -1,0 +1,21 @@
+{
+  "_help": "Each entry in 'sources' is one way of searching. To add a new one, copy a block and change it. type 'news' = Google News search (write the search words in 'q'); type 'rss' = any RSS feed address in 'url'. 'cat' = gst / it / roc / pf / pt / iex / lic / other. 'must' (optional) = keep only titles containing one of these words. 'on': false switches a source off.",
+  "ai": {"models": ["gemini-2.5-flash", "gemini-flash-latest"], "max_new_per_run": 12},
+  "keep": 300,
+  "days": 4,
+  "sources": [
+    {"id": "gst_notif", "type": "news", "cat": "gst", "q": "CBIC GST notification OR circular"},
+    {"id": "gst_gstn", "type": "news", "cat": "gst", "q": "GSTN advisory GST portal"},
+    {"id": "gst_council", "type": "news", "cat": "gst", "q": "GST council rate change"},
+    {"id": "it_cbdt", "type": "news", "cat": "it", "q": "CBDT notification OR circular income tax"},
+    {"id": "it_tds", "type": "news", "cat": "it", "q": "TDS TCS rule change CBDT"},
+    {"id": "it_due", "type": "news", "cat": "it", "q": "income tax due date extended"},
+    {"id": "roc_mca", "type": "news", "cat": "roc", "q": "MCA notification companies act amendment"},
+    {"id": "roc_due", "type": "news", "cat": "roc", "q": "MCA ROC filing due date extended"},
+    {"id": "pf_epfo", "type": "news", "cat": "pf", "q": "EPFO circular employers"},
+    {"id": "pf_esic", "type": "news", "cat": "pf", "q": "ESIC notification employers"},
+    {"id": "iex_dgft", "type": "news", "cat": "iex", "q": "DGFT notification OR trade notice"},
+    {"id": "pib_fin", "type": "rss", "cat": "auto", "url": "https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=3",
+     "must": ["CBDT", "CBIC", "GST", "Income Tax", "Income-tax", "TDS", "Customs", "EPFO", "ESIC", "MCA", "DGFT"]}
+  ]
+}
