@@ -105,7 +105,7 @@ const WHATS_NEW=[{id:"2026-11-16",items:[
  ["TDS और एडवांस टैक्स की जाँच।","TDS and advance-tax checks."]]}];
 function wnShow(){const w=WHATS_NEW[0];if(!w||document.getElementById("wnCard"))return;let key="wn_seen_"+((typeof me!=="undefined"&&me&&me.id)||"x");
   try{if(localStorage.getItem(key)===w.id)return}catch(e){if(wnShow.seen===w.id)return}
-  const d=document.createElement("div");d.id="wnCard";d.style.cssText="position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:25;width:min(94vw,520px);background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 30px rgba(20,25,40,.18);padding:14px 16px";
+  const d=document.createElement("div");d.id="wnCard";d.style.cssText="position:fixed;top:72px;right:12px;z-index:25;width:min(calc(100vw - 24px),380px);max-height:70vh;overflow:auto;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 30px rgba(20,25,40,.18);padding:14px 16px";
   d.innerHTML=`<b>🆕 ${esc(bt("नया क्या है","What's new"))}</b><ul style="margin:8px 0 10px;padding-left:18px;font-size:14px">${w.items.map(x=>`<li style="margin:4px 0">${esc(bt(x[0],x[1]))}</li>`).join("")}</ul><div style="text-align:right"><button class="btn" id="wnOk">${esc(bt("ठीक है","OK"))}</button></div>`;
   document.body.appendChild(d);document.getElementById("wnOk").onclick=()=>{try{localStorage.setItem(key,w.id)}catch(e){}wnShow.seen=w.id;d.remove()}}
 setTimeout(function wnTry(){if(typeof mode!=="undefined"&&mode==="loading"){setTimeout(wnTry,1500);return}wnShow()},2500);
