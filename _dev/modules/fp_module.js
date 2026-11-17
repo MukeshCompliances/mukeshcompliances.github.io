@@ -97,7 +97,8 @@ const _fpRow=row;row=function(i){const h=_fpRow(i);if(i.code!=="FS")return h;con
   return h.replace('<div style="margin-top:6px">','<div style="margin-top:6px"><span class="badge '+(d===L?"b-filed":"b-up")+'" style="margin-right:4px">📑 '+d+"/"+L+"</span>")};
 
 /* ===== what's new: shown once per person; add a new entry at the top for each change ===== */
-const WHATS_NEW=[{id:"2026-11-16b",items:[
+const WHATS_NEW=[{id:"2026-11-17",items:[
+ ["🧮 GST जाँच: अपनी वर्किंग, GSTR-1, GSTR-3B और GSTR-2B डालें — ऐप हेड-वार मिलाकर फ़र्क़ दिखाएगा। वर्किंग के नाम अपनी शीट के हिसाब से ⚙ में बदलें।","🧮 GST check: upload your working, GSTR-1, GSTR-3B and GSTR-2B — the app compares them head-wise. Set your sheet's names in ⚙."]]},{id:"2026-11-16b",items:[
  ["📰 कानून के बदलाव में अब 📘 आसान भाषा में समझें, तैयार सवाल और अपना सवाल पूछने का डिब्बा — बिना Claude के जवाब।","📰 Law updates now have 📘 a plain-language summary, ready questions and an ask box — answered without Claude."]]},{id:"2026-11-16",items:[
  ["ITR में नया 'Tax Year' (इनकम-टैक्स एक्ट 2025) भी पहचाना जाता है — FY 2026-27 से।","ITR proof check now understands the new 'Tax Year' (Income-tax Act 2025) — from FY 2026-27."],
  ["बैलेंस शीट / P&L की जाँच: जोड़, राउंडिंग, असली आँकड़ों से मिलान, UDIN।","Balance Sheet / P&L checker: totals, rounding, match with actual figures, UDIN."],
