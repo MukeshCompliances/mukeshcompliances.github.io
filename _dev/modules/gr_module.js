@@ -6,10 +6,10 @@ let grRef=null,grItems=[],grSt={id:null,busy:false,msg:"",files:{}},grCfgRef=nul
 const GR_DEF={
  sales:["SALES","Outward supplies","Sales register"],p2b:["PURCHASES AS PER GSTR 2-B","Purchases as per 2B","ITC as per 2B"],impg:["IMPG BILLS","Import of goods"],rcm:["RCM Details","Reverse charge"],
  total:["GROSS TOTAL","Total","Grand Total"],tv:["Taxable value","Taxable","Assessable value"],i:["IGST","Integrated"],c:["CGST","Central"],s:["SGST","UTGST","State"],
- elig:["Eligible"],nelig:["Not Eligible","Ineligible","POS InEligible"],
+ date:["Bill Date","Invoice Date","Date"],elig:["Eligible"],nelig:["Not Eligible","Ineligible","POS InEligible"],
  out:["Sales Tax Payable","Output tax"],rcmPay:["RCM Payable"],pImpg:["Import of Goods"],pOth:["All Other ITC"],pRcm:["Invard Supply Liable to reverse Charge","Inward Supply Liable to reverse Charge"],pIsd:["Inward Supply from ISD"],pRev:["ITC Reverese","ITC Reversed","ITC Reverse"],pNet:["NET ITC Available"]};
 const GR_KEYS=[["sales",["बिक्री वाला हिस्सा","Sales section"],"sec"],["p2b",["2B वाली ख़रीद का हिस्सा","Purchases-as-per-2B section"],"sec"],["impg",["इम्पोर्ट (IMPG) का हिस्सा","Import (IMPG) section"],"sec"],["rcm",["RCM का हिस्सा","RCM section"],"sec"],
- ["total",["हिस्से की कुल वाली लाइन","Section total row"],"lab"],["tv",["टैक्सेबल मूल्य का कॉलम","Taxable value column"],"col"],["i",["IGST कॉलम","IGST column"],"col"],["c",["CGST कॉलम","CGST column"],"col"],["s",["SGST कॉलम","SGST column"],"col"],
+ ["total",["हिस्से की कुल वाली लाइन","Section total row"],"lab"],["tv",["टैक्सेबल मूल्य का कॉलम","Taxable value column"],"col"],["i",["IGST कॉलम","IGST column"],"col"],["c",["CGST कॉलम","CGST column"],"col"],["s",["SGST कॉलम","SGST column"],"col"],["date",["बिल की तारीख़ का कॉलम","Bill date column"],"col"],
  ["elig",["'Eligible' वाली लाइन","'Eligible' row"],"lab"],["nelig",["'Not eligible' वाली लाइन","'Not eligible' row"],"lab"],
  ["out",["कुल आउटपुट टैक्स","Total output tax"],"lab"],["rcmPay",["RCM देय","RCM payable"],"lab"],["pImpg",["3B 4A(1) इम्पोर्ट","3B 4A(1) imports"],"lab"],["pOth",["3B 4A(5) बाक़ी ITC","3B 4A(5) other ITC"],"lab"],["pRcm",["3B 4A(3) RCM ITC","3B 4A(3) RCM ITC"],"lab"],["pIsd",["3B 4A(4) ISD","3B 4A(4) ISD"],"lab"],["pRev",["3B 4B रिवर्सल","3B 4B reversal"],"lab"],["pNet",["3B 4C नेट ITC","3B 4C net ITC"],"lab"]];
 function grCfg(){const u=grCfgU||{};const o={};Object.keys(GR_DEF).forEach(k=>o[k]=(u[k]&&u[k].length?u[k]:[]).concat(GR_DEF[k]));return o}
@@ -37,7 +37,7 @@ async function grPdfRows(file,clientId){const buf=new Uint8Array(await file.arra
 function grCols(row,hx){const v=hx.map(()=>null);row.c.forEach(c=>{if(!grIsNum(c.s))return;let k=-1;hx.forEach((x,j)=>{if(x<=c.r+1)k=j});if(k>=0&&v[k]===null)v[k]=grN(c.s)});return v.map(x=>x||0)}
 function grHead(row,words){const hx=[];words.forEach(w=>{const c=row.c.find(c=>c.s.toLowerCase().startsWith(w));if(c)hx.push(c.x)});return hx.length===words.length?hx:null}
 function grIdent(rows){const T=rows.slice(0,25).map(r=>r.t).join(" ");const g=(T.match(/\b\d{2}[A-Z]{5}\d{4}[A-Z][0-9A-Z]Z[0-9A-Z]\b/)||[])[0]||"";
-  const fy=(T.match(/(?:Financial\s*year|Year)\s*(\d{4})-\d{2}/i)||[])[1];const mon=(T.match(/(?:Tax\s*period|Period)\s*([A-Za-z]+)/i)||[])[1];return{gstin:g,ym:grYm(fy,mon)}}
+  const fy=(T.match(/(?:Financial\s*year|Year)\s*(\d{4})-\d{2}/i)||[])[1];const mon=(T.match(/(?:Tax\s*period|Period)\s*([A-Za-z]+)/i)||[])[1];const ad=(T.match(/(?:Date\s*of\s*ARN|ARN\s*date)\s*(\d{2})\/(\d{2})\/(\d{4})/i)||[]);return{gstin:g,ym:grYm(fy,mon),arn:ad[3]?ad[3]+"-"+ad[2]+"-"+ad[1]:""}}
 /* GSTR-3B */
 function grParse3B(rows){const o=Object.assign(grIdent(rows),{t31:{},t4:{}});let sec="",hx=null,sub="";
   for(const r of rows){const t=r.t;
@@ -81,6 +81,7 @@ function grParse2B(sh){const o={gstin:"",ym:"",a:{},na:{i:0,c:0,s:0,x:0}};const 
 function grWorkSheets(sh){const C=grCfg();return Object.keys(sh).filter(n=>sh[n].some(r=>r.slice(0,3).some(c=>grIs(c,C.sales))))}
 function grPickSheet(sh,gstin){const L=grWorkSheets(sh);if(L.length<=1)return L[0]||"";const ab=GR_ST[String(gstin).slice(0,2)]||"",nm=(STATES[String(gstin).slice(0,2)]||"").toLowerCase();
   return L.find(n=>ab&&new RegExp("\\b"+ab+"\\b","i").test(n))||L.find(n=>nm&&n.toLowerCase().includes(nm))||""}
+function grDate(v){if(typeof v==="number"&&v>20000&&v<80000){const d=new Date(Math.round((v-25569)*864e5));return d.toISOString().slice(0,10)}const m=String(v||"").match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/);return m?m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0"):""}
 function grParseWork(rows){const C=grCfg(),o={ok:false,miss:[]};
   const t=rows.slice(0,3).map(r=>r.join(" ")).join(" ");const mm=t.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\W*'?\s*(\d{4})/i);
   if(mm){const m=GR_MON.findIndex(x=>x.startsWith(mm[1].toLowerCase()))+1;o.ym=mm[2]+"-"+String(m).padStart(2,"0")}
@@ -92,7 +93,9 @@ function grParseWork(rows){const C=grCfg(),o={ok:false,miss:[]};
     if(tot<0){if(!o.miss.includes("total"))o.miss.push("total");return null}
     const get=r=>({tv:cx.tv>=0?grN(r[cx.tv]):0,i:cx.i>=0?grN(r[cx.i]):0,c:cx.c>=0?grN(r[cx.c]):0,s:cx.s>=0?grN(r[cx.s]):0});const el={};
     for(let k=tot+1;k<Math.min(rows.length,tot+5);k++){const r=rows[k];if(r.some(c=>grIs(c,C.elig)))el.elig=get(r);else if(r.some(c=>grIs(c,C.nelig)))el.nelig=grSum(el.nelig,get(r));else if(String(r[0]??"").trim())break}
-    return Object.assign(get(rows[tot]),{el})};
+    if(key==="p2b"){const dc=col(C.date),fyW=o.ym?(+o.ym.slice(5)>=4?+o.ym.slice(0,4):+o.ym.slice(0,4)-1):0;var old=[];
+      if(dc>=0&&fyW)for(let k=h+1;k<tot;k++){const r=rows[k],dt=grDate(r[dc]);if(!dt)continue;const y=+dt.slice(0,4),m=+dt.slice(5,7),f=m>=4?y:y-1;const g=get(r);if(f<fyW&&(g.i+g.c+g.s)>0)old.push(Object.assign({n:String(r[0]||"").slice(0,60),no:String(r[2]||"").slice(0,30),d:dt,f},g))}}
+    return Object.assign(get(rows[tot]),{el,old:old||null})};
   o.sales=sect("sales");o.p2b=sect("p2b");o.impg=sect("impg");o.rcm=sect("rcm");
   const lab=key=>{for(const r of rows){const j=r.findIndex(c=>typeof c==="string"&&grStarts(c,C[key]));if(j>=0){const n=r.slice(j+1).filter(c=>c!==""&&grIsNum(c)).slice(0,3).map(grN);if(n.length)return{i:n[0]||0,c:n[1]||0,s:n[2]||0}}}return null};
   o.out=lab("out");o.rcmPay=lab("rcmPay");o.p={impg:lab("pImpg"),oth:lab("pOth"),rcm:lab("pRcm"),isd:lab("pIsd"),rev:lab("pRev"),net:lab("pNet")};
@@ -137,6 +140,21 @@ function grChecks(d){const B=bt,sw=d.w&&d.w.ok?d.w:null,s1=d.r1&&d.r1.ok?d.r1:nu
   if(s2&&s3){const av=grSub(grSum(s2.a.oth,s2.a.isd),s2.a.cn),cl=grSum(s3.t4.A5,s3.t4.A4);const ex=["i","c","s"].some(k=>cl[k]-av[k]>1.5);
     L.push({name:B("2B से ज़्यादा ITC तो नहीं लिया?","ITC claimed above 2B?"),keys:["i","c","s"],lines:[["GSTR-3B 4(A)(4)+(5)",cl],["GSTR-2B",av]],st:ex?"bad":"ok",note:ex?B("3B में 2B से ज़्यादा ITC लिया गया है — कारण देखें (पिछले महीने के बिल / गलत हेड)। फ़र्क़ ज़्यादा हो तो Rule 88D के तहत DRC-01C नोटिस आ सकता है।","3B claims more ITC than 2B — check why (earlier bills / wrong head). A large gap can bring a DRC-01C notice under Rule 88D."):""});
     const na=s2.na,d2=s3.t4.D2||{i:0,c:0,s:0};if(na.i+na.c+na.s>1.5)L.push({name:B("2B में 'ITC उपलब्ध नहीं'","2B 'ITC not available'"),keys:["i","c","s"],lines:[["GSTR-2B",na],["GSTR-3B 4(D)(2)",d2]],st:Math.abs(na.i+na.c+na.s-(d2.i+d2.c+d2.s))>1.5?"warn":"ok",note:B("यह रक़म 3B की 4(D)(2) में दिखानी होती है।","This amount goes in 3B table 4(D)(2).")})}
+  /* RCM: ITC on RCM cannot exceed RCM tax; RCM tax only in cash */
+  if(s3&&s3.t31.d){const d31=s3.t31.d,a3=s3.t4.A3||{i:0,c:0,s:0};if(["i","c","s"].some(k=>(a3[k]||0)-(d31[k]||0)>1.5))L.push({name:B("RCM का ITC, दिए गए RCM टैक्स से ज़्यादा","RCM ITC above RCM tax paid"),keys:["i","c","s"],lines:[["3B 4(A)(3)",a3],["3B 3.1(d)",d31]],st:"bad",note:B("RCM का ITC उतना ही ले सकते हैं जितना RCM टैक्स भरा है।","RCM ITC can only be as much as the RCM tax paid.")});
+    if(s3.cash){const cb=s3.cash.B,need=(+d31.i||0)+(+d31.c||0)+(+d31.s||0)+(+d31.x||0),paid=cb.i+cb.c+cb.s+cb.x;if(need>1.5)L.push({name:B("RCM टैक्स कैश में","RCM tax in cash"),keys:["v"],plain:true,lines:[[B("RCM टैक्स 3.1(d)","RCM tax 3.1(d)"),{v:need}],[B("कैश में भरा 6.1(B)","Paid in cash 6.1(B)"),{v:paid}]],st:paid>=need-1.5?"ok":"bad",note:paid>=need-1.5?"":B("RCM टैक्स ITC से नहीं, सिर्फ़ कैश से भरा जाता है।","RCM tax can only be paid in cash, not from ITC.")})}}
+  /* ITC in 2B but not taken */
+  if(s2&&s3){const av=grSub(s2.a.oth,s2.a.cn),cl=s3.t4.A5||{i:0,c:0,s:0},lf={i:av.i-(cl.i||0),c:av.c-(cl.c||0),s:av.s-(cl.s||0)};if(lf.i+lf.c+lf.s>1.5)L.push({name:B("2B में ITC है पर 3B में नहीं लिया","ITC in 2B not taken in 3B"),keys:["i","c","s"],lines:[["GSTR-2B",av],["GSTR-3B 4(A)(5)",cl]],st:"warn",note:B("अगर बिल / माल नहीं मिला तो ठीक है — मिलने पर अगले महीने लें, पर Sec 16(4) की समय-सीमा (अगले साल 30 नवंबर) से पहले।","Fine if goods / bill not received — take it later, but before the Sec 16(4) time limit (30 Nov of next year).")})}
+  /* Sec 16(4): last year's bills in this month's ITC */
+  if(sw&&sw.p2b&&sw.p2b.old&&sw.p2b.old.length){const fd=(s3&&s3.arn)||todayStr(),late=sw.p2b.old.filter(b=>fd>(b.f+1)+"-11-30"),tot=grSum(...sw.p2b.old);
+    L.push({name:B("पिछले साल के बिल — Sec 16(4) समय-सीमा","Last year's bills — Sec 16(4) time limit"),keys:["i","c","s"],lines:[[sw.p2b.old.length+B(" बिल"," bills"),tot]],st:late.length?"bad":"warn",
+      note:(late.length?B("समय-सीमा (30 नवंबर) निकल चुकी — इनका ITC नहीं मिलेगा: ","Time limit (30 Nov) has passed — no ITC on: ")+late.slice(0,8).map(b=>b.n+" "+b.no+" ("+b.d+")").join("; "):B("इनका ITC अगले साल 30 नवंबर तक ही लिया जा सकता है: ","ITC on these can be taken only up to 30 Nov of the next year: ")+sw.p2b.old.slice(0,8).map(b=>b.n+" "+b.no+" ("+b.d+")").join("; "))})}
+  /* late filing */
+  const it3=items.find(x=>x.clientId===d.clientId&&(x.gstin||"")===(d.gstin||"")&&x.period===d.period&&x.code==="GSTR-3B"),it1=items.find(x=>x.clientId===d.clientId&&(x.gstin||"")===(d.gstin||"")&&x.period===d.period&&x.code==="GSTR-1");
+  const late=(arn,due,lab,cash)=>{if(!arn||!due)return;const days=Math.round((new Date(arn)-new Date(due))/864e5);if(days<=0){L.push({name:lab+B(" — समय पर भरा"," — filed on time"),keys:[],lines:[],st:"ok",note:B("भरा: ","Filed: ")+arn+B(" · आख़िरी तारीख़: "," · due: ")+due});return}
+    const fee=days*50,int=cash?Math.round(cash*0.18*days/365):0;L.push({name:lab+B(" — देर से भरा: "," — filed late: ")+days+B(" दिन"," days"),keys:["v"],plain:true,lines:[[B("लेट फ़ीस का अंदाज़ा (₹50/दिन, बिना टैक्स ₹20/दिन; ऊपरी सीमा टर्नओवर पर)","Late fee estimate (₹50/day, nil ₹20/day; cap by turnover)"),{v:fee}]].concat(cash?[[B("ब्याज का अंदाज़ा (कैश पर 18%)","Interest estimate (18% on cash)"),{v:int}]]:[]),st:"warn",note:B("भरा: ","Filed: ")+arn+B(" · आख़िरी तारीख़: "," · due: ")+due+B(" — लेट फ़ीस / ब्याज अगले 3B की 5.1 में भरना पक्का करें।"," — make sure late fee / interest is paid in the next 3B table 5.1.")})};
+  if(s3)late(s3.arn,it3&&it3.dueDate,"GSTR-3B",s3.cash?s3.cash.A.i+s3.cash.A.c+s3.cash.A.s:0);
+  if(s1){let due=it1&&it1.dueDate;if(!due&&s1.ym){const y=+s1.ym.slice(0,4),m=+s1.ym.slice(5);due=(m===12?y+1:y)+"-"+String(m===12?1:m+1).padStart(2,"0")+"-11"}late(s1.arn,due,"GSTR-1",0)}
   return L}
 function grIdentNotes(d,i){const B=bt,want=pinfo(i).m,g=i.gstin||"",n=[];[["w",B("वर्किंग","Working")],["r1","GSTR-1"],["b3","GSTR-3B"],["b2","GSTR-2B"]].forEach(([k,lab])=>{const x=d[k];if(!x)return;
   if(x.gstin&&g&&x.gstin!==g)n.push("✖ "+lab+B(": GSTIN अलग है — ",": different GSTIN — ")+x.gstin);if(x.ym&&want&&x.ym!==want)n.push("✖ "+lab+B(": महीना अलग है — ",": different month — ")+x.ym);
