@@ -4932,6 +4932,9 @@ function grParse3B(rows){const o=Object.assign(grIdent(rows),{t31:{},t4:{}});let
   for(const r of rows){const t=r.t;
     if(/^3\.1\s+Details/i.test(t)){sec="31";hx=null;continue}if(/^3\.1\.1\b/.test(t)){sec="";continue}
     if(/^4\.\s*Eligible\s*ITC/i.test(t)){sec="4";hx=null;continue}if(/^5\s+Values/i.test(t)){sec="";continue}
+    if(/^6\.1\s+Payment/i.test(t)){sec="61";hx=null;sub="";continue}if(sec==="61"&&/^Breakup/i.test(t)){sec="";continue}
+    if(sec==="61"&&!hx){const ix=r.c.findIndex(c=>/^Interest/i.test(c.s)),lx=r.c.findIndex(c=>/^Late/i.test(c.s));if(ix>0&&lx>0){let k=ix-1;while(k>=0&&!/^Tax$/i.test(r.c[k].s))k--;if(k>=0)hx=[r.c[k].x,r.c[ix].x,r.c[lx].x]}continue}
+    if(sec==="61"){const a=t.match(/^\((A|B)\)/);if(a){sub=a[1];continue}const h=t.match(/^(Integrated|Central|State\/|Cess)/);if(h&&sub){const v=grCols(r,hx);const q={Integrated:"i",Central:"c","State/":"s",Cess:"x"}[h[1]];o.cash=o.cash||{A:{i:0,c:0,s:0,x:0},B:{i:0,c:0,s:0,x:0},int:0,fee:0};o.cash[sub][q]=v[0];o.cash.int+=v[1];o.cash.fee+=v[2]}continue}
     if(sec==="31"&&!hx){hx=grHead(r,["total","integrated","central","state","cess"]);continue}
     if(sec==="4"&&!hx){hx=grHead(r,["integrated","central","state","cess"]);continue}
     if(!hx)continue;
@@ -4986,14 +4989,33 @@ function grParseWork(rows){const C=grCfg(),o={ok:false,miss:[]};
 /* labels found in a sheet — choices for "⚙ वर्किंग के नाम" */
 function grLabels(rows){const s=new Set();rows.forEach(r=>r.forEach(c=>{if(typeof c==="string"){const v=c.trim();if(v.length>1&&v.length<70&&/[A-Za-zऀ-ॿ]/.test(v)&&!/^\d{2}[A-Z]{5}\d{4}/.test(v))s.add(v)}}));return[...s].slice(0,400)}
 /* checks */
-const GR_H={tv:["मूल्य","Value"],i:["IGST","IGST"],c:["CGST","CGST"],s:["SGST","SGST"],x:["Cess","Cess"]};
+/* Rule 86B: taxable supply (other than exempt / zero-rated) above ₹50 lakh in a month → at least 1% of output tax in cash, unless an exception applies */
+const GR_86X=[["",["कोई छूट नहीं","No exception"]],["it",["इनकम टैक्स ₹1 लाख से ज़्यादा — पिछले दोनों साल (मालिक / डायरेक्टर / पार्टनर)","Income tax above ₹1 lakh in each of the last two years (owner / directors / partners)"]],["rz",["पिछले साल ₹1 लाख से ज़्यादा रिफ़ंड — ज़ीरो-रेटेड (एक्सपोर्ट / SEZ)","Refund above ₹1 lakh last year — zero-rated (export / SEZ)"]],["ri",["पिछले साल ₹1 लाख से ज़्यादा रिफ़ंड — इनवर्टेड ड्यूटी","Refund above ₹1 lakh last year — inverted duty"]],["gv",["सरकारी विभाग / PSU / लोकल अथॉरिटी / स्टैच्यूटरी बॉडी","Government department / PSU / local authority / statutory body"]]];
+function grR86(d){const B=bt,s3=d.b3&&d.b3.ok?d.b3:null,sw=d.w&&d.w.ok?d.w:null,p=parties.find(x=>x.id===d.clientId)||{},name=B("Rule 86B — 1% टैक्स कैश में","Rule 86B — 1% of tax in cash");
+  const a=s3?s3.t31.a||{}:null,tv=a?a.tv:sw&&sw.sales?sw.sales.tv:null;if(tv==null)return{name,keys:[],lines:[],st:"wait",note:B("GSTR-3B या वर्किंग डालने पर जाँच होगी","Checked once GSTR-3B or the working is uploaded")};
+  const tax=a?(+a.i||0)+(+a.c||0)+(+a.s||0)+(+a.x||0):(sw.out?sw.out.i+sw.out.c+sw.out.s:(sw.sales.i+sw.sales.c+sw.sales.s)),need=Math.round(tax)/100,L=[];const fm=grFmt;
+  L.push([B("टैक्सेबल बिक्री (एक्सपोर्ट / छूट वाली छोड़कर)","Taxable supply (excl. exempt / zero-rated)")+(a?" — 3B 3.1(a)":" — "+B("वर्किंग","working")),{v:tv}]);
+  if(tv<=5000000+0.5)return{name,keys:["v"],plain:true,lines:L,st:"ok",note:B("₹50 लाख से कम — 86B लागू नहीं।","Up to ₹50 lakh — 86B does not apply.")};
+  L.push([B("आउटपुट टैक्स","Output tax"),{v:tax}],[B("कम से कम कैश में (1%)","Minimum in cash (1%)"),{v:need}]);
+  const ex=GR_86X.find(x=>x[0]&&x[0]===p.gst86b);if(ex)return{name,keys:["v"],plain:true,lines:L,st:"ok",note:B("छूट: ","Exception: ")+B(ex[1][0],ex[1][1])+B(" — काग़ज़ फ़ाइल में रखें।"," — keep the proof on file.")};
+  if(!s3||!s3.cash)return{name,keys:["v"],plain:true,lines:L,st:"warn",note:B("86B लागू है: 3B भरते समय कम से कम ₹","86B applies: while filing 3B pay at least ₹")+fm(need)+B(" कैश लेजर से भरें (या छूट हो तो नीचे चुनें)।"," from the cash ledger (or pick an exception below).")};
+  const cash=s3.cash.A.i+s3.cash.A.c+s3.cash.A.s+s3.cash.A.x;L.push([B("कैश में भरा — 3B 6.1 (RCM छोड़कर)","Paid in cash — 3B 6.1 (excl. RCM)"),{v:cash}]);
+  if(cash>=need-1.5)return{name,keys:["v"],plain:true,lines:L,st:"ok",note:B("1% या ज़्यादा कैश में भरा गया है।","1% or more was paid in cash.")};
+  /* exception: cash paid so far this year above 1% of output tax so far (only months whose 3B is uploaded here) */
+  const ym=s3.ym||"",fy=ym?(+ym.slice(5)>=4?+ym.slice(0,4):+ym.slice(0,4)-1):0;let sc=0,so=0,n=0;
+  grItems.concat(grItems.some(x=>x.id===d.id)?[]:[d]).forEach(r=>{const b=r.b3;if(!b||!b.ok||!b.cash||r.clientId!==d.clientId||(r.gstin||"")!==(d.gstin||"")||!b.ym)return;const y=+b.ym.slice(0,4),m=+b.ym.slice(5),f=m>=4?y:y-1;if(f!==fy||b.ym>ym)return;
+    const q=b.t31.a||{};so+=(+q.i||0)+(+q.c||0)+(+q.s||0)+(+q.x||0);sc+=b.cash.A.i+b.cash.A.c+b.cash.A.s+b.cash.A.x;n++});
+  if(so&&sc>=so/100-1.5){L.push([B("इस साल अब तक कैश (","Cash this year so far (")+n+B(" महीने)"," months)"),{v:sc}],[B("इस साल अब तक टैक्स का 1%","1% of tax this year so far"),{v:so/100}]);return{name,keys:["v"],plain:true,lines:L,st:"ok",note:B("इस महीने 1% से कम, पर साल में अब तक कुल कैश 1% से ज़्यादा — छूट मिलती है। (सिर्फ़ यहाँ डाले गए महीनों के 3B गिने गए हैं)","Below 1% this month, but cash so far this year is above 1% — the exception applies. (Only months whose 3B is uploaded here are counted.)")}}
+  return{name,keys:["v"],plain:true,lines:L,st:"bad",note:B("86B का पालन नहीं दिखता: ₹","86B not met: ₹")+fm(need-cash)+B(" और कैश में भरना था। कोई छूट लागू हो तो नीचे चुनें; वरना ब्याज / नोटिस का जोखिम — सलाह लें [पक्का करें]।"," more had to be paid in cash. Pick an exception below if one applies; otherwise there is a risk of interest / notice — take advice [TO CONFIRM].")}}
+const GR_H={v:["₹","₹"],tv:["मूल्य","Value"],i:["IGST","IGST"],c:["CGST","CGST"],s:["SGST","SGST"],x:["Cess","Cess"]};
 function grSum(...a){const o={tv:0,i:0,c:0,s:0,x:0};a.filter(Boolean).forEach(v=>Object.keys(o).forEach(k=>o[k]+=+v[k]||0));return o}
 const grSub=(a,b)=>{const o={};["tv","i","c","s","x"].forEach(k=>o[k]=(+((a||{})[k])||0)-(+((b||{})[k])||0));return o};
 function grChecks(d){const B=bt,sw=d.w&&d.w.ok?d.w:null,s1=d.r1&&d.r1.ok?d.r1:null,s3=d.b3&&d.b3.ok?d.b3:null,s2=d.b2&&d.b2.ok?d.b2:null,L=[];const P=(sw&&sw.p)||{};
   const C=(name,keys,lines,note)=>{const ls=lines.filter(l=>l[1]);if(ls.length<2){L.push({name,keys,lines:ls,st:"wait",note:B("मिलान के लिए कम से कम दो फ़ाइलें / आँकड़े चाहिए","Needs at least two files / figures to compare")});return}
     let bad=false;for(let a=0;a<ls.length;a++)for(let b=a+1;b<ls.length;b++)keys.forEach(k=>{if(Math.abs((+ls[a][1][k]||0)-(+ls[b][1][k]||0))>1.5)bad=true});L.push({name,keys,lines:ls,st:bad?"bad":"ok",note})};
   const W=B("वर्किंग","Working");
-  C(B("बिक्री (आउटवर्ड सप्लाई)","Sales (outward supplies)"),["tv","i","c","s"],[[W,sw&&(sw.sales||sw.out)],["GSTR-1",s1&&s1.out],["GSTR-3B 3.1(a)+(b)",s3&&grSum(s3.t31.a,s3.t31.b)]]);
+  const r86=grR86(d);if(r86)L.push(r86);
+  C(B("बिक्री (आउटवर्ड सप्लाई)","Sales (outward supplies)"),["tv","i","c","s"],[[W,sw&&(sw.sales||sw.out)],["GSTR-1",s1&&s1.out],["GSTR-3B 3.1(a)+(b)",s3&&grSum(s3.t31.a,s3.t31.b)]],s1&&s3?B("GSTR-1 से 3B में टैक्स कम हो तो Rule 88C के तहत DRC-01B नोटिस आ सकता है।","If 3B tax is lower than GSTR-1, a DRC-01B notice can come under Rule 88C."):"");
   if(s1&&s1.hsn)C(B("GSTR-1: HSN सारांश बनाम बिल","GSTR-1: HSN summary vs invoices"),["tv","i","c","s"],[["GSTR-1 "+B("बिल","invoices"),s1.out],["GSTR-1 HSN",s1.hsn]]);
   C(B("RCM टैक्स (देना)","RCM tax payable"),["i","c","s"],[[W,sw&&(sw.rcmPay||sw.rcm)],["GSTR-3B 3.1(d)",s3&&s3.t31.d]]);
   C(B("ITC — इम्पोर्ट ऑफ़ गुड्स","ITC — import of goods"),["i"],[[W,sw&&(P.impg||sw.impg)],["GSTR-2B",s2&&(s2.a.impg||{i:0})],["GSTR-3B 4(A)(1)",s3&&s3.t4.A1]]);
@@ -5002,7 +5024,7 @@ function grChecks(d){const B=bt,sw=d.w&&d.w.ok?d.w:null,s1=d.r1&&d.r1.ok?d.r1:nu
   C(B("ITC रिवर्सल, 4(B)","ITC reversed, 4(B)"),["i","c","s"],[[W,sw&&P.rev],["GSTR-3B 4(B)",s3&&grSum(s3.t4.B1,s3.t4.B2)]]);
   C(B("नेट ITC, 4(C)","Net ITC, 4(C)"),["i","c","s"],[[W,sw&&P.net],["GSTR-3B 4(C)",s3&&s3.t4.C]]);
   if(s2&&s3){const av=grSub(grSum(s2.a.oth,s2.a.isd),s2.a.cn),cl=grSum(s3.t4.A5,s3.t4.A4);const ex=["i","c","s"].some(k=>cl[k]-av[k]>1.5);
-    L.push({name:B("2B से ज़्यादा ITC तो नहीं लिया?","ITC claimed above 2B?"),keys:["i","c","s"],lines:[["GSTR-3B 4(A)(4)+(5)",cl],["GSTR-2B",av]],st:ex?"bad":"ok",note:ex?B("3B में 2B से ज़्यादा ITC लिया गया है — कारण देखें (पिछले महीने के बिल / गलत हेड)।","3B claims more ITC than 2B — check why (earlier bills / wrong head)."):""});
+    L.push({name:B("2B से ज़्यादा ITC तो नहीं लिया?","ITC claimed above 2B?"),keys:["i","c","s"],lines:[["GSTR-3B 4(A)(4)+(5)",cl],["GSTR-2B",av]],st:ex?"bad":"ok",note:ex?B("3B में 2B से ज़्यादा ITC लिया गया है — कारण देखें (पिछले महीने के बिल / गलत हेड)। फ़र्क़ ज़्यादा हो तो Rule 88D के तहत DRC-01C नोटिस आ सकता है।","3B claims more ITC than 2B — check why (earlier bills / wrong head). A large gap can bring a DRC-01C notice under Rule 88D."):""});
     const na=s2.na,d2=s3.t4.D2||{i:0,c:0,s:0};if(na.i+na.c+na.s>1.5)L.push({name:B("2B में 'ITC उपलब्ध नहीं'","2B 'ITC not available'"),keys:["i","c","s"],lines:[["GSTR-2B",na],["GSTR-3B 4(D)(2)",d2]],st:Math.abs(na.i+na.c+na.s-(d2.i+d2.c+d2.s))>1.5?"warn":"ok",note:B("यह रक़म 3B की 4(D)(2) में दिखानी होती है।","This amount goes in 3B table 4(D)(2).")})}
   return L}
 function grIdentNotes(d,i){const B=bt,want=pinfo(i).m,g=i.gstin||"",n=[];[["w",B("वर्किंग","Working")],["r1","GSTR-1"],["b3","GSTR-3B"],["b2","GSTR-2B"]].forEach(([k,lab])=>{const x=d[k];if(!x)return;
@@ -5012,7 +5034,7 @@ function grIdentNotes(d,i){const B=bt,want=pinfo(i).m,g=i.gstin||"",n=[];[["w",B
 const grFmt=v=>(Math.round((+v||0)*100)/100).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
 function grTableHtml(c){const ic={ok:"✔",bad:"✖",warn:"⚠",wait:"⏳"},col={ok:"var(--green)",bad:"var(--red)",warn:"#9a6700",wait:"var(--mute)"};
   const head=`<tr><th></th>${c.keys.map(k=>`<th style="text-align:right">${esc(bt(GR_H[k][0],GR_H[k][1]))}</th>`).join("")}</tr>`;
-  const f0=c.lines[0]&&c.lines[0][1],rows=c.lines.map((l,j)=>`<tr><td>${esc(l[0])}</td>${c.keys.map(k=>{const off=j>0&&Math.abs((+l[1][k]||0)-(+f0[k]||0))>1.5;return `<td style="text-align:right${off?";color:var(--red);font-weight:600":""}">${grFmt(l[1][k])}${off?`<div style="font-size:11px">${(l[1][k]-f0[k]>0?"+":"")+grFmt(l[1][k]-f0[k])}</div>`:""}</td>`}).join("")}</tr>`).join("");
+  const f0=!c.plain&&c.lines[0]&&c.lines[0][1],rows=c.lines.map((l,j)=>`<tr><td>${esc(l[0])}</td>${c.keys.map(k=>{const off=!!f0&&j>0&&Math.abs((+l[1][k]||0)-(+f0[k]||0))>1.5;return `<td style="text-align:right${off?";color:var(--red);font-weight:600":""}">${grFmt(l[1][k])}${off?`<div style="font-size:11px">${(l[1][k]-f0[k]>0?"+":"")+grFmt(l[1][k]-f0[k])}</div>`:""}</td>`}).join("")}</tr>`).join("");
   const diff="";
   return `<div style="border-top:1px solid var(--line);padding:8px 0"><div><span style="color:${col[c.st]}">${ic[c.st]}</span> <b>${esc(c.name)}</b></div>${c.lines.length?`<div style="overflow-x:auto"><table style="width:100%;font-size:12.5px;border-collapse:collapse;margin-top:4px">${head}${rows}${diff}</table></div>`:""}${c.note?`<div class="m">${esc(c.note)}</div>`:""}</div>`}
 async function grSave(rec){rec.at=new Date().toISOString();rec.by=me.id;const body=JSON.parse(JSON.stringify(rec));delete body.id;
@@ -5027,13 +5049,14 @@ function openGr(itemId){grInit();const i=items.find(x=>x.id===itemId);if(!i){clo
    ${GR_SLOTS.map(([k,l,acc])=>{const x=rec[k];return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--line)"><span>${x?(x.ok?"✅":"⚠"):"⏳"}</span><div style="flex:1;min-width:0"><div>${esc(bt(l[0],l[1]))}</div><div class="m">${x?esc([x.file,x.sheet].filter(Boolean).join(" · ")):esc(bt("बाक़ी","pending"))}</div>
      ${k==="w"&&x&&x.sheets&&x.sheets.length>1&&can?`<select class="grSh" style="margin-top:4px">${x.sheets.map(n=>`<option ${n===x.sheet?"selected":""}>${esc(n)}</option>`).join("")}</select>`:""}</div>
      ${can?`<label class="btn ghost" style="padding:5px 9px;cursor:pointer">📎<input type="file" class="grF" data-k="${k}" accept="${acc}" hidden></label>`:""}</div>`}).join("")}
+   ${(()=>{const p=parties.find(x=>x.id===i.clientId)||{};return `<div style="padding:8px 0;border-top:1px solid var(--line)"><div><b>${esc(bt("Rule 86B छूट (इस क्लाइंट के लिए)","Rule 86B exception (for this client)"))}</b></div><select id="gr86" ${can?"":"disabled"} style="width:100%;margin-top:4px">${GR_86X.map(x=>`<option value="${x[0]}" ${(p.gst86b||"")===x[0]?"selected":""}>${esc(bt(x[1][0],x[1][1]))}</option>`).join("")}</select><div class="m">${esc(bt("इस साल अब तक 1% से ज़्यादा कैश वाली छूट ऐप ख़ुद देखता है।","The app checks the 'more than 1% cash so far this year' exception itself."))}</div></div>`})()}
    ${can?`<button class="btn ghost" id="grCfgB" style="margin-top:6px">⚙ ${esc(bt("वर्किंग के नाम (अपनी शीट के हिसाब से)","Working names (to match your sheet)"))}</button>`:""}
    <div class="err" id="grErr">${esc(grSt.msg||"")}</div>
    ${idn.length?`<div class="warn" style="margin:8px 0;white-space:pre-wrap">${esc(idn.join("\n"))}</div>`:""}
    <div style="margin-top:10px"><b>${esc(bt("नतीजा","Result"))}</b> <span class="m">${okN} ✔ · ${bad} ✖/⚠</span>${checks.map(grTableHtml).join("")}</div>
    <div class="m" style="margin-top:6px">${esc(bt("₹1.5 तक का फ़र्क़ राउंडिंग मानकर ठीक माना गया है।","Differences up to ₹1.5 are treated as rounding."))}</div>
    <div class="actions"><button class="btn ghost" id="grBk">${esc(bt("‹ काम","‹ Entry"))}</button><button class="btn ghost" id="grX">${esc(t("close"))}</button></div>`,{k:"gr",id:itemId});
-  grSt.msg="";$("#grX").onclick=closeSheet;$("#grBk").onclick=()=>openDetail(itemId);const cb=$("#grCfgB");if(cb)cb.onclick=()=>openGrCfg(itemId);
+  grSt.msg="";$("#grX").onclick=closeSheet;$("#grBk").onclick=()=>openDetail(itemId);const cb=$("#grCfgB");if(cb)cb.onclick=()=>openGrCfg(itemId);const x86=$("#gr86");if(x86)x86.onchange=async()=>{const p=parties.find(x=>x.id===i.clientId);if(!p)return;const q=Object.assign({},p,{gst86b:x86.value});await saveParty(q);Object.assign(p,{gst86b:x86.value});toast(bt("✅ सेव हो गया","✅ Saved"));openGr(itemId)};
   const sh=document.querySelector("#sheet .grSh");if(sh)sh.onchange=async()=>{const m=grSt.files[key];if(!m){grSt.msg=bt("शीट बदलने के लिए वर्किंग फ़ाइल फिर से डालें","Upload the working again to change the sheet");openGr(itemId);return}
     await grReadWork(rec,i,m.f,sh.value);await grSave(rec);openGr(itemId)};
   document.querySelectorAll("#sheet .grF").forEach(inp=>inp.onchange=async()=>{const f=inp.files[0],k=inp.dataset.k;if(!f)return;grSt.busy=true;$("#grErr").textContent=bt("पढ़ रहा है…","Reading…");
