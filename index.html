@@ -922,6 +922,7 @@ function openForm(id){
     <div><label>${t("dueDate")}</label><input type="date" name="dueDate" required value="${esc(v.dueDate)}"></div></div>
     <label>${t("assignee")}</label><input name="assignee" list="teamList" value="${esc(v.assignee)}" placeholder="${esc(t("assignPick"))}"><datalist id="teamList">${teamNames().map(x=>`<option value="${esc(x.name)}">`).join("")}</datalist>
     ${it&&!isFiled(it)?`<label>${t("status")}</label><select name="status"><option value="pending" ${v.status==="pending"?"selected":""}>${esc(L().st.pending)}</option><option value="progress" ${v.status==="progress"?"selected":""}>${esc(L().st.progress)}</option></select>`:""}
+    ${it&&(it.proofs||[]).length?`<div class="note" style="margin-top:8px">📎 ${esc(t("afHave",{n:it.proofs.length}))} ${it.proofs.map(p=>esc(p.name)).join(", ")}<div class="m">${esc(t("efProof"))}</div></div>`:""}
     <label>${t("notes")}</label><textarea name="notes" rows="3">${esc(v.notes)}</textarea>
     <div class="err" id="ferr"></div>
     <div class="actions"><button class="btn" type="submit">${t("save")}</button><button class="btn ghost" type="button" id="cancel">${t("cancel")}</button></div>
@@ -1040,6 +1041,11 @@ function confirmRmProof(id,k){const i=items.find(x=>x.id===id);const pf=i&&(i.pr
     try{await saveItem(it);toast(t("rpDone"));openDetail(id)}catch(e){$("#ferr").textContent=t("saveFail")}};
 }
 
+/* an ARN / ack / SRN / CIN / token: letters, digits and - / only — never an e-mail (browser autofill) */
+const arnOk=v=>{v=String(v||"").trim();return !v||(/^[A-Za-z0-9\-\/]{5,40}$/.test(v)&&!/@/.test(v))};
+Object.assign(I18N.hi,{afHave:"इस प्रविष्टि में पहले से {n} प्रूफ फ़ाइल लगी है:",efProof:"फ़ाइल जोड़ना / हटाना प्रविष्टि की स्क्रीन से होता है: \"प्रूफ जोड़ें\" / \"✕ फ़ाइल हटाएँ\"।",afKeep:"ये फ़ाइलें सुरक्षित रहेंगी। नई फ़ाइल चुनें तो वो साथ में जुड़ जाएगी — बाकी जानकारी पहले से भरी है, बस ARN जाँच लें।",afBadArn:"ARN / Ack नंबर सही नहीं लग रहा (इसमें ईमेल या खाली जगह है — शायद ब्राउज़र ने अपने-आप भर दिया)। सही नंबर लिखें या खाली छोड़ें — फ़ाइल से अपने-आप भर जाएगा।"});
+Object.assign(I18N.en,{afHave:"This entry already has {n} proof file(s):",efProof:"Files are added or removed from the entry screen: \"Add proof\" / \"✕ Remove file\".",afKeep:"These files stay. A new file you choose is added alongside — the other details are already filled, just check the ARN.",afBadArn:"The ARN / Ack number doesn't look right (it has an e-mail or spaces — probably filled in by the browser). Enter the correct number or leave it blank — it is read from the file."});
+Object.assign(I18N.zh,{afHave:"此条目已有 {n} 个凭证文件：",efProof:"文件的添加 / 移除在条目页面进行：“添加凭证” / “✕ 移除文件”。",afKeep:"这些文件会保留。新选择的文件将一并添加——其他信息已填写，只需核对 ARN。",afBadArn:"ARN / 回执号似乎不正确（包含邮箱或空格——可能是浏览器自动填写）。请输入正确号码或留空——将从文件中读取。"});
 /* which GSTIN / period an entry is for — shown big so the right state's file gets attached */
 function fileHead(i){const P=parties.find(x=>x.id===i.clientId);const nG=P?(P.gsts||[]).length:0;
   const st=i.gstin?(STATES[i.gstin.slice(0,2)]||i.gstState||""):"";
@@ -1061,15 +1067,18 @@ function openFile(id,preFiles){
   <form id="ff">
     <div class="row2"><div><label>${t("fdate")}</label><input type="date" name="filingDate" required value="${esc(i.filingDate||todayStr())}"></div>
     <div><label>${t("pen")}</label><input name="penalty" inputmode="decimal" value="${esc(i.penalty||"")}"></div></div>
-    <label>${t("arn")}</label><input name="arn" value="${esc(i.arn||"")}" placeholder="${esc(t("arnPh"))}">
+    <label>${t("arn")}</label><input name="arn" value="${esc(i.arn||"")}" placeholder="${esc(t("arnPh"))}" autocomplete="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore>
+    ${(i.proofs||[]).length?`<div class="note" style="margin-top:8px"><b>${esc(t("afHave",{n:i.proofs.length}))}</b>${i.proofs.map(p=>`<div>📎 <a href="#" data-blob="${esc(p.id)}" data-fname="${esc(p.name)}">${esc(p.name)}</a></div>`).join("")}<div class="m">${esc(t("afKeep"))}</div></div>`:""}
     <label>${t("proofFile")}</label>
-    ${assets?`<input type="file" name="proof" multiple accept="application/pdf,image/*"><label>${t("fpL")}</label><input type="password" id="fpw" autocomplete="off">`:`<div class="note">${t("noUpload")}</div>`}
+    ${assets?`<input type="file" name="proof" multiple accept="application/pdf,image/*"><label>${t("fpL")}</label><input type="text" autocomplete="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore style="-webkit-text-security:disc" id="fpw">`:`<div class="note">${t("noUpload")}</div>`}
     <div class="note">${needsArn(i)?t("proofRule"):t("proofRuleNoArn")}</div>
     <div id="pcRes"></div>
     <div class="err" id="ferr"></div>
     <div class="actions"><button class="btn green" type="submit" id="sv">${t("save")}</button><button class="btn ghost" type="button" id="cancel">${t("cancel")}</button></div>
   </form>`,{k:"file",id});
   $("#cancel").onclick=()=>openDetail(id);
+  {const clean=()=>{const a=$("#ff")&&$("#ff").arn;if(a&&a.value!==(i.arn||"")&&!arnOk(a.value))a.value=i.arn||"";const w=$("#fpw");if(w&&w.value&&!w.dataset.typed)w.value=""};
+   const w=$("#fpw");if(w)w.addEventListener("input",()=>{w.dataset.typed="1"});[60,400,1200].forEach(ms=>setTimeout(clean,ms))}
   if(preFiles&&preFiles.length&&$("#ff").proof){try{const dt=new DataTransfer();preFiles.forEach(f=>dt.items.add(f));$("#ff").proof.files=dt.files;
     $("#pcRes").innerHTML=`<div class="note">✔ ${esc(bt("फ़ाइल यहाँ चुन ली गई है — ARN देखें और सेव दबाएँ।","The file is selected here — check the ARN and press Save."))}</div>`}catch(e){}}
   let checked=null,lastSig="",autoArn="";
@@ -1093,6 +1102,7 @@ function openFile(id,preFiles){
              <div class="actions" style="margin-top:8px"><button type="button" class="btn green" id="pcMove">➜ ${esc(bt(`${gs} वाली एंट्री में लगाएँ`,`Attach to the ${gs} entry`))}</button></div></div>`);
           const mv=$("#pcMove");if(mv)mv.onclick=()=>openFile(ax.alt.id,[ax.file])}
         pb.insertAdjacentHTML("beforeend",`<div class="warn">${t("pcFix")}</div>`);sv.textContent=t("pcSaveAnyway");sv.classList.remove("green");sv.classList.add("red");sv.disabled=false;return}}
+    if(f.arn.value.trim()&&!arnOk(f.arn.value)){$("#ferr").textContent=t("afBadArn");sv.disabled=false;sv.textContent=t("save");f.arn.focus();return}
     const it=JSON.parse(JSON.stringify(i));const was=it.status;
     it.filingDate=f.filingDate.value;it.arn=f.arn.value.trim();it.penalty=f.penalty.value.trim();it.proofs=it.proofs||[];
     let issue=false,okN=0;const bads=[];
@@ -1298,7 +1308,7 @@ function docBox(label){
   const mine=wz.docs.filter(d=>d.label===label);
   return `<div class="note" style="background:#fff;border:1px dashed var(--line)"><b>📄 ${esc(t(label))}</b>
    ${mine.map(d=>`<div class="m">✔ ${esc(d.name)}</div>`).join("")}
-   ${assets?`<input type="password" class="wdpw" placeholder="${esc(t("fpL"))}" style="margin-top:6px"><input type="file" class="wdoc" data-label="${label}" accept="application/pdf,image/*" style="margin-top:6px">`:`<div class="m">${t("noUpload")}</div>`}</div>`;
+   ${assets?`<input type="text" autocomplete="off" spellcheck="false" data-lpignore="true" data-1p-ignore class="wdpw" placeholder="${esc(t("fpL"))}" style="margin-top:6px;-webkit-text-security:disc"><input type="file" class="wdoc" data-label="${label}" accept="application/pdf,image/*" style="margin-top:6px">`:`<div class="m">${t("noUpload")}</div>`}</div>`;
 }
 function ynBox(key){const v=wz[key];return `<div class="actions" style="margin-top:8px"><button type="button" class="btn ${v===true?"green":"ghost"} yn" data-v="1" style="flex:1">${t("yes")}</button><button type="button" class="btn ${v===false?"":"ghost"} yn" data-v="0" style="flex:1;${v===false?"background:var(--ink)":""}">${t("no2")}</button></div>`}
 function peopleRows(idLbl){return wz.people.map((p,i)=>`<div class="row2" style="margin-top:6px" data-pi="${i}"><input class="pn" placeholder="${esc(t("dname"))}" value="${esc(p.name)}"><div style="display:flex;gap:6px"><input class="pd" placeholder="${esc(t(idLbl))}" value="${esc(p.idno)}" inputmode="numeric"><button type="button" class="btn red prm" style="padding:6px 10px">✕</button></div></div>`).join("")}
@@ -2002,7 +2012,7 @@ function openDocUpload(){
    <label>${t("dType")}</label><select id="dut">${DOC_TYPES.map(k=>`<option value="${k}">${esc(t(k))}</option>`).join("")}</select>
    <div id="dutw" style="display:none"><label>${t("dTitle")}</label><input id="dun"></div>
    <label>${t("dPickFile")}</label><input type="file" id="duf" multiple accept="application/pdf,image/*,.doc,.docx,.xls,.xlsx">
-   <label>${t("fpL")}</label><input type="password" id="dupw" autocomplete="off">
+   <label>${t("fpL")}</label><input type="text" autocomplete="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore style="-webkit-text-security:disc" id="dupw">
    <div id="dupc"></div><div class="prog" id="gProg" style="display:none"><div></div></div><div class="err" id="ferr"></div>
    <div class="actions"><button class="btn" id="dgo">${t("save")}</button><button class="btn ghost" id="dx">${t("cancel")}</button></div>`,{k:"dup"});
   $("#dut").onchange=()=>{$("#dutw").style.display=$("#dut").value==="docOther"?"block":"none"};
@@ -2382,7 +2392,7 @@ function pdfFacts(txt){
   f.cins=uniq(U.match(/\b[LU]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6}\b/g));
   f.llpins=uniq(U.match(/\b[A-Z]{3}-\d{4}\b/g));
   f.udyams=uniq(U.match(/UDYAM-[A-Z]{2}-\d{2}-\d{7}/g));
-  f.arns=uniq((U.match(/\bAA\d{12}[0-9A-Z]\b/g)||[]).concat(T.match(/\b\d{15}\b/g)||[]));
+  f.arns=uniq((U.match(/\b[A-Z]{2}\d{12}[0-9A-Z]\b/g)||[]).concat(T.match(/\b\d{15}\b/g)||[]));
   f.forms=FORM_PAT.filter(([,re])=>re.test(T)).map(([c])=>c);
   let month=0;const pm=low.match(/(?:tax\s*period|return\s*period|period|month)\s*[:\-]?\s*(january|february|march|april|may|june|july|august|september|october|november|december)/);
   if(pm)month=MONTHS.indexOf(pm[1])+1;else{const fo=uniq(low.match(/\b(january|february|march|april|may|june|july|august|september|october|november|december)\b/g));if(fo.length===1)month=MONTHS.indexOf(fo[0])+1}
@@ -3263,7 +3273,7 @@ function openInsUpload(pre){pre=pre||{};
    <label>${esc(t("inKind"))}</label><select id="iuK">${IN_KINDS.map(k=>`<option value="${k}" ${k===(pre.kind||"policy")?"selected":""}>${esc(t("inK_"+k))}</option>`).join("")}</select>
    <div id="iuTW"><label>${esc(t("inType"))}</label><select id="iuY"><option value="">${esc(t("inTypeAuto"))}</option>${IN_TYPES.map(y=>`<option value="${y}" ${y===pre.type?"selected":""}>${esc(inTypeName(y))}</option>`).join("")}</select></div>
    <label>${esc(t("inFile"))}</label><input type="file" id="iuF" accept="application/pdf,image/*">
-   <label>${esc(t("inPw"))}</label><input id="iuP" type="password" autocomplete="off">
+   <label>${esc(t("inPw"))}</label><input id="iuP" type="text" autocomplete="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore style="-webkit-text-security:disc">
    <div class="err" id="ferr"></div>
    <div class="actions"><button class="btn" id="iuGo">${esc(t("inRead"))}</button><button class="btn ghost" id="iuX">${esc(t("cancel"))}</button></div>`,{k:"insup"});
   const syncT=()=>{$("#iuTW").style.display=["policy","renewal"].includes($("#iuK").value)?"":"none"};$("#iuK").onchange=syncT;syncT();
@@ -3478,7 +3488,7 @@ function openNtUpload(pre){pre=pre||{};
    <label>${esc(t("ntDept"))}</label><select id="nuD"><option value="">${esc(t("ntDeptAuto"))}</option>${NT_DEPTS.map(d=>`<option value="${d}">${esc(t("ntD_"+d))}</option>`).join("")}</select>
    <label>${esc(t("ntForm"))}</label><input id="nuT" placeholder="${esc(t("ntFormPh"))}">
    <label>${esc(t("inFile"))}</label><input type="file" id="nuF" accept="application/pdf,image/*" multiple>
-   <label>${esc(t("inPw"))}</label><input id="nuP" type="password" autocomplete="off">
+   <label>${esc(t("inPw"))}</label><input id="nuP" type="text" autocomplete="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore style="-webkit-text-security:disc">
    <div class="err" id="ferr"></div>
    <div class="actions"><button class="btn" id="nuGo">${esc(t("inRead"))}</button><button class="btn ghost" id="nuX">${esc(t("cancel"))}</button></div>`,{k:"ntup"});
   $("#nuX").onclick=closeSheet;
@@ -3972,7 +3982,7 @@ function c2Detect(txt,note){const T=(txt||"").replace(/\s+/g," "),N=(note||"").t
     else if(/hearing|सुनवाई/i.test(N))set("app_notice",bt("नोट में सुनवाई लिखी है","The note mentions a hearing"));
     else if(/order|फ़ैसला|फैसला|आदेश/i.test(N))set("app_order",bt("नोट में ऑर्डर लिखा है","The note mentions an order"));
     else if(/reply|जवाब/i.test(N))set("reply_filed",bt("नोट में जवाब लिखा है","The note mentions a reply"))}
-  out.ref=ackNo||g(/\b(AA\d{12}[0-9A-Z])\b/)||g(/\bCIN\s*[:\-]?\s*([0-9A-Z]{15,22})/i)||"";
+  out.ref=ackNo||g(/\b([A-Z]{2}\d{12}[0-9A-Z])\b/)||g(/\bCIN\s*[:\-]?\s*([0-9A-Z]{15,22})/i)||"";
   out.date=ackDate||"";
   const am=g(/(?:Amount|Total)\s*(?:\(Rs\.?\)|Rs\.?|₹|INR)?\s*[:\-]?\s*([\d,]{3,}(?:\.\d+)?)/i);if(out.type==="paid"&&am)out.amount=inNum(am);
   const ay=g(/Assessment Year\s*:?\s*(20\d{2}-\d{2})/i);if(ay)out.ay=ay;
