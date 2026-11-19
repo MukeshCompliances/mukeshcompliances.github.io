@@ -584,7 +584,7 @@ let parties=[],partyRef=null;
 let horizon=30;try{horizon=+localStorage.getItem("cr_hz")||30}catch(e){}
 const GROUPS=["gst","tds","it","roc","fin","pf","iex","pt","lic","other"];
 function groupOf(i){if(/^(FS$|UDIN-FS$|FR-)/.test(i.code||""))return"fin";const c=catKey(i.category);if(c==="it"&&/TDS|F16|Form 16|TCS/i.test((i.code||"")+" "+(i.name||"")))return"tds";return c}
-let items=[],clients={},me={id:null,name:null},dbRef=null,clientRef=null,assets=null,userCap=null,mode="loading",names={};
+let trashItems=[],items=[],clients={},me={id:null,name:null},dbRef=null,clientRef=null,assets=null,userCap=null,mode="loading",names={};
 let filter={q:"",cat:"",st:"",client:"",gstin:"",group:"",fy:"",pq:"",pm:""},banner=null,openState=null;
 
 const $=s=>document.querySelector(s);
@@ -620,11 +620,14 @@ function lset(k,v){try{localStorage.setItem(LP+k,JSON.stringify(v))}catch(e){}}
 async function saveItem(it){
   const body=JSON.parse(JSON.stringify(it));delete body.id;
   if(mode==="db"){await dbRef.doc(it.id).set(body)}
-  else{const i=items.findIndex(x=>x.id===it.id);if(i>=0)items[i]=it;else items.push(it);lset(LKEY,items);render()}
+  else{const i=items.findIndex(x=>x.id===it.id);if(i>=0)items[i]=it;else items.push(it);lset(LKEY,items.concat(trashItems));render()}
 }
 async function deleteItem(id){
-  if(mode==="db"){await dbRef.doc(id).delete()}
-  else{items=items.filter(x=>x.id!==id);lset(LKEY,items);render()}
+  /* soft delete: the entry goes to the trash (restorable by owner / senior), never straight out of the database */
+  const it=items.find(x=>x.id===id);if(!it)return;const body=JSON.parse(JSON.stringify(it));
+  body.deleted=true;body.deletedAt=new Date().toISOString();body.deletedBy=me.id||"local";log(body,{k:"del"});
+  if(mode==="db"){await saveItem(body)}
+  else{items=items.filter(x=>x.id!==id);trashItems=trashItems.concat(body);lset(LKEY,items.concat(trashItems));render()}
 }
 async function saveClient(p,tradeName){
   if(!p.ok||!tradeName)return;
@@ -645,7 +648,7 @@ async function deleteParty(id){
 }
 /* write many entries one by one, retrying when the store asks us to slow down */
 async function saveMany(list,onProgress){
-  if(mode!=="db"){list.forEach(it=>items.push(it));lset(LKEY,items);onProgress(list.length);render();return}
+  if(mode!=="db"){list.forEach(it=>items.push(it));lset(LKEY,items.concat(trashItems));onProgress(list.length);render();return}
   for(let k=0;k<list.length;k++){
     const it=list[k],body=JSON.parse(JSON.stringify(it));delete body.id;
     for(let tries=0;;tries++){
@@ -670,7 +673,7 @@ function paintBanner(){const b=$("#banner");if(!banner){b.style.display="none";r
 function paintWho(){$("#who").textContent=mode==="loading"?t("loading"):mode==="local"?t("localMode"):t("as",{n:me.name||t("you")})+" · "+t("myRole",{r:roleName(myRole())})}
 
 async function init(){
-  const fallback=()=>{mode="local";items=lget(LKEY,"[]");clients=lget(CKEY,"{}");parties=lget(PKEY,"[]");vInit(null);emInit(null);accInit(null);luInit(null);mnInit(null);insInit(null);ntInit(null);fxInit(null);setBanner("localBanner");paintWho();render()};
+  const fallback=()=>{mode="local";items=lget(LKEY,"[]");trashItems=items.filter(i=>i.deleted);items=items.filter(i=>!i.deleted);clients=lget(CKEY,"{}");parties=lget(PKEY,"[]");vInit(null);emInit(null);accInit(null);luInit(null);mnInit(null);insInit(null);ntInit(null);fxInit(null);setBanner("localBanner");paintWho();render()};
   if(DEMO){demoSeed();fallback();demoAfter();return}
   if(!window.claude||!window.claude.use){fallback();return}
   const [db,u,a]=await Promise.all([claude.use("db"),claude.use("user"),claude.use("assets")]);
@@ -681,7 +684,7 @@ async function init(){
   const timer=setTimeout(()=>setBanner("slowBanner"),10000);
   dbRef.onSnapshot(s=>{
     if(!s.metadata.fromCache){clearTimeout(timer);if(banner&&banner.k==="slowBanner")setBanner(null)}
-    itemsRaw=s.docs.map(d=>Object.assign({id:d.id},d.data()));items=typeof ftItemOn==="function"?itemsRaw.filter(ftItemOn):itemsRaw;render();resolveNames();
+    const all0=s.docs.map(d=>Object.assign({id:d.id},d.data()));trashItems=all0.filter(i=>i.deleted);itemsRaw=all0.filter(i=>!i.deleted);items=typeof ftItemOn==="function"?itemsRaw.filter(ftItemOn):itemsRaw;render();resolveNames();
   },e=>{clearTimeout(timer);setBanner("loadErr",e.code)});
   clientRef.onSnapshot(s=>{const c={};s.docs.forEach(d=>c[d.id]=d.data());clients=c},()=>{});
   initTeam(db);emInit(db);accInit(db);
@@ -922,7 +925,9 @@ function openForm(id){
     <label>${t("notes")}</label><textarea name="notes" rows="3">${esc(v.notes)}</textarea>
     <div class="err" id="ferr"></div>
     <div class="actions"><button class="btn" type="submit">${t("save")}</button><button class="btn ghost" type="button" id="cancel">${t("cancel")}</button></div>
+    ${it&&canDo("delete")?`<div style="margin-top:18px;border-top:1px solid var(--line);padding-top:10px;text-align:right"><a href="#" id="fDel" style="color:var(--red);font-size:13px">${esc(t("dlLink"))}</a></div>`:""}
   </form>`,{k:"form",id});
+  {const fdl=$("#fDel");if(fdl)fdl.onclick=e=>{e.preventDefault();confirmDel(id)}}
   const gIn=$("#gIn"),gInfo=$("#gInfo"),cIn=$("#cIn");
   gIn.oninput=()=>{const pos=gIn.selectionStart;gIn.value=gIn.value.toUpperCase().replace(/\s/g,"");try{gIn.setSelectionRange(pos,pos)}catch(e){}gstFeedback(gIn,gInfo,cIn,true)};
   gstFeedback(gIn,gInfo,cIn,false);
@@ -957,6 +962,9 @@ function histText(h){
     case"changed":return t("changed",{f:(h.f||[]).map(k=>L().lbl[k]||k).join(", ")});
     case"auto":return t("hAuto",{d:fmt(h.d)});
     case"apr":return t("hApr");
+    case"rmproof":return t("rpLog",{n:h.n||""});
+    case"del":return t("dlLogDel");
+    case"restore":return t("dlLogRes");
     case"pcbad":return t("hPcBad",{x:h.x||""});
     case"pcok":return t("hPcOk");
     case"pcacc":return t("hPcAcc",{r:h.r||"—"});
@@ -967,7 +975,8 @@ function histText(h){
 
 function openDetail(id){
   const i=items.find(x=>x.id===id);if(!i){closeSheet();return}
-  const proofs=(i.proofs||[]).map(p=>`<div style="margin:6px 0"><a href="#" data-blob="${esc(p.id)}" data-fname="${esc(p.name)}">📎 ${esc(p.name)}</a>${p.check?` <span class="badge ${p.check.status==="ok"?"b-filed_proof":p.check.status==="bad"?"b-late":"b-pending"}">${p.check.status==="ok"?"✔":p.check.status==="bad"?"✖":"⚠"} ${t("pcT")}</span>`:""}
+  const canRm=p=>canDo("edit")||(canDo("file")&&p.by===me.id&&i.status!=="filed_proof");
+  const proofs=(i.proofs||[]).map((p,pk)=>`<div style="margin:6px 0"><a href="#" data-blob="${esc(p.id)}" data-fname="${esc(p.name)}">📎 ${esc(p.name)}</a>${canRm(p)?` <button class="btn ghost prRm" data-k="${pk}" style="padding:2px 8px;font-size:12px;color:var(--red)">${esc(t("rpBtn"))}</button>`:""}${p.check?` <span class="badge ${p.check.status==="ok"?"b-filed_proof":p.check.status==="bad"?"b-late":"b-pending"}">${p.check.status==="ok"?"✔":p.check.status==="bad"?"✖":"⚠"} ${t("pcT")}</span>`:""}
     ${p.orig&&p.orig!==p.name?`<div class="m">${esc(p.orig)}</div>`:""}${p.check&&(p.check.rows||[]).length&&(p.check.status!=="ok"||canDo("approve"))?cmpTable({rows:p.check.rows}):""}${p.check&&p.check.dup?`<div class="pcdup">⚠ ${esc(t("pcDup",{w:p.check.dup}))}</div>`:""}</div>`).join("")||`<span class="m">${t("noProof")}</span>`;
   const hist=(i.history||[]).slice().reverse().map(h=>`<div>${esc(histText(h))}<br><small>${esc(nm(h.by))} · ${new Date(h.at).toLocaleString(locale())}</small></div>`).join("");
   const np=[];if(!(i.proofs||[]).length)np.push(t("npFile"));if(!i.arn&&needsArn(i))np.push(t("npArn"));
@@ -990,7 +999,6 @@ function openDetail(id){
     ${i.needsApproval&&canDo("approve")?`<button class="btn green" id="apOk">${t("approve")}</button><button class="btn red" id="apNo">${t("reject")}</button>`:""}
     ${!canDo("file")?"":!isFiled(i)?`<button class="btn green" id="markFiled">${t("markFiled")}</button>`:`<button class="btn" id="addProof">${i.status==="filed_noproof"?t("addProofArn"):t("addProof")}</button>`}
     ${canDo("edit")||(canDo("editOwn")&&i.status!=="filed_proof"&&!i.needsApproval)?`<button class="btn ghost" id="edit">${t("edit")}</button>`:""}
-    ${canDo("delete")?`<button class="btn red" id="del">${t("del")}</button>`:""}
     <button class="btn ghost" id="close">${t("close")}</button>
   </div>
   <h2>${t("history")}</h2><div class="hist">${hist||"—"}</div>`,{k:"detail",id});
@@ -998,7 +1006,7 @@ function openDetail(id){
   const wcb=$("#wcB");if(wcb)wcb.onclick=async()=>{i.waitClient=!i.waitClient;log(i,{k:"edited"});await saveItem(i);if(mode!=="db")render();openDetail(id)};
   $("#mnHowB").onclick=()=>openManual(mnKey(i.code),id);$("#erHowB").onclick=()=>openErr(mnKey(i.code),id);
   $("#close").onclick=closeSheet;const ed=$("#edit");if(ed)ed.onclick=()=>openForm(id);
-  const dl=$("#del");if(dl)dl.onclick=()=>confirmDel(id);
+  document.querySelectorAll("#sheet .prRm").forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();confirmRmProof(id,+b.dataset.k)});
   const ao=$("#apOk");if(ao)ao.onclick=()=>decideApproval(id,true);
   const pa=$("#pcAcc");if(pa)pa.onclick=()=>{openSheet(`<h3>${t("pcAccept")}</h3><label>${t("pcAcceptR")}</label><textarea id="pcr" rows="3"></textarea><div class="actions"><button class="btn green" id="pcGo">${t("pcAccept")}</button><button class="btn ghost" id="pcX">${t("cancel")}</button></div>`,{k:"pcacc",id});
     $("#pcX").onclick=()=>openDetail(id);$("#pcGo").onclick=async()=>{const it=JSON.parse(JSON.stringify(items.find(x=>x.id===id)));it.proofIssue=false;if((it.arn||!needsArn(it))&&(it.proofs||[]).length)it.status="filed_proof";log(it,{k:"pcacc",r:$("#pcr").value.trim()});try{await saveItem(it);toast(t("pcAccepted"));openDetail(id)}catch(e){toast(t("saveFail"))}}};
@@ -1007,16 +1015,49 @@ function openDetail(id){
   const mf=$("#markFiled");if(mf)mf.onclick=()=>openFile(id);
   const ap=$("#addProof");if(ap)ap.onclick=()=>openFile(id);
 }
-function confirmDel(id){const i=items.find(x=>x.id===id);
-  openSheet(`<h3>${t("delQ")}</h3><p>${esc(t("delTxt",{n:i.name}))}</p>
-  <div class="actions"><button class="btn red" id="y">${t("yesDel")}</button><button class="btn ghost" id="n">${t("no")}</button></div><div class="err" id="ferr"></div>`,{k:"del",id});
+function confirmDel(id){const i=items.find(x=>x.id===id);if(!i)return;const np=(i.proofs||[]).length;
+  openSheet(`<h3>🗑 ${esc(t("dlQ"))}</h3>
+  <div class="note" style="margin-top:6px"><b>${esc(dispName(i))}</b> · ${esc(i.client||"")}${i.gstin?" · "+esc(i.gstin):""}${i.period?" · "+esc(i.period):""}</div>
+  <div class="warn">${esc(t("dlWarn",{p:np?t("dlWarnP",{n:np}):""}))}</div>
+  ${np?`<div class="note" style="background:var(--green-soft)">${esc(t("dlOnlyFile"))}</div>`:""}
+  <label class="chk" style="margin-top:10px"><input type="checkbox" id="dSure">${esc(t("dlTick"))}</label>
+  <div class="actions"><button class="btn red" id="y" disabled>${t("yesDel")}</button><button class="btn ghost" id="n">${t("no")}</button></div><div class="err" id="ferr"></div>`,{k:"del",id});
+  $("#dSure").onchange=e=>{$("#y").disabled=!e.target.checked};
   $("#n").onclick=()=>openDetail(id);
-  $("#y").onclick=async()=>{try{await deleteItem(id);closeSheet();toast(t("deleted"))}catch(e){$("#ferr").textContent=t("delFail")}};
+  $("#y").onclick=async()=>{if(!$("#dSure").checked)return;try{await deleteItem(id);closeSheet();toast(t("dlDone"))}catch(e){$("#ferr").textContent=t("delFail")}};
+}
+/* remove one proof file (the entry stays) */
+function confirmRmProof(id,k){const i=items.find(x=>x.id===id);const pf=i&&(i.proofs||[])[k];if(!pf)return;
+  openSheet(`<h3>✕ ${esc(t("rpQ"))}</h3><div class="note">📎 ${esc(pf.name)}</div>
+   <div class="m" style="margin-top:6px">${esc(t("rpTxt"))}</div>
+   <div class="actions"><button class="btn red" id="y">${esc(t("rpYes"))}</button><button class="btn ghost" id="n">${t("no")}</button></div><div class="err" id="ferr"></div>`,{k:"rmproof",id});
+  $("#n").onclick=()=>openDetail(id);
+  $("#y").onclick=async()=>{const it=JSON.parse(JSON.stringify(i));const [gone]=it.proofs.splice(k,1);
+    it.removedProofs=(it.removedProofs||[]).concat(Object.assign({},gone,{removedAt:new Date().toISOString(),removedBy:me.id||"local"})).slice(-20);
+    if(it.status==="filed_proof"&&!it.proofs.length)it.status="filed_noproof";
+    if(it.proofIssue&&!it.proofs.some(p=>p.check&&p.check.status==="bad"))it.proofIssue=false;
+    log(it,{k:"rmproof",n:gone.name});
+    try{await saveItem(it);toast(t("rpDone"));openDetail(id)}catch(e){$("#ferr").textContent=t("saveFail")}};
 }
 
-function openFile(id){
+/* which GSTIN / period an entry is for — shown big so the right state's file gets attached */
+function fileHead(i){const P=parties.find(x=>x.id===i.clientId);const nG=P?(P.gsts||[]).length:0;
+  const st=i.gstin?(STATES[i.gstin.slice(0,2)]||i.gstState||""):"";
+  return `<div class="m">${esc(dispName(i))}${i.client?" · "+esc(i.client):""}</div>
+   ${i.gstin||i.period?`<div class="note" style="margin-top:6px;background:var(--brand-soft);color:var(--ink)">${i.gstin?`<b style="font-size:16px">${esc(st)}</b> · <b>${esc(i.gstin)}</b>`:""}${i.period?`${i.gstin?" · ":""}<b>${esc(i.period)}</b>`:""}
+   ${i.gstin&&nG>1?`<div class="m" style="margin-top:4px">⚠ ${esc(bt(`इस क्लाइंट के ${nG} GSTIN हैं — सिर्फ़ ${st} (${i.gstin.slice(0,2)}…) वाली फ़ाइल लगाएँ।`,`This client has ${nG} GSTINs — attach only the ${st} (${i.gstin.slice(0,2)}…) file.`))}</div>`:""}</div>`:""}`}
+/* the file belongs to another GSTIN: find that GSTIN's entry for the same return and period */
+function altEntryFor(i,checked){
+  for(const r of checked){if(!r.facts||!r.cmp||!r.cmp.rows.some(x=>x.key==="pcGstin"&&x.ok===false))continue;
+    for(const g of (r.facts.gstins||[])){if(g===i.gstin)continue;
+      const c=items.filter(x=>x.id!==i.id&&x.gstin===g&&(x.code||normRet(x.name))===(i.code||normRet(i.name))&&(x.period||"")===(i.period||""));
+      const alt=c.find(x=>x.status!=="filed_proof")||c[0];
+      if(alt)return{alt,g,file:r.file,done:alt.status==="filed_proof"};
+      return{g,file:r.file,none:true}}}
+  return null}
+function openFile(id,preFiles){
   const i=items.find(x=>x.id===id);const already=isFiled(i);
-  openSheet(`<h3>${already?t("fileT2"):t("fileT")}</h3><div class="m">${esc(dispName(i))} ${i.client?"· "+esc(i.client):""}</div>
+  openSheet(`<h3>${already?t("fileT2"):t("fileT")}</h3>${fileHead(i)}
   <form id="ff">
     <div class="row2"><div><label>${t("fdate")}</label><input type="date" name="filingDate" required value="${esc(i.filingDate||todayStr())}"></div>
     <div><label>${t("pen")}</label><input name="penalty" inputmode="decimal" value="${esc(i.penalty||"")}"></div></div>
@@ -1029,6 +1070,8 @@ function openFile(id){
     <div class="actions"><button class="btn green" type="submit" id="sv">${t("save")}</button><button class="btn ghost" type="button" id="cancel">${t("cancel")}</button></div>
   </form>`,{k:"file",id});
   $("#cancel").onclick=()=>openDetail(id);
+  if(preFiles&&preFiles.length&&$("#ff").proof){try{const dt=new DataTransfer();preFiles.forEach(f=>dt.items.add(f));$("#ff").proof.files=dt.files;
+    $("#pcRes").innerHTML=`<div class="note">✔ ${esc(bt("फ़ाइल यहाँ चुन ली गई है — ARN देखें और सेव दबाएँ।","The file is selected here — check the ARN and press Save."))}</div>`}catch(e){}}
   let checked=null,lastSig="",autoArn="";
   const sig=f=>[...(f.proof?f.proof.files:[])].map(x=>x.name+x.size).join("|")+"#"+f.arn.value.trim()+"#"+(($("#fpw")||{}).value||"");
   $("#ff").onsubmit=async e=>{e.preventDefault();const f=e.target;const sv=$("#sv");sv.disabled=true;$("#ferr").textContent="";
@@ -1042,7 +1085,14 @@ function openFile(id){
       lastSig=sig(f);
       if(checked.some(r=>r.locked)){sv.textContent=t("save");sv.disabled=false;return}
       if(checked.some(r=>r.pw)&&!vKey){const gb=document.createElement("div");pb.appendChild(gb);const g=vaultGate(gb);if(g===false){sv.textContent=t("save");sv.disabled=false;checked=null;return}}
-      if(checked.some(r=>r.status==="bad")){pb.insertAdjacentHTML("beforeend",`<div class="warn">${t("pcFix")}</div>`);sv.textContent=t("pcSaveAnyway");sv.classList.remove("green");sv.classList.add("red");sv.disabled=false;return}}
+      if(checked.some(r=>r.status==="bad")){const ax=altEntryFor(i,checked);
+        if(ax){const gs=STATES[ax.g.slice(0,2)]||ax.g;
+          pb.insertAdjacentHTML("beforeend",ax.none?`<div class="warn">${esc(bt(`ये फ़ाइल ${gs} (${ax.g}) की है — इस GSTIN की ${i.period||""} वाली एंट्री ऐप में नहीं मिली। क्लाइंट में ये GSTIN जोड़ें या सही फ़ाइल चुनें।`,`This file is for ${gs} (${ax.g}) — no ${i.period||""} entry for that GSTIN was found. Add the GSTIN to the client or choose the right file.`))}</div>`
+           :`<div class="pcbox ok" style="margin-top:8px"><b>💡 ${esc(bt(`ये फ़ाइल ${gs} (${ax.g}) की ${dispName(ax.alt)} ${ax.alt.period||""} है।`,`This file is ${gs} (${ax.g}) ${dispName(ax.alt)} ${ax.alt.period||""}.`))}</b>
+             <div class="m">${esc(ax.done?bt("उस एंट्री में प्रूफ पहले से लगा है — फिर भी वहाँ जोड़ सकते हैं।","That entry already has proof — you can still add it there."):bt("एक बटन से इसे सही एंट्री में लगा दें, फिर इस एंट्री के लिए सही फ़ाइल चुनें।","Move it to the right entry with one tap, then choose the right file for this entry."))}</div>
+             <div class="actions" style="margin-top:8px"><button type="button" class="btn green" id="pcMove">➜ ${esc(bt(`${gs} वाली एंट्री में लगाएँ`,`Attach to the ${gs} entry`))}</button></div></div>`);
+          const mv=$("#pcMove");if(mv)mv.onclick=()=>openFile(ax.alt.id,[ax.file])}
+        pb.insertAdjacentHTML("beforeend",`<div class="warn">${t("pcFix")}</div>`);sv.textContent=t("pcSaveAnyway");sv.classList.remove("green");sv.classList.add("red");sv.disabled=false;return}}
     const it=JSON.parse(JSON.stringify(i));const was=it.status;
     it.filingDate=f.filingDate.value;it.arn=f.arn.value.trim();it.penalty=f.penalty.value.trim();it.proofs=it.proofs||[];
     let issue=false,okN=0;const bads=[];
@@ -1504,7 +1554,7 @@ function makeEntry(p,o,now,markPast,td){
 /* entries missing for every client from DEFAULT_START up to 12 months ahead */
 function missingAll(){
   const td=todayStr(),[ty,tm,tdd]=td.split("-").map(Number),to=ymd(ty+1,tm,tdd);
-  const have=new Set(items.map(i=>i.genKey).filter(Boolean));const res=[];
+  const have=new Set(items.concat(trashItems).map(i=>i.genKey).filter(Boolean));const res=[];
   parties.forEach(p=>generate(p,DEFAULT_START,to).forEach(o=>{if(!have.has(genKeyOf(p.id,o)))res.push({p,o})}));
   return res;
 }
@@ -1542,7 +1592,7 @@ function openGen(pid){
   let todo=[];
   const [ty,tm,tdd]=td.split("-").map(Number),to=ymd(ty+1,tm,tdd);
   const prev=()=>{const from=$("#gFrom").value||def;
-    const have=new Set(items.map(i=>i.genKey).filter(Boolean));const all=generate(p,from,to);
+    const have=new Set(items.concat(trashItems).map(i=>i.genKey).filter(Boolean));const all=generate(p,from,to);
     todo=all.filter(o=>!have.has(genKeyOf(pid,o)));const skip=all.length-todo.length;
     const byCat={};todo.forEach(o=>byCat[o.cat]=(byCat[o.cat]||0)+1);const pastN=todo.filter(o=>o.due<td).length;
     $("#gPrev").innerHTML=todo.length?`<b>${t("genWill",{n:todo.length})}</b>${pastN?`<div class="m">${t("pastN",{n:pastN})}</div>`:""}`+Object.entries(byCat).map(([c,n])=>`<div class="gencat"><span>${esc(L().cat[c])}</span><b>${n}</b></div>`).join("")+(skip?`<div class="m" style="margin-top:6px">${t("genSkip",{n:skip})}</div>`:"")
@@ -2597,6 +2647,7 @@ document.querySelectorAll("#lang button").forEach(b=>b.onclick=()=>{
   else if(openState&&(openState.k==="csadd"||openState.k==="csedit"||openState.k==="c2done"))openNtDetail(openState.id);
   else if(openState&&openState.k==="insdet")openInsDetail(openState.id);
   else if(openState&&openState.k==="manual")openManual(openState.id,openState.item);
+  else if(openState&&openState.k==="pproof")openPortalProof(openState.id);
   else if(openState&&openState.k==="wiz"&&wz){wzCollect(wzSteps()[wz.step]);wzRender()}
   else if(openState)closeSheet();
 });
@@ -5080,7 +5131,10 @@ const _fpRow=row;row=function(i){const h=_fpRow(i);if(i.code!=="FS")return h;con
   return h.replace('<div style="margin-top:6px">','<div style="margin-top:6px"><span class="badge '+(d===L?"b-filed":"b-up")+'" style="margin-right:4px">📑 '+d+"/"+L+"</span>")};
 
 /* ===== what's new: shown once per person; add a new entry at the top for each change ===== */
-const WHATS_NEW=[{id:"2026-11-17",items:[
+const WHATS_NEW=[{id:"2026-11-19b",items:[
+ ["✕ गलत प्रूफ फ़ाइल अब अलग से हटाई जा सकती है — प्रूफ के आगे \"✕ फ़ाइल हटाएँ\"। प्रविष्टि, ARN और इतिहास सुरक्षित रहते हैं।","✕ A wrong proof file can now be removed on its own — \"✕ Remove file\" next to the proof. The entry, ARN and history stay intact."],
+ ["🗑 पूरी प्रविष्टि हटाने का विकल्प अब \"बदलें\" में सबसे नीचे है और पुष्टि के बाद ही चलता है। हटाई गई प्रविष्टि ट्रैश में जाती है — 👥 टीम टैब से \"↩ पुनः स्थापित करें\"।","🗑 Deleting an entire entry is now at the bottom of \"Edit\" and needs confirmation. Deleted entries move to Trash — \"↩ Restore\" from the 👥 Team tab."]]},{id:"2026-11-19",items:[
+ ["🧾 हर कंप्लायंस में \"पोर्टल से चालान / प्रूफ\": सही पोर्टल खुलता है, लॉगिन वाला GSTIN / PAN / TAN और वॉल्ट का सेव लॉगिन कॉपी होता है, चालान कहाँ मिलेगा ये स्टेप दिखते हैं, फिर वहीं से अपलोड।","🧾 \"Challan / proof from portal\" on every compliance: opens the right portal, copies the login GSTIN / PAN / TAN and the vault login, shows where the challan sits, then upload right there."]]},{id:"2026-11-17",items:[
  ["🧮 GST जाँच: अपनी वर्किंग, GSTR-1, GSTR-3B और GSTR-2B डालें — ऐप हेड-वार मिलाकर फ़र्क़ दिखाएगा। वर्किंग के नाम अपनी शीट के हिसाब से ⚙ में बदलें।","🧮 GST check: upload your working, GSTR-1, GSTR-3B and GSTR-2B — the app compares them head-wise. Set your sheet's names in ⚙."]]},{id:"2026-11-16b",items:[
  ["📰 कानून के बदलाव में अब 📘 आसान भाषा में समझें, तैयार सवाल और अपना सवाल पूछने का डिब्बा — बिना Claude के जवाब।","📰 Law updates now have 📘 a plain-language summary, ready questions and an ask box — answered without Claude."]]},{id:"2026-11-16",items:[
  ["ITR में नया 'Tax Year' (इनकम-टैक्स एक्ट 2025) भी पहचाना जाता है — FY 2026-27 से।","ITR proof check now understands the new 'Tax Year' (Income-tax Act 2025) — from FY 2026-27."],
@@ -5150,10 +5204,10 @@ let grRef=null,grItems=[],grSt={id:null,busy:false,msg:"",files:{}},grCfgRef=nul
 const GR_DEF={
  sales:["SALES","Outward supplies","Sales register"],p2b:["PURCHASES AS PER GSTR 2-B","Purchases as per 2B","ITC as per 2B"],impg:["IMPG BILLS","Import of goods"],rcm:["RCM Details","Reverse charge"],
  total:["GROSS TOTAL","Total","Grand Total"],tv:["Taxable value","Taxable","Assessable value"],i:["IGST","Integrated"],c:["CGST","Central"],s:["SGST","UTGST","State"],
- elig:["Eligible"],nelig:["Not Eligible","Ineligible","POS InEligible"],
+ date:["Bill Date","Invoice Date","Date"],invno:["Invoice Number","Invoice No","Bill Number","Bill No","Document Number","Doc No","Voucher No"],gst:["GSTIN","GSTIN of supplier","GSTIN/UIN","Party GSTIN"],pname:["Supplier","Party","Party Name","Trade/Legal name","Name","Particulars","Client"],payDate:["Payment Date","Paid On","Date of Payment","Cheque Date","Payment Voucher Date"],ledger:["Ledger","Ledger Name","Expense Head","Account","Nature of Expense","Purchase Ledger"],hsn:["HSN","HSN Code","HSN/SAC","SAC"],irn:["IRN","Ack No","Ack. No","Acknowledgement No"],elig:["Eligible"],nelig:["Not Eligible","Ineligible","POS InEligible"],
  out:["Sales Tax Payable","Output tax"],rcmPay:["RCM Payable"],pImpg:["Import of Goods"],pOth:["All Other ITC"],pRcm:["Invard Supply Liable to reverse Charge","Inward Supply Liable to reverse Charge"],pIsd:["Inward Supply from ISD"],pRev:["ITC Reverese","ITC Reversed","ITC Reverse"],pNet:["NET ITC Available"]};
 const GR_KEYS=[["sales",["बिक्री वाला हिस्सा","Sales section"],"sec"],["p2b",["2B वाली ख़रीद का हिस्सा","Purchases-as-per-2B section"],"sec"],["impg",["इम्पोर्ट (IMPG) का हिस्सा","Import (IMPG) section"],"sec"],["rcm",["RCM का हिस्सा","RCM section"],"sec"],
- ["total",["हिस्से की कुल वाली लाइन","Section total row"],"lab"],["tv",["टैक्सेबल मूल्य का कॉलम","Taxable value column"],"col"],["i",["IGST कॉलम","IGST column"],"col"],["c",["CGST कॉलम","CGST column"],"col"],["s",["SGST कॉलम","SGST column"],"col"],
+ ["total",["हिस्से की कुल वाली लाइन","Section total row"],"lab"],["tv",["टैक्सेबल मूल्य का कॉलम","Taxable value column"],"col"],["i",["IGST कॉलम","IGST column"],"col"],["c",["CGST कॉलम","CGST column"],"col"],["s",["SGST कॉलम","SGST column"],"col"],["date",["बिल की तारीख़ का कॉलम","Bill date column"],"col"],["invno",["बिल / इनवॉइस नंबर का कॉलम","Bill / invoice number column"],"col"],["gst",["GSTIN का कॉलम","GSTIN column"],"col"],["pname",["पार्टी के नाम का कॉलम","Party name column"],"col"],["payDate",["भुगतान की तारीख़ का कॉलम (पेमेंट रजिस्टर)","Payment date column (payment register)"],"col"],["ledger",["लेजर / ख़र्च के नाम का कॉलम (ख़रीद रजिस्टर)","Ledger / expense column (purchase register)"],"col"],["hsn",["HSN / SAC कॉलम","HSN / SAC column"],"col"],["irn",["IRN / Ack नंबर का कॉलम (e-invoice सूची)","IRN / Ack no column (e-invoice list)"],"col"],
  ["elig",["'Eligible' वाली लाइन","'Eligible' row"],"lab"],["nelig",["'Not eligible' वाली लाइन","'Not eligible' row"],"lab"],
  ["out",["कुल आउटपुट टैक्स","Total output tax"],"lab"],["rcmPay",["RCM देय","RCM payable"],"lab"],["pImpg",["3B 4A(1) इम्पोर्ट","3B 4A(1) imports"],"lab"],["pOth",["3B 4A(5) बाक़ी ITC","3B 4A(5) other ITC"],"lab"],["pRcm",["3B 4A(3) RCM ITC","3B 4A(3) RCM ITC"],"lab"],["pIsd",["3B 4A(4) ISD","3B 4A(4) ISD"],"lab"],["pRev",["3B 4B रिवर्सल","3B 4B reversal"],"lab"],["pNet",["3B 4C नेट ITC","3B 4C net ITC"],"lab"]];
 function grCfg(){const u=grCfgU||{};const o={};Object.keys(GR_DEF).forEach(k=>o[k]=(u[k]&&u[k].length?u[k]:[]).concat(GR_DEF[k]));return o}
@@ -5181,7 +5235,7 @@ async function grPdfRows(file,clientId){const buf=new Uint8Array(await file.arra
 function grCols(row,hx){const v=hx.map(()=>null);row.c.forEach(c=>{if(!grIsNum(c.s))return;let k=-1;hx.forEach((x,j)=>{if(x<=c.r+1)k=j});if(k>=0&&v[k]===null)v[k]=grN(c.s)});return v.map(x=>x||0)}
 function grHead(row,words){const hx=[];words.forEach(w=>{const c=row.c.find(c=>c.s.toLowerCase().startsWith(w));if(c)hx.push(c.x)});return hx.length===words.length?hx:null}
 function grIdent(rows){const T=rows.slice(0,25).map(r=>r.t).join(" ");const g=(T.match(/\b\d{2}[A-Z]{5}\d{4}[A-Z][0-9A-Z]Z[0-9A-Z]\b/)||[])[0]||"";
-  const fy=(T.match(/(?:Financial\s*year|Year)\s*(\d{4})-\d{2}/i)||[])[1];const mon=(T.match(/(?:Tax\s*period|Period)\s*([A-Za-z]+)/i)||[])[1];return{gstin:g,ym:grYm(fy,mon)}}
+  const fy=(T.match(/(?:Financial\s*year|Year)\s*(\d{4})-\d{2}/i)||[])[1];const mon=(T.match(/(?:Tax\s*period|Period)\s*([A-Za-z]+)/i)||[])[1];const ad=(T.match(/(?:Date\s*of\s*ARN|ARN\s*date)\s*(\d{2})\/(\d{2})\/(\d{4})/i)||[]);return{gstin:g,ym:grYm(fy,mon),arn:ad[3]?ad[3]+"-"+ad[2]+"-"+ad[1]:""}}
 /* GSTR-3B */
 function grParse3B(rows){const o=Object.assign(grIdent(rows),{t31:{},t4:{}});let sec="",hx=null,sub="";
   for(const r of rows){const t=r.t;
@@ -5220,11 +5274,26 @@ function grParse2B(sh){const o={gstin:"",ym:"",a:{},na:{i:0,c:0,s:0,x:0}};const 
     if(!/^(I|II|III|IV|V|VI)$/.test(a))return;const k=part==="B"?"cn":/all\s*other/i.test(h)?"oth":/import\s*of\s*goods/i.test(h)?"impg":/ISD/.test(h)?"isd":/reverse\s*charge/i.test(h)?"rcm":null;
     if(k){const x=v(r);if(o.a[k])["i","c","s","x"].forEach(z=>o.a[k][z]+=x[z]);else o.a[k]=x}});
   (sh["ITC not available"]||[]).forEach(r=>{if(/^(I|II|III|IV|V|VI)$/.test(String(r[0]).trim())){const x=v(r);["i","c","s","x"].forEach(z=>o.na[z]+=x[z])}});
+  o.rev={i:0,c:0,s:0,x:0};(sh["ITC Reversal"]||[]).forEach(r=>{if(/^(I|II|III|IV|V|VI)$/.test(String(r[0]).trim())){const x=v(r);["i","c","s","x"].forEach(z=>o.rev[z]+=x[z])}});
+  const b=sh["B2B"]||[];let hr=b.findIndex(r=>r.some(c=>/invoice\s*date/i.test(String(c))));if(hr>0){const H=b[hr].map((c,j)=>String(c||b[hr-1][j]||"").toLowerCase());const cl=re=>H.findIndex(c=>re.test(c));
+    const k={n:cl(/trade|legal/),no:cl(/invoice\s*number/),d:cl(/invoice\s*date/),i:cl(/integrated/),c:cl(/central/),s:cl(/state/),av:cl(/itc\s*avail/),rc:cl(/reverse/)};o.inv=[];
+    for(let j=hr+1;j<b.length&&o.inv.length<3000;j++){const r=b[j];if(!r[k.no])continue;o.inv.push({n:String(r[k.n]||"").slice(0,50),no:String(r[k.no]).slice(0,30),d:grDate(r[k.d]),i:grN(r[k.i]),c:grN(r[k.c]),s:grN(r[k.s]),av:String(r[k.av]||"").trim(),rc:/yes/i.test(String(r[k.rc]||""))})}}
   o.ok=!!Object.keys(o.a).length;return o}
 /* the firm's working: names come from grCfg() */
 function grWorkSheets(sh){const C=grCfg();return Object.keys(sh).filter(n=>sh[n].some(r=>r.slice(0,3).some(c=>grIs(c,C.sales))))}
 function grPickSheet(sh,gstin){const L=grWorkSheets(sh);if(L.length<=1)return L[0]||"";const ab=GR_ST[String(gstin).slice(0,2)]||"",nm=(STATES[String(gstin).slice(0,2)]||"").toLowerCase();
   return L.find(n=>ab&&new RegExp("\\b"+ab+"\\b","i").test(n))||L.find(n=>nm&&n.toLowerCase().includes(nm))||""}
+/* any Excel register: find the header row by the firm's column names, read rows */
+function grTable(sh,want){const C=grCfg();let best=null;Object.keys(sh).forEach(n=>{const rows=sh[n];for(let h=0;h<Math.min(rows.length,40);h++){const cols={};let hit=0;want.forEach(k=>{const j=rows[h].findIndex(c=>grStarts(c,C[k]));cols[k]=j;if(j>=0)hit++});
+    if(hit>=2&&(!best||hit>best.hit)){best={hit,cols,rows:rows.slice(h+1),sheet:n};break}}});return best}
+const grNo=s=>String(s||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+function grParsePay(sh){const T=grTable(sh,["invno","payDate","gst","pname"]);if(!T||T.cols.invno<0||T.cols.payDate<0)return{ok:false,need:["invno","payDate"]};const c=T.cols,L=[];
+  T.rows.forEach(r=>{const no=grNo(r[c.invno]),pd=grDate(r[c.payDate]);if(no&&pd&&L.length<6000)L.push({no,pd,g:c.gst>=0?String(r[c.gst]||"").trim():""})});return{ok:L.length>0,list:L,sheet:T.sheet}}
+function grParsePR(sh){const T=grTable(sh,["invno","ledger","hsn","pname","gst","i","c","s"]);if(!T||(T.cols.ledger<0&&T.cols.hsn<0))return{ok:false,need:["ledger","hsn"]};const c=T.cols,L=[];
+  T.rows.forEach(r=>{const no=String(r[c.invno]??"").trim();if(!no&&!(c.pname>=0&&r[c.pname]))return;const x={no:no.slice(0,30),n:c.pname>=0?String(r[c.pname]||"").slice(0,50):"",led:c.ledger>=0?String(r[c.ledger]||"").slice(0,60):"",hsn:c.hsn>=0?String(r[c.hsn]||"").trim():"",i:c.i>=0?grN(r[c.i]):0,c:c.c>=0?grN(r[c.c]):0,s:c.s>=0?grN(r[c.s]):0};if((x.led||x.hsn)&&L.length<6000)L.push(x)});return{ok:L.length>0,list:L,sheet:T.sheet}}
+function grParseEI(sh){const T=grTable(sh,["invno","irn","date","gst"]);if(!T||T.cols.invno<0)return{ok:false,need:["invno","irn"]};const c=T.cols,L=[];
+  T.rows.forEach(r=>{const no=grNo(r[c.invno]);if(no&&(c.irn<0||String(r[c.irn]||"").trim())&&L.length<8000)L.push(no)});return{ok:L.length>0,list:L,sheet:T.sheet}}
+function grDate(v){if(typeof v==="number"&&v>20000&&v<80000){const d=new Date(Math.round((v-25569)*864e5));return d.toISOString().slice(0,10)}const m=String(v||"").match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/);return m?m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0"):""}
 function grParseWork(rows){const C=grCfg(),o={ok:false,miss:[]};
   const t=rows.slice(0,3).map(r=>r.join(" ")).join(" ");const mm=t.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\W*'?\s*(\d{4})/i);
   if(mm){const m=GR_MON.findIndex(x=>x.startsWith(mm[1].toLowerCase()))+1;o.ym=mm[2]+"-"+String(m).padStart(2,"0")}
@@ -5236,7 +5305,10 @@ function grParseWork(rows){const C=grCfg(),o={ok:false,miss:[]};
     if(tot<0){if(!o.miss.includes("total"))o.miss.push("total");return null}
     const get=r=>({tv:cx.tv>=0?grN(r[cx.tv]):0,i:cx.i>=0?grN(r[cx.i]):0,c:cx.c>=0?grN(r[cx.c]):0,s:cx.s>=0?grN(r[cx.s]):0});const el={};
     for(let k=tot+1;k<Math.min(rows.length,tot+5);k++){const r=rows[k];if(r.some(c=>grIs(c,C.elig)))el.elig=get(r);else if(r.some(c=>grIs(c,C.nelig)))el.nelig=grSum(el.nelig,get(r));else if(String(r[0]??"").trim())break}
-    return Object.assign(get(rows[tot]),{el})};
+    if(key==="sales"){const nc=col(C.invno),gc=col(C.gst);if(nc>=0){var inv=[];for(let k=h+1;k<tot&&inv.length<3000;k++){const r=rows[k];if(!r[nc])continue;inv.push({no:String(r[nc]).trim().slice(0,30),g:gc>=0?String(r[gc]||"").trim():"",tv:cx.tv>=0?grN(r[cx.tv]):0})}}}
+    if(key==="p2b"){const dc=col(C.date),fyW=o.ym?(+o.ym.slice(5)>=4?+o.ym.slice(0,4):+o.ym.slice(0,4)-1):0;var old=[];
+      if(dc>=0&&fyW)for(let k=h+1;k<tot;k++){const r=rows[k],dt=grDate(r[dc]);if(!dt)continue;const y=+dt.slice(0,4),m=+dt.slice(5,7),f=m>=4?y:y-1;const g=get(r);if(f<fyW&&(g.i+g.c+g.s)>0)old.push(Object.assign({n:String(r[0]||"").slice(0,60),no:String(r[2]||"").slice(0,30),d:dt,f},g))}}
+    return Object.assign(get(rows[tot]),{el,old:old||null,inv:inv||null})};
   o.sales=sect("sales");o.p2b=sect("p2b");o.impg=sect("impg");o.rcm=sect("rcm");
   const lab=key=>{for(const r of rows){const j=r.findIndex(c=>typeof c==="string"&&grStarts(c,C[key]));if(j>=0){const n=r.slice(j+1).filter(c=>c!==""&&grIsNum(c)).slice(0,3).map(grN);if(n.length)return{i:n[0]||0,c:n[1]||0,s:n[2]||0}}}return null};
   o.out=lab("out");o.rcmPay=lab("rcmPay");o.p={impg:lab("pImpg"),oth:lab("pOth"),rcm:lab("pRcm"),isd:lab("pIsd"),rev:lab("pRev"),net:lab("pNet")};
@@ -5281,6 +5353,44 @@ function grChecks(d){const B=bt,sw=d.w&&d.w.ok?d.w:null,s1=d.r1&&d.r1.ok?d.r1:nu
   if(s2&&s3){const av=grSub(grSum(s2.a.oth,s2.a.isd),s2.a.cn),cl=grSum(s3.t4.A5,s3.t4.A4);const ex=["i","c","s"].some(k=>cl[k]-av[k]>1.5);
     L.push({name:B("2B से ज़्यादा ITC तो नहीं लिया?","ITC claimed above 2B?"),keys:["i","c","s"],lines:[["GSTR-3B 4(A)(4)+(5)",cl],["GSTR-2B",av]],st:ex?"bad":"ok",note:ex?B("3B में 2B से ज़्यादा ITC लिया गया है — कारण देखें (पिछले महीने के बिल / गलत हेड)। फ़र्क़ ज़्यादा हो तो Rule 88D के तहत DRC-01C नोटिस आ सकता है।","3B claims more ITC than 2B — check why (earlier bills / wrong head). A large gap can bring a DRC-01C notice under Rule 88D."):""});
     const na=s2.na,d2=s3.t4.D2||{i:0,c:0,s:0};if(na.i+na.c+na.s>1.5)L.push({name:B("2B में 'ITC उपलब्ध नहीं'","2B 'ITC not available'"),keys:["i","c","s"],lines:[["GSTR-2B",na],["GSTR-3B 4(D)(2)",d2]],st:Math.abs(na.i+na.c+na.s-(d2.i+d2.c+d2.s))>1.5?"warn":"ok",note:B("यह रक़म 3B की 4(D)(2) में दिखानी होती है।","This amount goes in 3B table 4(D)(2).")})}
+  /* RCM: ITC on RCM cannot exceed RCM tax; RCM tax only in cash */
+  if(s3&&s3.t31.d){const d31=s3.t31.d,a3=s3.t4.A3||{i:0,c:0,s:0};if(["i","c","s"].some(k=>(a3[k]||0)-(d31[k]||0)>1.5))L.push({name:B("RCM का ITC, दिए गए RCM टैक्स से ज़्यादा","RCM ITC above RCM tax paid"),keys:["i","c","s"],lines:[["3B 4(A)(3)",a3],["3B 3.1(d)",d31]],st:"bad",note:B("RCM का ITC उतना ही ले सकते हैं जितना RCM टैक्स भरा है।","RCM ITC can only be as much as the RCM tax paid.")});
+    if(s3.cash){const cb=s3.cash.B,need=(+d31.i||0)+(+d31.c||0)+(+d31.s||0)+(+d31.x||0),paid=cb.i+cb.c+cb.s+cb.x;if(need>1.5)L.push({name:B("RCM टैक्स कैश में","RCM tax in cash"),keys:["v"],plain:true,lines:[[B("RCM टैक्स 3.1(d)","RCM tax 3.1(d)"),{v:need}],[B("कैश में भरा 6.1(B)","Paid in cash 6.1(B)"),{v:paid}]],st:paid>=need-1.5?"ok":"bad",note:paid>=need-1.5?"":B("RCM टैक्स ITC से नहीं, सिर्फ़ कैश से भरा जाता है।","RCM tax can only be paid in cash, not from ITC.")})}}
+  /* ITC in 2B but not taken */
+  if(s2&&s3){const av=grSub(s2.a.oth,s2.a.cn),cl=s3.t4.A5||{i:0,c:0,s:0},lf={i:av.i-(cl.i||0),c:av.c-(cl.c||0),s:av.s-(cl.s||0)};if(lf.i+lf.c+lf.s>1.5)L.push({name:B("2B में ITC है पर 3B में नहीं लिया","ITC in 2B not taken in 3B"),keys:["i","c","s"],lines:[["GSTR-2B",av],["GSTR-3B 4(A)(5)",cl]],st:"warn",note:B("अगर बिल / माल नहीं मिला तो ठीक है — मिलने पर अगले महीने लें, पर Sec 16(4) की समय-सीमा (अगले साल 30 नवंबर) से पहले।","Fine if goods / bill not received — take it later, but before the Sec 16(4) time limit (30 Nov of next year).")})}
+  /* Sec 16(4): last year's bills in this month's ITC */
+  if(sw&&sw.p2b&&sw.p2b.old&&sw.p2b.old.length){const fd=(s3&&s3.arn)||todayStr(),late=sw.p2b.old.filter(b=>fd>(b.f+1)+"-11-30"),tot=grSum(...sw.p2b.old);
+    L.push({name:B("पिछले साल के बिल — Sec 16(4) समय-सीमा","Last year's bills — Sec 16(4) time limit"),keys:["i","c","s"],lines:[[sw.p2b.old.length+B(" बिल"," bills"),tot]],st:late.length?"bad":"warn",
+      note:(late.length?B("समय-सीमा (30 नवंबर) निकल चुकी — इनका ITC नहीं मिलेगा: ","Time limit (30 Nov) has passed — no ITC on: ")+late.slice(0,8).map(b=>b.n+" "+b.no+" ("+b.d+")").join("; "):B("इनका ITC अगले साल 30 नवंबर तक ही लिया जा सकता है: ","ITC on these can be taken only up to 30 Nov of the next year: ")+sw.p2b.old.slice(0,8).map(b=>b.n+" "+b.no+" ("+b.d+")").join("; "))})}
+  /* Rule 37A etc: 2B 'ITC Reversal' must be in 3B 4(B)(2) */
+  if(s2&&s2.rev&&s3){const rv=s2.rev;if(rv.i+rv.c+rv.s>1.5){const b2=s3.t4.B2||{i:0,c:0,s:0};L.push({name:B("2B का ITC रिवर्सल (Rule 37A) — 3B 4(B)(2) में","2B ITC reversal (Rule 37A) — in 3B 4(B)(2)"),keys:["i","c","s"],lines:[["GSTR-2B",rv],["GSTR-3B 4(B)(2)",b2]],st:["i","c","s"].some(k=>(rv[k]||0)-(b2[k]||0)>1.5)?"bad":"ok",note:B("सप्लायर ने 3B नहीं भरा (Rule 37A) — यह ITC 4(B)(2) में वापस करना है।","Supplier did not file 3B (Rule 37A) — this ITC must be reversed in 4(B)(2).")})}}
+  /* Rule 42/43: exempt / non-GST supplies but no common-credit reversal */
+  if(s3){const ex=((s3.t31.c||{}).tv||0)+((s3.t31.e||{}).tv||0),b1=s3.t4.B1||{i:0,c:0,s:0};if(ex>1.5&&(b1.i+b1.c+b1.s)<1.5)L.push({name:B("छूट / नॉन-GST बिक्री है पर Rule 42/43 रिवर्सल नहीं","Exempt / non-GST supplies but no Rule 42/43 reversal"),keys:["v"],plain:true,lines:[[B("छूट + नॉन-GST बिक्री (3.1 c+e)","Exempt + non-GST supplies (3.1 c+e)"),{v:ex}]],st:"warn",note:B("साझा ITC (कॉमन क्रेडिट) का हिस्सा Rule 42/43 से 4(B)(1) में वापस करना होता है — जाँच लें।","The share of common credit must be reversed in 4(B)(1) under Rule 42/43 — please check.")})}
+  /* from the 2B invoice list: Sec 16(4), Rule 37 (180 days), Sec 17(5) review */
+  if(s2&&s2.inv&&s2.inv.length){const fd=(s3&&s3.arn)||todayStr(),ym=s2.ym||"",fy=ym?(+ym.slice(5)>=4?+ym.slice(0,4):+ym.slice(0,4)-1):0,inv=s2.inv.filter(x=>x.d&&!x.rc&&/^y/i.test(x.av||"y"));
+    const nm=x=>x.n+" "+x.no+" ("+x.d+")";
+    const old=inv.filter(x=>{const y=+x.d.slice(0,4),m=+x.d.slice(5,7);return(m>=4?y:y-1)<fy});
+    if(old.length&&!(sw&&sw.p2b&&sw.p2b.old&&sw.p2b.old.length)){const late=old.filter(x=>{const y=+x.d.slice(0,4),m=+x.d.slice(5,7);return fd>((m>=4?y:y-1)+1)+"-11-30"});L.push({name:B("2B में पिछले साल के बिल — Sec 16(4)","Last year's bills in 2B — Sec 16(4)"),keys:["i","c","s"],lines:[[old.length+B(" बिल"," bills"),grSum(...old)]],st:late.length?"bad":"warn",note:(late.length?B("समय-सीमा निकल चुकी — ITC नहीं मिलेगा: ","Time limit passed — no ITC: ")+late.slice(0,8).map(nm).join("; "):B("ITC अगले साल 30 नवंबर तक ही: ","ITC only up to 30 Nov of next year: ")+old.slice(0,8).map(nm).join("; "))})}
+    const d180=new Date(new Date(fd)-180*864e5).toISOString().slice(0,10),o180=inv.filter(x=>x.d<d180);
+    const PY=d.pay&&d.pay.ok?d.pay.list:null;if(o180.length&&PY){const pm={};PY.forEach(p=>{if(!pm[p.no]||p.pd<pm[p.no])pm[p.no]=p.pd});const add180=dt=>new Date(new Date(dt).getTime()+180*864e5).toISOString().slice(0,10);
+      const un=o180.filter(x=>{const pd=pm[grNo(x.no)];return!pd||pd>add180(x.d)});L.push({name:B("Rule 37 — 180 दिन में भुगतान (पेमेंट रजिस्टर से)","Rule 37 — paid within 180 days (from payment register)"),keys:["i","c","s"],lines:[[o180.length+B(" पुराने बिल"," old bills"),grSum(...o180)]].concat(un.length?[[un.length+B(" का भुगतान नहीं / देर से"," unpaid / paid late"),grSum(...un)]]:[]),plain:true,st:un.length?"bad":"ok",note:un.length?B("इनका ITC ब्याज के साथ वापस करना होगा (भुगतान होने पर फिर ले सकते हैं): ","Reverse this ITC with interest (can be re-claimed on payment): ")+un.slice(0,10).map(nm).join("; "):B("सभी पुराने बिलों का भुगतान 180 दिन में हुआ।","All old bills were paid within 180 days.")})}
+    else if(o180.length)L.push({name:B("180 दिन से पुराने बिल — Rule 37","Bills older than 180 days — Rule 37"),keys:["i","c","s"],lines:[[o180.length+B(" बिल"," bills"),grSum(...o180)]],st:"warn",note:B("सप्लायर को 180 दिन में भुगतान हुआ है? नहीं हुआ तो यह ITC ब्याज के साथ वापस करना होगा: ","Was the supplier paid within 180 days? If not, reverse this ITC with interest: ")+o180.slice(0,8).map(nm).join("; ")});
+    const re=/\b(hotels?|restaurants?|cater(er|ers|ing)|food|foods|club|gym|fitness|spa|salon|beauty|insurance|motors?|automobiles?|cars?|vehicles?|construction|builders?|developers?|hospital|healthcare|uber|ola|cabs?|taxi|resorts?|gifts?)\b/i,bl=inv.filter(x=>re.test(x.n));
+    if(bl.length)L.push({name:B("Sec 17(5) — ब्लॉक्ड क्रेडिट हो सकता है","Sec 17(5) — may be blocked credit"),keys:["i","c","s"],lines:[[bl.length+B(" बिल"," bills"),grSum(...bl)]],st:"warn",note:B("नाम से लगता है ये खाना / होटल / गाड़ी / इंश्योरेंस / कंस्ट्रक्शन / क्लब जैसे हो सकते हैं — ITC लेने से पहले जाँच लें: ","By name these may be food / hotel / vehicle / insurance / construction / club — check before taking ITC: ")+bl.slice(0,10).map(nm).join("; ")})}
+  /* Sec 17(5) from the purchase register (ledger / HSN) */
+  if(d.pr&&d.pr.ok){const re=/motor\s*car|car\s*(hire|rent|running|maint)|vehicle\s*(running|maint|hire)|food|beverage|canteen|catering|refreshment|staff\s*welfare|club|membership|gym|fitness|health\s*insurance|mediclaim|life\s*insurance|beauty|cosmetic|construction|building|civil\s*work|capital\s*work|gift|diwali|festival|leave\s*travel|holiday|personal\s*(use|exp)/i,hs=/^(8703|8711|996331|996332|9954|997132|997133)/;
+    const bl=d.pr.list.filter(x=>(re.test(x.led)||hs.test(String(x.hsn).replace(/\D/g,"")))&&(x.i+x.c+x.s)>0);
+    L.push({name:B("Sec 17(5) — ख़रीद रजिस्टर के लेजर / HSN से","Sec 17(5) — from purchase-register ledger / HSN"),keys:["i","c","s"],lines:[[bl.length+B(" बिल"," bills"),grSum(...bl)]],st:bl.length?"warn":"ok",note:bl.length?B("ये ब्लॉक्ड क्रेडिट लगते हैं — ITC लिया हो तो जाँचें / वापस करें: ","These look like blocked credit — check / reverse if ITC was taken: ")+bl.slice(0,10).map(x=>(x.n||"")+" "+x.no+" ["+(x.led||x.hsn)+"]").join("; "):B("लेजर / HSN में कोई ब्लॉक्ड ख़र्च नहीं दिखा।","No blocked expense found in ledgers / HSN.")})}
+  /* e-invoice */
+  const pp=parties.find(x=>x.id===d.clientId)||{};if(pp.einv){const si=sw&&sw.sales&&sw.sales.inv?sw.sales.inv.filter(x=>/^\d{2}[A-Z]{5}\d{4}[A-Z]/.test(x.g)):null;
+    if(!d.ei||!d.ei.ok||!si)L.push({name:B("e-invoice (IRN)","e-invoice (IRN)"),keys:[],lines:[],st:"wait",note:B("e-invoice सूची (IRP से) और वर्किंग डालें — तब हर B2B बिल का IRN जाँचेगा।","Upload the e-invoice list (from IRP) and the working — then every B2B bill's IRN is checked.")});
+    else{const set=new Set(d.ei.list),miss=si.filter(x=>!set.has(grNo(x.no)));L.push({name:B("e-invoice (IRN) — हर B2B बिल का","e-invoice (IRN) — every B2B bill"),keys:["v"],plain:true,lines:[[si.length+B(" B2B बिल"," B2B bills"),{v:si.reduce((a,x)=>a+x.tv,0)}]].concat(miss.length?[[miss.length+B(" बिना IRN"," without IRN"),{v:miss.reduce((a,x)=>a+x.tv,0)}]]:[]),st:miss.length?"bad":"ok",note:miss.length?B("इन बिलों का IRN नहीं मिला — बिना IRN का बिल मान्य नहीं, ख़रीदार को ITC नहीं मिलेगा: ","No IRN found for these bills — a bill without IRN is not valid and the buyer gets no ITC: ")+miss.slice(0,12).map(x=>x.no).join(", "):B("सभी B2B बिलों का IRN है।","All B2B bills have an IRN.")})}}
+  /* late filing */
+  const it3=items.find(x=>x.clientId===d.clientId&&(x.gstin||"")===(d.gstin||"")&&x.period===d.period&&x.code==="GSTR-3B"),it1=items.find(x=>x.clientId===d.clientId&&(x.gstin||"")===(d.gstin||"")&&x.period===d.period&&x.code==="GSTR-1");
+  const late=(arn,due,lab,cash)=>{if(!arn||!due)return;const days=Math.round((new Date(arn)-new Date(due))/864e5);if(days<=0){L.push({name:lab+B(" — समय पर भरा"," — filed on time"),keys:[],lines:[],st:"ok",note:B("भरा: ","Filed: ")+arn+B(" · आख़िरी तारीख़: "," · due: ")+due});return}
+    const fee=days*50,int=cash?Math.round(cash*0.18*days/365):0;L.push({name:lab+B(" — देर से भरा: "," — filed late: ")+days+B(" दिन"," days"),keys:["v"],plain:true,lines:[[B("लेट फ़ीस का अंदाज़ा (₹50/दिन, बिना टैक्स ₹20/दिन; ऊपरी सीमा टर्नओवर पर)","Late fee estimate (₹50/day, nil ₹20/day; cap by turnover)"),{v:fee}]].concat(cash?[[B("ब्याज का अंदाज़ा (कैश पर 18%)","Interest estimate (18% on cash)"),{v:int}]]:[]),st:"warn",note:B("भरा: ","Filed: ")+arn+B(" · आख़िरी तारीख़: "," · due: ")+due+B(" — लेट फ़ीस / ब्याज अगले 3B की 5.1 में भरना पक्का करें।"," — make sure late fee / interest is paid in the next 3B table 5.1.")})};
+  if(s3)late(s3.arn,it3&&it3.dueDate,"GSTR-3B",s3.cash?s3.cash.A.i+s3.cash.A.c+s3.cash.A.s:0);
+  if(s1){let due=it1&&it1.dueDate;if(!due&&s1.ym){const y=+s1.ym.slice(0,4),m=+s1.ym.slice(5);due=(m===12?y+1:y)+"-"+String(m===12?1:m+1).padStart(2,"0")+"-11"}late(s1.arn,due,"GSTR-1",0)}
   return L}
 function grIdentNotes(d,i){const B=bt,want=pinfo(i).m,g=i.gstin||"",n=[];[["w",B("वर्किंग","Working")],["r1","GSTR-1"],["b3","GSTR-3B"],["b2","GSTR-2B"]].forEach(([k,lab])=>{const x=d[k];if(!x)return;
   if(x.gstin&&g&&x.gstin!==g)n.push("✖ "+lab+B(": GSTIN अलग है — ",": different GSTIN — ")+x.gstin);if(x.ym&&want&&x.ym!==want)n.push("✖ "+lab+B(": महीना अलग है — ",": different month — ")+x.ym);
@@ -5297,6 +5407,7 @@ async function grSave(rec){rec.at=new Date().toISOString();rec.by=me.id;const bo
 const GR_SLOTS=[["w",["आपकी GST वर्किंग (Excel)","Your GST working (Excel)"],".xlsx,.xls"],["r1",["GSTR-1 (पोर्टल की PDF)","GSTR-1 (portal PDF)"],"application/pdf"],["b3",["GSTR-3B (पोर्टल की PDF)","GSTR-3B (portal PDF)"],"application/pdf"],["b2",["GSTR-2B (पोर्टल की Excel)","GSTR-2B (portal Excel)"],".xlsx,.xls"]];
 async function grReadWork(rec,i,f,sheet){const S=await grSheets(f);const L=grWorkSheets(S);const n=sheet&&S[sheet]?sheet:(grPickSheet(S,i.gstin)||L[0]||Object.keys(S)[0]);
   grSt.files[rec.id]={f,S};const w=grParseWork(S[n]||[]);rec.w=Object.assign(w,{file:f.name,sheet:n,sheets:L.length?L:Object.keys(S)})}
+const GR_XS=[["pay",["पेमेंट रजिस्टर / क्रेडिटर लेजर (Excel)","Payment register / creditor ledger (Excel)"],["Rule 37: 180 दिन में भुगतान हुआ या नहीं","Rule 37: paid within 180 days or not"],["बिल नंबर + भुगतान की तारीख़ (GSTIN हो तो बेहतर)","bill number + payment date (GSTIN helps)"]],["pr",["ख़रीद रजिस्टर — Tally (Excel)","Purchase register — Tally (Excel)"],["Sec 17(5): ब्लॉक्ड क्रेडिट, लेजर / HSN से","Sec 17(5): blocked credit, from ledger / HSN"],["बिल नंबर + लेजर (ख़र्च) का नाम या HSN + टैक्स","bill number + ledger (expense) name or HSN + tax"]],["ei",["e-invoice सूची — IRP से (Excel)","e-invoice list — from IRP (Excel)"],["हर B2B बिल का IRN बना या नहीं","whether every B2B bill has an IRN"],["बिल नंबर + IRN / Ack नंबर","bill number + IRN / Ack no"]]];
 function openGr(itemId){grInit();const i=items.find(x=>x.id===itemId);if(!i){closeSheet();return}grSt.id=itemId;const key=grKey(i);const rec=grItems.find(x=>x.id===key)||{id:key,clientId:i.clientId,gstin:i.gstin||"",period:i.period};
   const can=canDo("file"),checks=grChecks(rec),idn=grIdentNotes(rec,i),bad=checks.filter(c=>c.st==="bad"||c.st==="warn").length,okN=checks.filter(c=>c.st==="ok").length;
   openSheet(`<h3>🧮 ${esc(bt("GST जाँच","GST check"))}</h3><div class="m">${esc([i.client,i.gstin,i.period].filter(Boolean).join(" · "))}</div>
@@ -5305,17 +5416,22 @@ function openGr(itemId){grInit();const i=items.find(x=>x.id===itemId);if(!i){clo
      ${k==="w"&&x&&x.sheets&&x.sheets.length>1&&can?`<select class="grSh" style="margin-top:4px">${x.sheets.map(n=>`<option ${n===x.sheet?"selected":""}>${esc(n)}</option>`).join("")}</select>`:""}</div>
      ${can?`<label class="btn ghost" style="padding:5px 9px;cursor:pointer">📎<input type="file" class="grF" data-k="${k}" accept="${acc}" hidden></label>`:""}</div>`}).join("")}
    ${(()=>{const p=parties.find(x=>x.id===i.clientId)||{};return `<div style="padding:8px 0;border-top:1px solid var(--line)"><div><b>${esc(bt("Rule 86B छूट (इस क्लाइंट के लिए)","Rule 86B exception (for this client)"))}</b></div><select id="gr86" ${can?"":"disabled"} style="width:100%;margin-top:4px">${GR_86X.map(x=>`<option value="${x[0]}" ${(p.gst86b||"")===x[0]?"selected":""}>${esc(bt(x[1][0],x[1][1]))}</option>`).join("")}</select><div class="m">${esc(bt("इस साल अब तक 1% से ज़्यादा कैश वाली छूट ऐप ख़ुद देखता है।","The app checks the 'more than 1% cash so far this year' exception itself."))}</div></div>`})()}
+   <div style="margin-top:10px"><b>➕ ${esc(bt("ज़्यादा जाँच के लिए (ज़रूरी नहीं)","For more checks (optional)"))}</b></div>
+   ${GR_XS.map(([k,l,why,need])=>{const x=rec[k];return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--line)"><span>${x?(x.ok?"✅":"⚠"):"⏳"}</span><div style="flex:1;min-width:0"><div>${esc(bt(l[0],l[1]))}</div><div class="m">${esc(bt(why[0],why[1]))}</div><div class="m">${x?esc(x.ok?[x.file,x.sheet,(x.list||[]).length+bt(" लाइन"," rows")].filter(Boolean).join(" · "):bt("ये कॉलम नहीं मिले — ⚙ में नाम चुनें: ","Columns not found — pick names in ⚙: ")+(x.need||[]).map(m=>{const g=GR_KEYS.find(z=>z[0]===m);return g?bt(g[1][0],g[1][1]):m}).join(", ")):esc(bt("चाहिए: ","Needs: ")+bt(need[0],need[1]))}</div></div>
+     ${can?`<label class="btn ghost" style="padding:5px 9px;cursor:pointer">📎<input type="file" class="grF" data-k="${k}" accept=".xlsx,.xls,.csv" hidden></label>`:""}</div>`}).join("")}
+   ${(()=>{const p=parties.find(x=>x.id===i.clientId)||{};return `<label class="chk" style="margin-top:8px"><input type="checkbox" id="grEi" ${p.einv?"checked":""} ${can?"":"disabled"}>${esc(bt("इस क्लाइंट पर e-invoice लागू है (टर्नओवर ₹5 करोड़ से ज़्यादा)","e-invoice applies to this client (turnover above ₹5 crore)"))}</label>`})()}
    ${can?`<button class="btn ghost" id="grCfgB" style="margin-top:6px">⚙ ${esc(bt("वर्किंग के नाम (अपनी शीट के हिसाब से)","Working names (to match your sheet)"))}</button>`:""}
    <div class="err" id="grErr">${esc(grSt.msg||"")}</div>
    ${idn.length?`<div class="warn" style="margin:8px 0;white-space:pre-wrap">${esc(idn.join("\n"))}</div>`:""}
    <div style="margin-top:10px"><b>${esc(bt("नतीजा","Result"))}</b> <span class="m">${okN} ✔ · ${bad} ✖/⚠</span>${checks.map(grTableHtml).join("")}</div>
    <div class="m" style="margin-top:6px">${esc(bt("₹1.5 तक का फ़र्क़ राउंडिंग मानकर ठीक माना गया है।","Differences up to ₹1.5 are treated as rounding."))}</div>
    <div class="actions"><button class="btn ghost" id="grBk">${esc(bt("‹ काम","‹ Entry"))}</button><button class="btn ghost" id="grX">${esc(t("close"))}</button></div>`,{k:"gr",id:itemId});
-  grSt.msg="";$("#grX").onclick=closeSheet;$("#grBk").onclick=()=>openDetail(itemId);const cb=$("#grCfgB");if(cb)cb.onclick=()=>openGrCfg(itemId);const x86=$("#gr86");if(x86)x86.onchange=async()=>{const p=parties.find(x=>x.id===i.clientId);if(!p)return;const q=Object.assign({},p,{gst86b:x86.value});await saveParty(q);Object.assign(p,{gst86b:x86.value});toast(bt("✅ सेव हो गया","✅ Saved"));openGr(itemId)};
+  grSt.msg="";$("#grX").onclick=closeSheet;$("#grBk").onclick=()=>openDetail(itemId);const cb=$("#grCfgB");if(cb)cb.onclick=()=>openGrCfg(itemId);const xei=$("#grEi");if(xei)xei.onchange=async()=>{const p=parties.find(x=>x.id===i.clientId);if(!p)return;await saveParty(Object.assign({},p,{einv:xei.checked}));p.einv=xei.checked;openGr(itemId)};const x86=$("#gr86");if(x86)x86.onchange=async()=>{const p=parties.find(x=>x.id===i.clientId);if(!p)return;const q=Object.assign({},p,{gst86b:x86.value});await saveParty(q);Object.assign(p,{gst86b:x86.value});toast(bt("✅ सेव हो गया","✅ Saved"));openGr(itemId)};
   const sh=document.querySelector("#sheet .grSh");if(sh)sh.onchange=async()=>{const m=grSt.files[key];if(!m){grSt.msg=bt("शीट बदलने के लिए वर्किंग फ़ाइल फिर से डालें","Upload the working again to change the sheet");openGr(itemId);return}
     await grReadWork(rec,i,m.f,sh.value);await grSave(rec);openGr(itemId)};
   document.querySelectorAll("#sheet .grF").forEach(inp=>inp.onchange=async()=>{const f=inp.files[0],k=inp.dataset.k;if(!f)return;grSt.busy=true;$("#grErr").textContent=bt("पढ़ रहा है…","Reading…");
     try{if(k==="w")await grReadWork(rec,i,f);
+      else if(GR_XS.some(z=>z[0]===k)){const S=await grSheets(f);grSt.files[key+"_"+k]={f,S};const x=k==="pay"?grParsePay(S):k==="pr"?grParsePR(S):grParseEI(S);x.file=f.name;rec[k]=x}
       else{let x;if(k==="b2")x=grParse2B(await grSheets(f));else{const rows=await grPdfRows(f,i.clientId);if(!rows.length)throw{msg:bt("PDF में लिखावट नहीं है (स्कैन?) — पोर्टल से डाउनलोड की PDF डालें","The PDF has no text (scan?) — upload the PDF downloaded from the portal")};x=k==="b3"?grParse3B(rows):grParse1(rows)}
         x.file=f.name;rec[k]=x;if(!x.ok)grSt.msg=bt("फ़ाइल पढ़ी, पर आँकड़े नहीं मिले — सही फ़ाइल है?","File read but no figures found — is it the right file?")}
       await grSave(rec)}
@@ -5323,7 +5439,7 @@ function openGr(itemId){grInit();const i=items.find(x=>x.id===itemId);if(!i){clo
     grSt.busy=false;openGr(itemId)})}
 /* ⚙ names used in this firm's working */
 function openGrCfg(itemId){const i=items.find(x=>x.id===itemId);const key=grKey(i),m=grSt.files[key],rec=grItems.find(x=>x.id===key)||{};const C=grCfg(),U=JSON.parse(JSON.stringify(grCfgU||{}));
-  const labs=m&&rec.w?grLabels(m.S[rec.w.sheet]||[]):[];const miss=(rec.w&&rec.w.miss)||[];
+  const labs=[...new Set([].concat(m&&rec.w?grLabels(m.S[rec.w.sheet]||[]):[],...["pay","pr","ei"].map(z=>{const q=grSt.files[key+"_"+z];return q?[].concat(...Object.values(q.S).map(grLabels)):[]})))].slice(0,600);const miss=[].concat((rec.w&&rec.w.miss)||[],...["pay","pr","ei"].map(z=>rec[z]&&!rec[z].ok?rec[z].need||[]:[]));
   const ord=GR_KEYS.slice().sort((a,b)=>(miss.includes(b[0])?1:0)-(miss.includes(a[0])?1:0));
   openSheet(`<h3>⚙ ${esc(bt("वर्किंग के नाम","Working names"))}</h3><div class="note">${esc(bt("आपकी Excel में हर हिस्से / कॉलम का जो नाम है, वह चुनें या लिखें। यह आपकी फ़र्म के लिए सेव होगा और हर क्लाइंट पर चलेगा।","Pick or type the name each section / column has in your Excel. It is saved for your firm and used for every client."))}${labs.length?"":"<br>"+esc(bt("चुनने की सूची के लिए पहले वर्किंग फ़ाइल डालें।","Upload the working first to get a list to pick from."))}</div>
    ${ord.map(([k,l])=>`<div style="padding:7px 0;border-top:1px solid var(--line)"><div>${miss.includes(k)?"⚠ ":""}<b>${esc(bt(l[0],l[1]))}</b></div><div class="m">${esc(bt("अभी पहचाने जाने वाले नाम: ","Names recognised now: "))}${esc(C[k].slice(0,5).join(" · "))}</div>
@@ -5333,11 +5449,123 @@ function openGrCfg(itemId){const i=items.find(x=>x.id===itemId);const key=grKey(
   $("#gcX").onclick=()=>openGr(itemId);
   document.querySelectorAll("#sheet .gcR").forEach(a=>a.onclick=async e=>{e.preventDefault();U[a.dataset.k].splice(+a.dataset.j,1);await grCfgSave(U);openGrCfg(itemId)});
   $("#gcGo").onclick=async()=>{GR_KEYS.forEach(([k])=>{[document.querySelector(`#sheet .gcS[data-k="${k}"]`),document.querySelector(`#sheet .gcI[data-k="${k}"]`)].forEach(el=>{const v=el&&el.value.trim();if(v){U[k]=U[k]||[];if(!U[k].some(x=>grNorm(x)===grNorm(v)))U[k].unshift(v)}})});
-    await grCfgSave(U);if(m&&rec.id){await grReadWork(rec,i,m.f,rec.w&&rec.w.sheet);await grSave(rec)}toast(bt("✅ सेव हो गया","✅ Saved"));openGr(itemId)}}
+    await grCfgSave(U);if(rec.id){if(m)await grReadWork(rec,i,m.f,rec.w&&rec.w.sheet);["pay","pr","ei"].forEach(z=>{const q=grSt.files[key+"_"+z];if(q){const x=z==="pay"?grParsePay(q.S):z==="pr"?grParsePR(q.S):grParseEI(q.S);x.file=q.f.name;rec[z]=x}});await grSave(rec)}toast(bt("✅ सेव हो गया","✅ Saved"));openGr(itemId)}}
 const _grOpenDetail=openDetail;openDetail=function(id){_grOpenDetail(id);const i=items.find(x=>x.id===id);if(!i||!/^GSTR-(1|3B)$/.test(i.code)||document.querySelector("#sheet #grB"))return;
   const a=document.querySelector("#sheet .actions");if(!a)return;grInit();const r=grItems.find(x=>x.id===grKey(i));let sub=bt("वर्किंग ↔ GSTR-1 ↔ 3B ↔ 2B","Working ↔ GSTR-1 ↔ 3B ↔ 2B");
   if(r){const c=grChecks(r),b=c.filter(x=>x.st==="bad"||x.st==="warn").length;sub=(b?"⚠ "+b+bt(" जगह फ़र्क़"," differences"):"✔ "+bt("सब मिला","all matched"))+" · "+c.filter(x=>x.st==="ok").length+" ✔"}
   a.insertAdjacentHTML("afterend",`<button class="btn ghost" id="grB" style="width:100%;text-align:left;margin-top:10px">🧮 ${esc(bt("GST जाँच","GST check"))}<div class="m">${esc(sub)}</div></button>`);$("#grB").onclick=()=>openGr(id)};
+
+/* ================= portal se challan / proof =================
+   The page can't log in to a government portal or pull files from it (login, captcha and OTP, and the browser
+   keeps other sites' pages separate). So each entry gets a guided path: the right login page, which ID to log
+   in with, the saved login from the vault, exactly where the challan / acknowledgement sits, then upload here. */
+const PP_URL={gst:"https://services.gst.gov.in/services/login",it:"https://eportal.incometax.gov.in/iec/foservices/#/login",traces:"https://www.tdscpc.gov.in/app/login.xhtml",
+  mca:"https://www.mca.gov.in",epfo:"https://unifiedportal-emp.epfindia.gov.in/epfo/",esic:"https://www.esic.gov.in",dgft:"https://www.dgft.gov.in",fssai:"https://foscos.fssai.gov.in"};
+function ppKind(i){const c=(i.code||"").toUpperCase(),g=groupOf(i);
+  if(c==="PMT-06")return"gstpay";if(c==="LUT")return"lut";
+  if(/^(GSTR|CMP-08|ITC-04)/.test(c)||(!c&&g==="gst"))return"gstret";
+  if(c==="TDS-PAY")return"tdspay";if(/^ADV/.test(c))return"advpay";if(c==="ITR")return"itr";if(c==="TAR")return"tar";
+  if(c==="TDS-SAL"||c==="TDS-NON")return"tdsret";if(c==="F16"||c==="F16A")return"f16";
+  if(c==="PF"||(!c&&/\bPF\b|EPF/i.test(i.name||"")))return"pf";if(c==="ESI"||(!c&&/ESI/i.test(i.name||"")))return"esi";
+  if(c==="IEC-UPD")return"iec";if(/^FSSAI/.test(c))return"fssai";
+  if(g==="roc")return"mca";if(g==="tds")return"tdspay";if(g==="it")return"itr";if(g==="pf")return"pf";return""}
+const PP_F=()=>({
+ gstret:{portal:"gst",id:"gstin",get:[bt("फाइल किए रिटर्न की PDF","PDF of the filed return"),bt("टैक्स भरा हो तो उसका चालान (CPIN / CIN वाला)","The payment challan if tax was paid (with CPIN / CIN)")],
+  path:[bt("Services → Returns → View Filed Returns","Services → Returns → View Filed Returns"),bt("वित्त वर्ष और अवधि चुनें → Search → रिटर्न के सामने View / Download (PDF)","Pick financial year and period → Search → View / Download (PDF) next to the return"),bt("चालान के लिए: Services → Payments → Challan History → तारीख से खोजें → CPIN पर क्लिक → Download","For the challan: Services → Payments → Challan History → search by date → click the CPIN → Download")]},
+ gstpay:{portal:"gst",id:"gstin",get:[bt("PMT-06 चालान (CPIN / CIN वाला, Paid)","PMT-06 challan (with CPIN / CIN, status Paid)")],
+  path:[bt("Services → Payments → Challan History","Services → Payments → Challan History"),bt("उस महीने की तारीख से खोजें → स्टेटस Paid वाला CPIN खोलें → Download","Search by that month's dates → open the CPIN with status Paid → Download")]},
+ lut:{portal:"gst",id:"gstin",get:[bt("LUT का एक्नॉलेजमेंट (ARN वाला)","LUT acknowledgement (with ARN)")],
+  path:[bt("Services → User Services → View My Submissions","Services → User Services → View My Submissions"),bt("LUT वाली लाइन → Download","LUT row → Download")]},
+ tdspay:{portal:"it",id:"tan",get:[bt("चालान रसीद (Challan Receipt — CIN, BSR कोड, तारीख वाली)","Challan receipt (with CIN, BSR code and date)")],
+  path:[bt("TAN से लॉगिन → e-File → e-Pay Tax","Log in with the TAN → e-File → e-Pay Tax"),bt("Payment History टैब → उस महीने का चालान → Actions → Download Challan Receipt","Payment History tab → that month's challan → Actions → Download Challan Receipt")]},
+ advpay:{portal:"it",id:"pan",get:[bt("एडवांस टैक्स का चालान रसीद (CIN वाला)","Advance tax challan receipt (with CIN)")],
+  path:[bt("PAN से लॉगिन → e-File → e-Pay Tax","Log in with the PAN → e-File → e-Pay Tax"),bt("Payment History → Advance Tax (100) वाला चालान → Download Challan Receipt","Payment History → the Advance Tax (100) challan → Download Challan Receipt")]},
+ itr:{portal:"it",id:"pan",get:[bt("ITR-V / एक्नॉलेजमेंट (Ack नंबर वाला)","ITR-V / acknowledgement (with the Ack number)"),bt("सेल्फ़-असेसमेंट टैक्स भरा हो तो उसका चालान","Self-assessment tax challan, if paid")],
+  path:[bt("PAN से लॉगिन → e-File → Income Tax Returns → View Filed Returns","Log in with the PAN → e-File → Income Tax Returns → View Filed Returns"),bt("सही Assessment / Tax Year → Download Receipt (ITR-V) और Download Form","Right Assessment / Tax Year → Download Receipt (ITR-V) and Download Form"),bt("चालान: e-File → e-Pay Tax → Payment History","Challan: e-File → e-Pay Tax → Payment History")]},
+ tar:{portal:"it",id:"pan",get:[bt("टैक्स ऑडिट रिपोर्ट (3CA/3CB-3CD) का एक्नॉलेजमेंट","Tax audit report (3CA/3CB-3CD) acknowledgement")],
+  path:[bt("PAN से लॉगिन → e-File → Income Tax Forms → View Filed Forms","Log in with the PAN → e-File → Income Tax Forms → View Filed Forms"),bt("ऑडिट रिपोर्ट वाला फ़ॉर्म → Download Receipt","The audit report form → Download Receipt")]},
+ tdsret:{portal:"it",id:"tan",get:[bt("TDS रिटर्न की रसीद (Provisional Receipt / Token नंबर)","TDS return receipt (Provisional Receipt / token number)")],
+  path:[bt("TAN से लॉगिन → e-File → Income Tax Forms → View Filed Forms","Log in with the TAN → e-File → Income Tax Forms → View Filed Forms"),bt("उस तिमाही का TDS स्टेटमेंट → Download Receipt","That quarter's TDS statement → Download Receipt"),bt("स्टेटमेंट की प्रोसेसिंग स्थिति TRACES पर भी देख सकते हैं","You can also check processing status on TRACES")]},
+ f16:{portal:"traces",id:"tan",get:[bt("Form 16 / 16A की ज़िप / PDF","Form 16 / 16A zip / PDF")],
+  path:[bt("TRACES पर डिडक्टर लॉगिन → Downloads → Form 16 / Form 16A → तिमाही / साल चुनकर रिक्वेस्ट","TRACES deductor login → Downloads → Form 16 / Form 16A → request for the quarter / year"),bt("कुछ देर बाद Downloads → Requested Downloads से डाउनलोड करें","After a while, download from Downloads → Requested Downloads")]},
+ pf:{portal:"epfo",id:"pf",get:[bt("चालान-कम-रिटर्न (TRRN वाला) और पेमेंट की रसीद","Challan-cum-return (with TRRN) and payment receipt"),bt("ECR की कॉपी","ECR copy")],
+  path:[bt("EPFO एम्प्लॉयर पोर्टल पर लॉगिन → Payments → Payment (ECR)","Log in to the EPFO employer portal → Payments → Payment (ECR)"),bt("उस वेतन महीने की TRRN → Challan / Receipt डाउनलोड करें","That wage month's TRRN → download the Challan / Receipt")]},
+ esi:{portal:"esic",id:"esi",get:[bt("ESI चालान (पेमेंट हो चुका)","ESI challan (paid)")],
+  path:[bt("ESIC एम्प्लॉयर पोर्टल पर लॉगिन → Monthly Contributions","Log in to the ESIC employer portal → Monthly Contributions"),bt("उस महीने का चालान → Print / Download","That month's challan → Print / Download")]},
+ mca:{portal:"mca",id:"cin",get:[bt("SRN वाला पेमेंट चालान / रसीद","Payment challan / receipt with the SRN"),bt("फाइल किए फ़ॉर्म की कॉपी","Copy of the filed form")],
+  path:[bt("MCA V3 पर लॉगिन → My Workspace → My Application","Log in to MCA V3 → My Workspace → My Application"),bt("उस फ़ॉर्म की SRN → चालान / रसीद और फ़ॉर्म डाउनलोड करें","That form's SRN → download the challan / receipt and the form")]},
+ iec:{portal:"dgft",id:"iec",get:[bt("IEC अपडेट का एक्नॉलेजमेंट / अपडेटेड IEC","IEC update acknowledgement / updated IEC")],
+  path:[bt("DGFT पर लॉगिन → My Dashboard → IEC","Log in to DGFT → My Dashboard → IEC"),bt("अपडेट वाली लाइन → Download","The update row → Download")]},
+ fssai:{portal:"fssai",id:"",get:[bt("रिटर्न / रिन्यूअल का एक्नॉलेजमेंट","Return / renewal acknowledgement")],
+  path:[bt("FoSCoS पर लॉगिन → अपने लाइसेंस में फाइल किए रिटर्न","Log in to FoSCoS → filed returns under your licence"),bt("उस साल की लाइन → Download / Print","That year's row → Download / Print")]}});
+const PP_PNAME={gst:"GST",it:"Income Tax e-filing",traces:"TRACES",mca:"MCA V3",epfo:"EPFO",esic:"ESIC",dgft:"DGFT",fssai:"FSSAI FoSCoS"};
+function ppLoginId(i,kind){const p=parties.find(x=>x.id===i.clientId)||{};
+  switch(kind){case"gstin":return i.gstin?["GSTIN",i.gstin]:null;case"pan":return(p.pan||i.pan)?["PAN",p.pan||i.pan]:null;case"tan":return p.tanNo?["TAN",p.tanNo]:null;
+    case"pf":return p.pfCode?["PF",p.pfCode]:null;case"esi":return p.esiCode?["ESI",p.esiCode]:null;case"cin":return p.cin?["CIN",p.cin]:p.llpin?["LLPIN",p.llpin]:null;case"iec":return p.iec&&p.iec!=="IEC"?["IEC",p.iec]:null}return null}
+function ppVault(i,portal){const p=parties.find(x=>x.id===i.clientId);if(!p)return null;
+  const L2=vItems.filter(v=>v.portal===portal&&(v.clientId===p.id||(!v.clientId&&(v.clientName||"").toLowerCase()===p.name.toLowerCase())));
+  if(portal==="gst"&&i.gstin)return L2.find(v=>v.gstin===i.gstin)||L2.find(v=>!v.gstin)||null;return L2[0]||null}
+function openPortalProof(id){
+  const i=items.find(x=>x.id===id);if(!i)return;const k=ppKind(i),G=PP_F()[k];
+  const M=typeof MANUAL!=="undefined"&&typeof mnKey==="function"?MANUAL[mnKey(i.code)]:null;
+  const portal=G?G.portal:"",url=G?PP_URL[portal]:(M&&M.p&&M.p.u)||"",pname=G?PP_PNAME[portal]:(M&&M.p&&M.p.n)||"";
+  const lid=G?ppLoginId(i,G.id):null,vi=portal?ppVault(i,portal):null;
+  const filed=isFiled(i);
+  openSheet(`<h3>🧾 ${esc(bt("पोर्टल से चालान / प्रूफ","Challan / proof from the portal"))}</h3>
+   <div class="m">${esc(dispName(i))}${i.client?" · "+esc(i.client):""}${i.period?" · "+esc(i.period):""}</div>
+   ${url?`<div class="actions"><a class="btn" href="${esc(url)}" target="_blank" rel="noopener" style="text-decoration:none">🌐 ${esc(bt("पोर्टल खोलें","Open portal"))} · ${esc(pname)} ↗</a></div>`:`<div class="note">${esc(bt("इस कंप्लायंस का पोर्टल तय नहीं है — मैनुअल में देखें।","No portal is set for this compliance — see the manual."))}</div>`}
+   <h2>1. ${esc(bt("लॉगिन","Log in"))}</h2>
+   <div class="kv" style="margin-top:0">${lid?`<div>${esc(lid[0])}</div><div><b>${esc(lid[1])}</b> <button class="btn ghost ppCp" data-v="${esc(lid[1])}" style="padding:3px 8px;font-size:12px">📋</button></div>`:""}
+    <div>🔐 ${esc(bt("सेव लॉगिन","Saved login"))}</div><div id="ppV">${vi?(vKey?`<button class="btn ghost" id="ppU" style="padding:4px 10px;font-size:13px">📋 ${esc(t("vUser"))}</button> <button class="btn ghost" id="ppP" style="padding:4px 10px;font-size:13px">📋 ${esc(t("vPass"))}</button>`:`<span class="m">${esc(bt("वॉल्ट में सेव है","Saved in the vault"))}</span> <button class="btn ghost" id="ppOpenV" style="padding:4px 10px;font-size:13px">🔓 ${esc(t("vUnlock"))}</button>`):`<span class="m">${esc(bt("अभी सेव नहीं","Not saved yet"))}</span>`}</div></div>
+   <div class="m" style="margin-top:6px">${esc(bt("कैप्चा और OTP आप खुद भरें। ऐप पोर्टल में अपने-आप लॉगिन नहीं करती।","Fill the captcha and OTP yourself. The app does not log in to the portal on its own."))}</div>
+   ${G?`<h2>2. ${esc(bt("कहाँ मिलेगा","Where to find it"))}</h2><ol style="margin:4px 0 0 20px;padding:0">${G.path.map(s=>`<li style="margin-bottom:6px">${esc(s)}</li>`).join("")}</ol>
+   ${i.period?`<div class="note">${esc(bt("ढूँढने की अवधि","Period to look for"))}: <b>${esc(i.period)}</b> · ${esc(L().lbl.dueDate)} ${fmt(i.dueDate)}</div>`:""}
+   <h2>3. ${esc(bt("क्या डाउनलोड करें","What to download"))}</h2>${G.get.map(s=>`<div class="chk">📄 ${esc(s)}</div>`).join("")}`:""}
+   <h2>${G?"4":"2"}. ${esc(bt("यहाँ अपलोड करें","Upload it here"))}</h2>
+   <div class="m">${esc(bt("डाउनलोड हुई फ़ाइल यहाँ अपलोड करते ही ऐप उसे जाँचेगा (क्लाइंट, GSTIN, अवधि, CIN / ARN) और प्रूफ में जोड़ देगा।","As soon as you upload the downloaded file here, the app checks it (client, GSTIN, period, CIN / ARN) and adds it as proof."))}</div>
+   <div class="m" style="margin-top:6px">${esc(bt("पोर्टल के मेन्यू के नाम कभी-कभी बदल जाते हैं — ऊपर का रास्ता न मिले तो मैनुअल देखें।","Portal menu names change sometimes — if the path above doesn't match, check the manual."))}</div>
+   <div class="actions">${canDo("file")?`<button class="btn green" id="ppUp">⬆ ${esc(filed?bt("डाउनलोड हुआ — प्रूफ अपलोड करें","Downloaded — upload proof"):bt("डाउनलोड हुआ — फाइलिंग दर्ज करें और अपलोड करें","Downloaded — record filing and upload"))}</button>`:""}
+   ${M?`<button class="btn ghost" id="ppMn">${esc(t("mnHow"))}</button>`:""}<button class="btn ghost" id="ppX">${esc(t("back"))}</button></div>`,{k:"pproof",id});
+  $("#ppX").onclick=()=>openDetail(id);
+  const up=$("#ppUp");if(up)up.onclick=()=>openFile(id);
+  const mn=$("#ppMn");if(mn)mn.onclick=()=>openManual(mnKey(i.code),id);
+  document.querySelectorAll("#sheet .ppCp").forEach(b=>b.onclick=async()=>{try{await navigator.clipboard.writeText(b.dataset.v);toast(t("vCopied"))}catch(e){}});
+  const ov=$("#ppOpenV");if(ov)ov.onclick=()=>{const box=$("#ppV");const g=vaultGate(box);if(g!==false){const w=setInterval(()=>{if(vKey){clearInterval(w);openPortalProof(id)}else if(!document.body.contains(box)||!openState||openState.k!=="pproof")clearInterval(w)},400)}};
+  const cp=async f=>{vTouch();if(!pwGate(vi))return;try{const s=await vDec(vi.enc);await navigator.clipboard.writeText(s[f]||"");toast(t("vCopied"));vLogAct(vi.id,"copy")}catch(e){toast(t("saveFail"))}};
+  const pu=$("#ppU");if(pu)pu.onclick=()=>cp("username");const pp=$("#ppP");if(pp)pp.onclick=()=>cp("password");
+}
+{const _ppOpenDetail=openDetail;openDetail=function(id){_ppOpenDetail(id);const i=items.find(x=>x.id===id);if(!i||document.querySelector("#sheet #ppB"))return;
+  if(!ppKind(i)&&!(typeof MANUAL!=="undefined"&&MANUAL[mnKey(i.code)]))return;
+  const a=document.querySelector("#sheet .actions");if(!a)return;
+  const need=!isFiled(i)||i.status==="filed_noproof"||!(i.proofs||[]).length;
+  a.insertAdjacentHTML("afterbegin",`<button class="btn ${need?"":"ghost"}" id="ppB">🧾 ${esc(bt("पोर्टल से चालान / प्रूफ","Challan / proof from portal"))}</button>`);
+  $("#ppB").onclick=()=>openPortalProof(id)}}
+
+/* ================= 🗑 trash: deleted compliance entries can be restored ================= */
+Object.assign(I18N.hi,{dlBin:"हटाई गई प्रविष्टियाँ (ट्रैश)",dlBinTxt:"हटाई गई प्रविष्टियाँ प्रूफ, ARN और इतिहास सहित यहाँ सुरक्षित रहती हैं। \"पुनः स्थापित करें\" चुनने पर प्रविष्टि पहले जैसी लौट आती है।",dlBy:"हटाने वाले: {n} · {d}",dlRestore:"↩ पुनः स्थापित करें",dlPurge:"स्थायी रूप से हटाएँ",dlPurgeSure:"पुष्टि के लिए फिर से दबाएँ",dlEmpty:"ट्रैश खाली है।",dlRestored:"प्रविष्टि पुनः स्थापित हो गई ✔",dlLogDel:"प्रविष्टि हटाई गई (ट्रैश में भेजी गई)",dlLogRes:"ट्रैश से पुनः स्थापित की गई",
+ dlQ:"क्या यह पूरी प्रविष्टि हटानी है?",dlWarn:"केवल फ़ाइल नहीं, पूरी प्रविष्टि हटेगी — स्थिति, ARN{p} और इतिहास। प्रविष्टि ट्रैश में जाएगी; मालिक या सीनियर 👥 टीम टैब से इसे पुनः स्थापित कर सकते हैं।",dlWarnP:", {n} प्रूफ फ़ाइल",dlOnlyFile:"केवल गलत फ़ाइल हटानी है? तो यह विकल्प न चुनें — प्रविष्टि खोलकर प्रूफ के आगे \"✕ फ़ाइल हटाएँ\" चुनें।",dlTick:"मैं पुष्टि करता/करती हूँ कि पूरी प्रविष्टि हटानी है",dlDone:"प्रविष्टि ट्रैश में भेज दी गई — 👥 टीम टैब से पुनः स्थापित की जा सकती है",dlLink:"🗑 यह प्रविष्टि हटाएँ",
+ rpBtn:"✕ फ़ाइल हटाएँ",rpQ:"क्या यह प्रूफ फ़ाइल हटानी है?",rpTxt:"केवल यह फ़ाइल हटेगी — प्रविष्टि, ARN और इतिहास सुरक्षित रहेंगे। इसके बाद सही फ़ाइल \"प्रूफ जोड़ें\" से लगाएँ।",rpYes:"हाँ, फ़ाइल हटाएँ",rpDone:"फ़ाइल हटा दी गई",rpLog:"प्रूफ फ़ाइल हटाई गई: {n}"});
+Object.assign(I18N.en,{dlBin:"Deleted entries (Trash)",dlBinTxt:"Deleted entries are kept here with their proofs, ARN and history. Choose \"Restore\" to bring an entry back exactly as it was.",dlBy:"Deleted by {n} · {d}",dlRestore:"↩ Restore",dlPurge:"Delete permanently",dlPurgeSure:"Press again to confirm",dlEmpty:"Trash is empty.",dlRestored:"Entry restored ✔",dlLogDel:"Entry deleted (moved to Trash)",dlLogRes:"Restored from Trash",
+ dlQ:"Delete this entire entry?",dlWarn:"This removes the entire entry, not just the file — status, ARN{p} and history. The entry moves to Trash; the owner or a senior can restore it from the 👥 Team tab.",dlWarnP:", {n} proof file(s)",dlOnlyFile:"Only need to remove a wrong file? Don't use this — open the entry and choose \"✕ Remove file\" next to the proof.",dlTick:"I confirm that the entire entry should be deleted",dlDone:"Entry moved to Trash — it can be restored from the 👥 Team tab",dlLink:"🗑 Delete this entry",
+ rpBtn:"✕ Remove file",rpQ:"Remove this proof file?",rpTxt:"Only this file is removed — the entry, ARN and history stay intact. Then attach the correct file with \"Add proof\".",rpYes:"Yes, remove file",rpDone:"File removed",rpLog:"Proof file removed: {n}"});
+Object.assign(I18N.zh,{dlBin:"已删除条目（回收站）",dlBinTxt:"已删除的条目连同凭证、ARN 和历史记录保存在此。选择“恢复”即可将条目按原样还原。",dlBy:"删除人：{n} · {d}",dlRestore:"↩ 恢复",dlPurge:"永久删除",dlPurgeSure:"再次点击以确认",dlEmpty:"回收站为空。",dlRestored:"条目已恢复 ✔",dlLogDel:"条目已删除（移至回收站）",dlLogRes:"已从回收站恢复",
+ dlQ:"确定删除整个条目？",dlWarn:"这将删除整个条目，而不仅是文件——包括状态、ARN{p}和历史记录。条目将移至回收站，所有者或高级成员可在 👥 团队 标签中恢复。",dlWarnP:"、{n} 个凭证文件",dlOnlyFile:"只需移除错误文件？请勿使用此项——打开条目，在凭证旁选择“✕ 移除文件”。",dlTick:"我确认要删除整个条目",dlDone:"条目已移至回收站——可在 👥 团队 标签中恢复",dlLink:"🗑 删除此条目",
+ rpBtn:"✕ 移除文件",rpQ:"移除此凭证文件？",rpTxt:"仅移除此文件——条目、ARN 和历史记录保持不变。然后通过“添加凭证”上传正确文件。",rpYes:"是，移除文件",rpDone:"文件已移除",rpLog:"已移除凭证文件：{n}"});
+function trashHtml(){if(!canDo("delete"))return"";const L2=trashItems.slice().sort((a,b)=>(b.deletedAt||"").localeCompare(a.deletedAt||""));
+  return `<div class="grp" id="trBox" style="padding:14px"><h3 style="margin-top:0">🗑 ${esc(t("dlBin"))} (${L2.length})</h3>
+   <div class="m">${esc(t("dlBinTxt"))}</div>
+   ${L2.map(i=>`<div class="item" style="cursor:default"><div class="main"><div class="t">${esc(dispName(i))}</div><div class="m">${[i.client,i.gstin,i.period].filter(Boolean).map(esc).join(" · ")}</div>
+     <div class="m">${esc(t("dlBy",{n:nm(i.deletedBy),d:i.deletedAt?new Date(i.deletedAt).toLocaleString(locale()):""}))}${(i.proofs||[]).length?" · 📎 "+i.proofs.length:""}${i.arn?" · ARN "+esc(i.arn):""}</div></div>
+     <div style="display:flex;flex-direction:column;gap:4px"><button class="btn green trRs" data-id="${esc(i.id)}" style="padding:5px 10px">${esc(t("dlRestore"))}</button>
+     ${myRole()==="admin"?`<button class="btn ghost trPg" data-id="${esc(i.id)}" style="padding:5px 10px;color:var(--red);font-size:12px">${esc(t("dlPurge"))}</button>`:""}</div></div>`).join("")||`<div class="m" style="margin-top:6px">${esc(t("dlEmpty"))}</div>`}</div>`}
+async function trashRestore(id){const i=trashItems.find(x=>x.id===id);if(!i)return;const body=JSON.parse(JSON.stringify(i));delete body.deleted;delete body.deletedAt;delete body.deletedBy;
+  log(body,{k:"restore"});trashItems=trashItems.filter(x=>x.id!==id);
+  try{await saveItem(body);toast(t("dlRestored"));renderTeam()}catch(e){trashItems.push(i);toast(t("saveFail"))}}
+async function trashPurge(id,btn){if(btn.dataset.sure!=="1"){btn.dataset.sure="1";btn.textContent=t("dlPurgeSure");return}
+  try{if(mode==="db")await dbRef.doc(id).delete();trashItems=trashItems.filter(x=>x.id!==id);if(mode!=="db")lset(LKEY,items.concat(trashItems));toast(t("deleted"));renderTeam()}catch(e){toast(t("delFail"))}}
+{const _trRenderTeam=renderTeam;renderTeam=function(){_trRenderTeam();const el=document.getElementById("team");if(!el||el.hidden||!canDo("delete"))return;
+  const old=el.querySelector("#trBox");if(old)old.remove();el.insertAdjacentHTML("beforeend",trashHtml());
+  el.querySelectorAll(".trRs").forEach(b=>b.onclick=()=>{b.disabled=true;trashRestore(b.dataset.id)});el.querySelectorAll(".trPg").forEach(b=>b.onclick=()=>trashPurge(b.dataset.id,b))}}
 
 paintStatic();render();init();
 </script>
