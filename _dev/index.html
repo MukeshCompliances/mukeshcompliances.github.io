@@ -4886,7 +4886,8 @@ const _fpRow=row;row=function(i){const h=_fpRow(i);if(i.code!=="FS")return h;con
   return h.replace('<div style="margin-top:6px">','<div style="margin-top:6px"><span class="badge '+(d===L?"b-filed":"b-up")+'" style="margin-right:4px">📑 '+d+"/"+L+"</span>")};
 
 /* ===== what's new: shown once per person; add a new entry at the top for each change ===== */
-const WHATS_NEW=[{id:"2026-11-19b",items:[
+const WHATS_NEW=[{id:"2026-11-19c",items:[
+ ["🔢 GSTR-1 / GSTR-3B का PDF प्रूफ लगाते ही अंदर के आँकड़े भी जाँचे जाते हैं: बिक्री का टैक्सेबल मूल्य और टैक्स दूसरी रिटर्न (और 🧮 GST जाँच की वर्किंग) से मिलाए जाते हैं, फ़र्क़ हो तो ✖ के साथ दिखता है। 3B का नेट ITC 4(C) और कैश भुगतान भी दिखता है।","🔢 Attaching a GSTR-1 / GSTR-3B PDF proof now checks the figures inside: taxable value and tax of sales are matched with the other return (and the 🧮 GST check working); any difference shows with ✖. 3B net ITC 4(C) and cash paid are shown too."]]},{id:"2026-11-19b",items:[
  ["✕ गलत प्रूफ फ़ाइल अब अलग से हटाई जा सकती है — प्रूफ के आगे \"✕ फ़ाइल हटाएँ\"। प्रविष्टि, ARN और इतिहास सुरक्षित रहते हैं।","✕ A wrong proof file can now be removed on its own — \"✕ Remove file\" next to the proof. The entry, ARN and history stay intact."],
  ["🗑 पूरी प्रविष्टि हटाने का विकल्प अब \"बदलें\" में सबसे नीचे है और पुष्टि के बाद ही चलता है। हटाई गई प्रविष्टि ट्रैश में जाती है — 👥 टीम टैब से \"↩ पुनः स्थापित करें\"।","🗑 Deleting an entire entry is now at the bottom of \"Edit\" and needs confirmation. Deleted entries move to Trash — \"↩ Restore\" from the 👥 Team tab."]]},{id:"2026-11-19",items:[
  ["🧾 हर कंप्लायंस में \"पोर्टल से चालान / प्रूफ\": सही पोर्टल खुलता है, लॉगिन वाला GSTIN / PAN / TAN और वॉल्ट का सेव लॉगिन कॉपी होता है, चालान कहाँ मिलेगा ये स्टेप दिखते हैं, फिर वहीं से अपलोड।","🧾 \"Challan / proof from portal\" on every compliance: opens the right portal, copies the login GSTIN / PAN / TAN and the vault login, shows where the challan sits, then upload right there."]]},{id:"2026-11-17",items:[
@@ -5295,6 +5296,45 @@ function openPortalProof(id){
   const need=!isFiled(i)||i.status==="filed_noproof"||!(i.proofs||[]).length;
   a.insertAdjacentHTML("afterbegin",`<button class="btn ${need?"":"ghost"}" id="ppB">🧾 ${esc(bt("पोर्टल से चालान / प्रूफ","Challan / proof from portal"))}</button>`);
   $("#ppB").onclick=()=>openPortalProof(id)}}
+
+/* ================= 🔢 figures inside GSTR-1 / GSTR-3B proofs =================
+   When a GSTR-1 or GSTR-3B PDF is attached as proof, its figures are read with the GST-check parsers and
+   matched with the other return of the same client + GSTIN + month (from the GST check record, or read from
+   that entry's proof PDF), and with the firm's working when it is in the GST check. The figures are also
+   saved into the GST check record, so 🧮 GST check fills itself. Differences are shown, not blocked. */
+Object.assign(I18N.hi,{fgSales:"बिक्री — टैक्सेबल मूल्य",fgTax:"बिक्री — टैक्स (IGST / CGST / SGST)",fgVs:"{a}: {v}",fgNoOther:"{a} अभी नहीं मिली — उसका प्रूफ लगने पर मिलान होगा",fgRead:"फ़ाइल के आँकड़े",fgItc:"नेट ITC 4(C)",fgCash:"कैश में भरा 6.1",fgRcm:"RCM टैक्स 3.1(d)",fgSaved:"आँकड़े 🧮 GST जाँच में भी सेव हुए",fgDiff:"फ़र्क़ {d}"});
+Object.assign(I18N.en,{fgSales:"Sales — taxable value",fgTax:"Sales — tax (IGST / CGST / SGST)",fgVs:"{a}: {v}",fgNoOther:"{a} not available yet — matched once its proof is attached",fgRead:"Figures in the file",fgItc:"Net ITC 4(C)",fgCash:"Paid in cash 6.1",fgRcm:"RCM tax 3.1(d)",fgSaved:"Figures also saved in 🧮 GST check",fgDiff:"difference {d}"});
+Object.assign(I18N.zh,{fgSales:"销售——应税价值",fgTax:"销售——税额（IGST / CGST / SGST）",fgVs:"{a}：{v}",fgNoOther:"尚无 {a}——其凭证上传后再核对",fgRead:"文件中的数字",fgItc:"净进项抵扣 4(C)",fgCash:"现金缴纳 6.1",fgRcm:"反向征税 3.1(d)",fgSaved:"数字已同步保存到 🧮 GST 核对",fgDiff:"差额 {d}"});
+const FG_KIND={"GSTR-3B":"b3","GSTR-1":"r1"};
+async function fgParse(file,clientId,kind){const rows=await grPdfRows(file,clientId);if(!rows.length)return null;const x=kind==="b3"?grParse3B(rows):grParse1(rows);return x&&x.ok?x:null}
+const fgSalesOf=(kind,x)=>!x?null:kind==="b3"?grSum(x.t31.a,x.t31.b):x.out;
+/* the other return's figures: GST-check record first, else read the proof PDF of that entry */
+async function fgOther(i,rec,kind){const ok=kind==="b3"?"r1":"b3";if(rec[ok]&&rec[ok].ok)return rec[ok];
+  const code=ok==="b3"?"GSTR-3B":"GSTR-1";const it=items.find(x=>x.clientId===i.clientId&&(x.gstin||"")===(i.gstin||"")&&x.period===i.period&&(x.code||normRet(x.name))===code&&(x.proofs||[]).length);
+  if(!it)return null;for(const p of it.proofs){try{const b=await blobGet(p.id);const f=new File([b],p.name||"r.pdf",{type:b.type||"application/pdf"});const x=await fgParse(f,i.clientId,ok);if(x){x.file=p.name;rec[ok]=x;return x}}catch(e){}}return null}
+function fgRows(i,kind,x,other,work){const R=[],me2=fgSalesOf(kind,x),oth=other?fgSalesOf(kind==="b3"?"r1":"b3",other):null,ws=work&&work.ok?(work.sales||work.out):null;
+  const lab=kind==="b3"?"GSTR-1":"GSTR-3B",tax=v=>v?(+v.i||0)+(+v.c||0)+(+v.s||0):0,fm=grFmt;
+  const line=(key,mine,ref,refLab,pick)=>{if(!mine)return;const a=pick(mine);
+    if(ref){const b=pick(ref),d=a-b;R.push({key,ev:t("fgVs",{a:refLab,v:fm(b)}),fv:fm(a)+(Math.abs(d)>1.5?" ("+t("fgDiff",{d:(d>0?"+":"")+fm(d)})+")":""),ok:Math.abs(d)<=1.5})}
+    else R.push({key,ev:refLab===lab?t("fgNoOther",{a:lab}):"—",fv:fm(a),ok:null})};
+  line("fgSales",me2,oth,lab,v=>+v.tv||0);line("fgTax",me2,oth,lab,tax);
+  if(ws){line("fgSales",me2,ws,bt("वर्किंग","Working"),v=>+v.tv||0)}
+  if(kind==="b3"){const ex=[["fgRcm",x.t31.d&&tax(x.t31.d)],["fgItc",x.t4.C&&tax(x.t4.C)],["fgCash",x.cash&&(x.cash.A.i+x.cash.A.c+x.cash.A.s+x.cash.B.i+x.cash.B.c+x.cash.B.s)]];
+    ex.forEach(([k,v])=>{if(v)R.push({key:k,ev:t("fgRead"),fv:fm(v),ok:null})})}
+  return R}
+{const _fgCheck=checkFiles;checkFiles=async function(i,files,arn,cands){const res=await _fgCheck(i,files,arn,cands);
+  const kind=FG_KIND[i.code||normRet(i.name)];if(!kind||typeof grParse3B!=="function")return res;
+  grInit();const key=grKey(i);let rec=grItems.find(x=>x.id===key);rec=rec?JSON.parse(JSON.stringify(rec)):{id:key,clientId:i.clientId,gstin:i.gstin||"",period:i.period};
+  let stored=false;
+  for(const r of res){if(r.locked||!r.file||!(/pdf$/i.test(r.file.type)||/\.pdf$/i.test(r.file.name)))continue;
+    try{const x=await fgParse(r.file,i.clientId,kind);if(!x)continue;
+      const sameId=(!x.gstin||!i.gstin||x.gstin===i.gstin)&&(!x.ym||x.ym===pinfo(i).m);
+      const other=sameId?await fgOther(i,rec,kind):null;
+      const rows=fgRows(i,kind,x,other,rec.w);if(!rows.length)continue;
+      r.cmp=r.cmp||{rows:[],bad:[]};r.cmp.rows=r.cmp.rows.concat(rows);if(r.status==="unk"&&sameId)r.status="ok";
+      if(sameId){x.file=r.file.name;rec[kind]=x;stored=true}}catch(e){}}
+  if(stored){try{await grSave(rec);const k2=grItems.findIndex(x=>x.id===rec.id);if(k2>=0)grItems[k2]=rec;else grItems.push(rec);toast(t("fgSaved"))}catch(e){}}
+  return res}}
 
 /* ================= 🗑 trash: deleted compliance entries can be restored ================= */
 Object.assign(I18N.hi,{dlBin:"हटाई गई प्रविष्टियाँ (ट्रैश)",dlBinTxt:"हटाई गई प्रविष्टियाँ प्रूफ, ARN और इतिहास सहित यहाँ सुरक्षित रहती हैं। \"पुनः स्थापित करें\" चुनने पर प्रविष्टि पहले जैसी लौट आती है।",dlBy:"हटाने वाले: {n} · {d}",dlRestore:"↩ पुनः स्थापित करें",dlPurge:"स्थायी रूप से हटाएँ",dlPurgeSure:"पुष्टि के लिए फिर से दबाएँ",dlEmpty:"ट्रैश खाली है।",dlRestored:"प्रविष्टि पुनः स्थापित हो गई ✔",dlLogDel:"प्रविष्टि हटाई गई (ट्रैश में भेजी गई)",dlLogRes:"ट्रैश से पुनः स्थापित की गई",
