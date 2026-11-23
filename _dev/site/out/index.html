@@ -5201,7 +5201,8 @@ const _fpRow=row;row=function(i){const h=_fpRow(i);if(i.code!=="FS")return h;con
   return h.replace('<div style="margin-top:6px">','<div style="margin-top:6px"><span class="badge '+(d===L?"b-filed":"b-up")+'" style="margin-right:4px">📑 '+d+"/"+L+"</span>")};
 
 /* ===== what's new: shown once per person; add a new entry at the top for each change ===== */
-const WHATS_NEW=[{id:"2026-11-23b",items:[
+const WHATS_NEW=[{id:"2026-11-23c",items:[
+ ["📦 📒 हिसाब में स्टॉक और बिल: आइटम (HSN, यूनिट, GST %, ओपनिंग स्टॉक), बिल में मात्रा × रेट, स्टॉक समरी, क्लोज़िंग स्टॉक अपने-आप, GSTR-1 HSN समरी, \"🏢 बिल की जानकारी\" (पता, बैंक, बिल नंबर), और 🖨 GST बिल प्रिंट / PDF। \"🏢 अपनी फ़र्म की किताबें\" भी चुन सकते हैं।","📦 Stock and bills in 📒 Accounts: items (HSN, unit, GST %, opening stock), qty × rate in bills, stock summary, automatic closing stock, GSTR-1 HSN summary, \"🏢 Bill details\" (address, bank, invoice number) and 🖨 GST invoice print / PDF. You can also pick \"🏢 My own firm's books\"."]]},{id:"2026-11-23b",items:[
  ["🧾 📒 हिसाब में \"GST रिपोर्ट\": किताबों के बिलों से GSTR-3B (3.1, 4, कैश में भरना) और GSTR-1 (B2B, B2CL, B2CS, क्रेडिट नोट, दर के हिसाब से) — महीना / तिमाही / साल, Excel के साथ। साथ में \"लेना-देना\": किससे कितना लेना / देना है।","🧾 \"GST returns\" in 📒 Accounts: GSTR-3B (3.1, 4, cash payable) and GSTR-1 (B2B, B2CL, B2CS, credit notes, rate-wise) from the books — month / quarter / year, with Excel. Also \"Outstanding\": who owes what."]]},{id:"2026-11-23",items:[
  ["📒 नया \"हिसाब\" टैब (पहला हिस्सा): हर ग्राहक की Tally जैसी किताबें — लेजर, पेमेंट / रसीद / कॉन्ट्रा / जर्नल / बिक्री / ख़रीद / क्रेडिट-डेबिट नोट (GST अपने-आप), डे बुक, लेजर, ट्रायल बैलेंस, लाभ-हानि, बैलेंस शीट, Excel और अगले साल में बैलेंस ले जाना।","📒 New \"Accounts\" tab (first part): Tally-style books for each client — ledgers, payment / receipt / contra / journal / sales / purchase / credit-debit notes (GST worked out), day book, ledger, trial balance, P&L, balance sheet, Excel and carry-forward to next year."]]},{id:"2026-11-19c",items:[
  ["🔢 GSTR-1 / GSTR-3B का PDF प्रूफ लगाते ही अंदर के आँकड़े भी जाँचे जाते हैं: बिक्री का टैक्सेबल मूल्य और टैक्स दूसरी रिटर्न (और 🧮 GST जाँच की वर्किंग) से मिलाए जाते हैं, फ़र्क़ हो तो ✖ के साथ दिखता है। 3B का नेट ITC 4(C) और कैश भुगतान भी दिखता है।","🔢 Attaching a GSTR-1 / GSTR-3B PDF proof now checks the figures inside: taxable value and tax of sales are matched with the other return (and the 🧮 GST check working); any difference shows with ✖. 3B net ITC 4(C) and cash paid are shown too."]]},{id:"2026-11-19b",items:[
@@ -5723,21 +5724,21 @@ function bkBal(V){const b={};bkL().forEach(l=>b[l.id]=bkOp(l.id));V.forEach(v=>(
 const bkLN=id=>{const L=bk.book&&bk.book.L&&bk.book.L[id];return L?L.n:"?"};
 function bkReport(){const V=bkV(),B=bkBal(V),L=bkL(),G=g=>L.filter(l=>l.g===g);
   const sumG=gs=>r2(L.filter(l=>gs.includes(l.g)).reduce((s,l)=>s+(B[l.id]||0),0));
-  const cs=r2(bk.book&&bk.book.cs&&bk.book.cs[bk.fy]||0),os=sumG(["stock"]);
+  const SK=bkStock(V),hasI=SK.list.length>0;const cs=hasI?SK.cv:r2(bk.book&&bk.book.cs&&bk.book.cs[bk.fy]||0),os=hasI?SK.ov:sumG(["stock"]);
   const sales=-sumG(["sales"]),dinc=-sumG(["dinc"]),purch=sumG(["purch"]),dexp=sumG(["dexp"]),iinc=-sumG(["iinc"]),iexp=sumG(["iexp"]);
   const gp=r2(sales+dinc+cs-os-purch-dexp),np=r2(gp+iinc-iexp);
   const opDiff=r2(L.reduce((s,l)=>s+bkOp(l.id),0));
-  return{V,B,L,G,cs,os,sales,dinc,purch,dexp,iinc,iexp,gp,np,opDiff}}
+  return{SK,hasI,V,B,L,G,cs,os,sales,dinc,purch,dexp,iinc,iexp,gp,np,opDiff}}
 /* ---- screen ---- */
-function bkPartyOpts(){return (typeof parties!=="undefined"?parties:[]).slice().sort((a,b)=>(a.name||"").localeCompare(b.name||"")).map(p=>`<option value="${esc(p.id)}"${p.id===bk.pid?" selected":""}>${esc(p.name)}</option>`).join("")}
+function bkPartyOpts(){return `<option value="_self"${bk.pid==="_self"?" selected":""}>🏢 ${esc(bt("अपनी फ़र्म की किताबें","My own firm's books"))}</option>`+(typeof parties!=="undefined"?parties:[]).slice().sort((a,b)=>(a.name||"").localeCompare(b.name||"")).map(p=>`<option value="${esc(p.id)}"${p.id===bk.pid?" selected":""}>${esc(p.name)}</option>`).join("")}
 function bkFyOpts(){const n=bkFyNow(),a=[];for(let y=n+1;y>=n-6;y--)a.push(y);return a.map(y=>`<option value="${y}"${y===bk.fy?" selected":""}>FY ${y}-${String(y+1).slice(2)}</option>`).join("")}
 function renderBk(){const el=$("#bk");if(!el||el.hidden)return;
   let h=`<h2 style="margin:4px 0 10px">${esc(t("navBk"))}</h2><div class="filters"><select id="bkP"><option value="">${esc(bt("— ग्राहक चुनें —","— Choose client —"))}</option>${bkPartyOpts()}</select><select id="bkFy">${bkFyOpts()}</select></div>`;
   if(!bk.pid){el.innerHTML=h+`<div class="empty">${esc(bt("जिस ग्राहक का हिसाब रखना है, उसे ऊपर से चुनें।","Choose the client whose books you want to keep."))}</div>`;bkWire();return}
   if(bk.loading){el.innerHTML=h+`<div class="empty">${esc(t("loading"))}</div>`;bkWire();return}
   if(!bk.book){el.innerHTML=h+`<div class="empty">${esc(bt("इस ग्राहक की किताबें अभी शुरू नहीं हुईं।","Books for this client have not been started yet."))}<br><br>${bkCan()?`<button class="btn" id="bkStart">📒 ${esc(bt("किताबें शुरू करें","Start books"))}</button>`:""}</div>`;bkWire();return}
-  const R=bkReport(),tabs=[["day",bt("डे बुक","Day Book")],["led",bt("लेजर","Ledger")],["tb",bt("ट्रायल बैलेंस","Trial Balance")],["pl",bt("लाभ-हानि","Profit & Loss")],["bs",bt("बैलेंस शीट","Balance Sheet")],["gst",bt("GST रिपोर्ट","GST returns")],["out",bt("लेना-देना","Outstanding")],["mst",bt("लेजर सूची","Ledgers")]];
-  h+=`<div class="actions" style="margin:0 0 10px">${bkCan()?`<button class="btn" id="bkNewV">＋ ${esc(bt("वाउचर","Voucher"))}</button><button class="btn ghost" id="bkNewL">＋ ${esc(bt("लेजर","Ledger"))}</button>`:""}<button class="btn ghost" id="bkXl">⬇ Excel</button></div>
+  const R=bkReport(),tabs=[["day",bt("डे बुक","Day Book")],["led",bt("लेजर","Ledger")],["tb",bt("ट्रायल बैलेंस","Trial Balance")],["pl",bt("लाभ-हानि","Profit & Loss")],["bs",bt("बैलेंस शीट","Balance Sheet")],["gst",bt("GST रिपोर्ट","GST returns")],["out",bt("लेना-देना","Outstanding")],["stk",bt("📦 स्टॉक","📦 Stock")],["mst",bt("लेजर सूची","Ledgers")]];
+  h+=`<div class="actions" style="margin:0 0 10px">${bkCan()?`<button class="btn" id="bkNewV">＋ ${esc(bt("वाउचर","Voucher"))}</button><button class="btn ghost" id="bkNewL">＋ ${esc(bt("लेजर","Ledger"))}</button>`:""}<button class="btn ghost" id="bkXl">⬇ Excel</button>${bkCan()?`<button class="btn ghost" id="bkInfo">🏢 ${esc(bt("बिल की जानकारी","Bill details"))}</button>`:""}</div>
    <div class="chips" style="margin-bottom:10px">${tabs.map(x=>`<button class="chip bkTab${bk.tab===x[0]?" on":""}" data-t="${x[0]}" style="${bk.tab===x[0]?"background:var(--blue,#1a56db);color:#fff":""}">${esc(x[1])}</button>`).join("")}</div>`;
   if(R.opDiff&&bk.tab!=="day")h+=`<div class="warn">${esc(bt("ओपनिंग बैलेंस में फ़र्क़: ","Difference in opening balances: "))}${bkDC(R.opDiff)}</div>`;
   h+=`<div id="bkBody">${bkTab(R)}</div>`;el.innerHTML=h;bkWire()}
@@ -5764,7 +5765,7 @@ function bkTab(R){const tb=bk.tab;
     if(tb==="tb")rows.push(`<tr>${bkTd(esc(bt("कुल","Total")),0,1)}${bkTd(bkN(dT),1,1)}${bkTd(bkN(cT),1,1)}</tr>`);
     return (tb==="mst"?`<div class="m" style="margin-bottom:6px">${esc(bt("लेजर बदलने के लिए उस पर दबाएँ।","Tap a ledger to edit it."))}</div>`:"")+bkTbl(rows,[bt("लेजर","Ledger"),"Dr","Cr"])+(tb==="tb"&&Math.abs(r2(dT-cT))>=0.01?`<div class="warn">${esc(bt("Dr और Cr बराबर नहीं: फ़र्क़ ","Dr and Cr do not match: difference "))}${bkN(dT-cT)}</div>`:"")}
   if(tb==="pl"){const line=(a,b,bo)=>`<tr>${bkTd(esc(a),0,bo)}${bkTd(bkN(b),1,bo)}</tr>`;const grp=(g,sign)=>R.G(g).filter(l=>Math.abs(R.B[l.id]||0)>=0.005).map(l=>`<tr class="bkLg" data-id="${esc(l.id)}" style="cursor:pointer">${bkTd("&nbsp;&nbsp;"+esc(l.n))}${bkTd(bkN(sign*(R.B[l.id]||0)),1)}</tr>`).join("");
-    const csIn=bkCan()?`<div class="filters" style="margin-top:8px"><label style="flex:1 1 100%;font-size:13px">${esc(bt("साल के अंत का स्टॉक (क्लोज़िंग स्टॉक) ₹","Closing stock at year end ₹"))}</label><input id="bkCs" type="number" step="0.01" value="${R.cs||""}"><button class="btn ghost" id="bkCsS">${esc(bt("सेव","Save"))}</button></div>`:"";
+    const csIn=R.hasI?`<div class="note">${esc(bt("क्लोज़िंग स्टॉक 📦 स्टॉक के आइटमों से अपने-आप (औसत रेट पर)।","Closing stock comes from the 📦 Stock items (average rate)."))}</div>`:bkCan()?`<div class="filters" style="margin-top:8px"><label style="flex:1 1 100%;font-size:13px">${esc(bt("साल के अंत का स्टॉक (क्लोज़िंग स्टॉक) ₹","Closing stock at year end ₹"))}</label><input id="bkCs" type="number" step="0.01" value="${R.cs||""}"><button class="btn ghost" id="bkCsS">${esc(bt("सेव","Save"))}</button></div>`:"";
     return bkTbl([`<tr><td colspan="2" style="padding:6px;font-weight:700">${esc(bt("ट्रेडिंग खाता","Trading Account"))}</td></tr>`,line(bt("बिक्री","Sales"),R.sales,1),grp("sales",-1),line(bt("प्रत्यक्ष आय","Direct incomes"),R.dinc),line(bt("क्लोज़िंग स्टॉक","Closing stock"),R.cs),line(bt("घटाएँ: ओपनिंग स्टॉक","Less: Opening stock"),R.os),line(bt("घटाएँ: ख़रीद","Less: Purchases"),R.purch,1),grp("purch",1),line(bt("घटाएँ: प्रत्यक्ष ख़र्च","Less: Direct expenses"),R.dexp),grp("dexp",1),
       line(R.gp>=0?bt("सकल लाभ","Gross profit"):bt("सकल हानि","Gross loss"),R.gp,1),`<tr><td colspan="2" style="padding:6px;font-weight:700">${esc(bt("लाभ-हानि खाता","Profit & Loss Account"))}</td></tr>`,line(bt("अप्रत्यक्ष आय","Indirect incomes"),R.iinc,1),grp("iinc",-1),line(bt("घटाएँ: अप्रत्यक्ष ख़र्च","Less: Indirect expenses"),R.iexp,1),grp("iexp",1),
       `<tr style="background:${R.np>=0?"#eaf7ee":"#fdecec"}">${bkTd(esc(R.np>=0?bt("शुद्ध लाभ","Net profit"):bt("शुद्ध हानि","Net loss")),0,1)}${bkTd(bkN(R.np),1,1)}</tr>`],[bt("विवरण","Particulars"),"₹"])+csIn}
@@ -5789,7 +5790,7 @@ function bkWire(){const el=$("#bk");const p=$("#bkP");if(p)p.onchange=()=>bkOpen
   const cs=$("#bkCsS");if(cs)cs.onclick=async()=>{cs.disabled=true;try{await bkMerge("bk_books",bk.pid,{cs:{[bk.fy]:r2($("#bkCs").value)}},true);toast(bt("सेव हो गया","Saved"))}catch(e){toast(t("saveFail"))}cs.disabled=false};
   const cf=$("#bkCf");if(cf)cf.onclick=()=>bkCarry()}
 /* ---- start books ---- */
-function bkStartForm(){const p=(parties||[]).find(x=>x.id===bk.pid)||{};const gs=(p.gsts||[]).map(g=>g.gstin).filter(Boolean);
+function bkStartForm(){const p=(parties||[]).find(x=>x.id===bk.pid)||{name:bk.pid==="_self"?bkSelfName():"",gsts:[]};const gs=(p.gsts||[]).map(g=>g.gstin).filter(Boolean);
   openSheet(`<h3>📒 ${esc(bt("किताबें शुरू करें","Start books"))}</h3><div class="m">${esc(p.name||"")}</div>
    <label>${esc(bt("GSTIN (राज्य तय करने के लिए)","GSTIN (sets the state)"))}</label>${gs.length>1?`<select id="bsG">${gs.map(g=>`<option>${esc(g)}</option>`).join("")}</select>`:`<input id="bsG" value="${esc(gs[0]||"")}" maxlength="15" style="text-transform:uppercase">`}
    <label>${esc(bt("राज्य","State"))}</label><select id="bsS">${Object.keys(STATES).map(k=>`<option value="${k}">${k} ${esc(STATES[k])}</option>`).join("")}</select>
@@ -5805,7 +5806,7 @@ function bkLForm(id,after){const L=id?bk.book.L[id]:null,op=id?bkOp(id):0;
    <label>${esc(bt("नाम","Name"))}</label><input id="blN" maxlength="80" value="${esc(L?L.n:"")}">
    <label>${esc(bt("ग्रुप","Group"))}</label><select id="blG">${BK_G.map(g=>`<option value="${g[0]}"${L&&L.g===g[0]?" selected":""}>${esc(bkGN(g[0]))}</option>`).join("")}</select>
    <label>${esc(bt("ओपनिंग बैलेंस (FY "+bk.fy+"-"+String(bk.fy+1).slice(2)+")","Opening balance (FY "+bk.fy+"-"+String(bk.fy+1).slice(2)+")"))}</label><div class="row2"><input id="blO" type="number" step="0.01" value="${op?Math.abs(op):""}"><select id="blD"><option value="1">Dr</option><option value="-1"${op<0?" selected":""}>Cr</option></select></div>
-   <div id="blGst"><label>GSTIN</label><input id="blGi" maxlength="15" style="text-transform:uppercase" value="${esc(L&&L.gstin||"")}"><label>${esc(bt("राज्य","State"))}</label><select id="blS"><option value="">—</option>${Object.keys(STATES).map(k=>`<option value="${k}"${L&&L.st===k?" selected":""}>${k} ${esc(STATES[k])}</option>`).join("")}</select></div>
+   <div id="blGst"><label>${esc(bt("पता (बिल पर छपेगा)","Address (printed on bills)"))}</label><textarea id="blA" rows="2" maxlength="250">${esc(L&&L.addr||"")}</textarea><label>GSTIN</label><input id="blGi" maxlength="15" style="text-transform:uppercase" value="${esc(L&&L.gstin||"")}"><label>${esc(bt("राज्य","State"))}</label><select id="blS"><option value="">—</option>${Object.keys(STATES).map(k=>`<option value="${k}"${L&&L.st===k?" selected":""}>${k} ${esc(STATES[k])}</option>`).join("")}</select></div>
    <div class="actions"><button class="btn" id="blGo">${esc(bt("सेव","Save"))}</button>${id&&!BK_DEF[id]?`<button class="btn ghost red" id="blDel">🗑 ${esc(bt("हटाएँ","Delete"))}</button>`:""}<button class="btn ghost" id="blX">${esc(t("cancel")||"Cancel")}</button></div><div class="err" id="blE"></div>`);
   const gsync=()=>{$("#blGst").style.display=["sdr","scr","cash","bank","dt"].includes($("#blG").value)?"":"none";const g=($("#blGi").value||"").trim().toUpperCase();if(/^\d{2}/.test(g)&&STATES[g.slice(0,2)])$("#blS").value=g.slice(0,2)};$("#blG").onchange=gsync;$("#blGi").oninput=gsync;gsync();
   $("#blX").onclick=()=>{closeSheet();if(after)after(null)};
@@ -5815,7 +5816,7 @@ function bkLForm(id,after){const L=id?bk.book.L[id]:null,op=id?bkOp(id):0;
     if(bkL().some(l=>l.id!==id&&l.n.toLowerCase()===n.toLowerCase())){$("#blE").textContent=bt("इस नाम का लेजर पहले से है","A ledger with this name exists");return}
     const gi=($("#blGi").value||"").trim().toUpperCase();if(gi&&!/^\d{2}[A-Z]{5}\d{4}[A-Z][A-Z0-9]Z[A-Z0-9]$/.test(gi)){$("#blE").textContent=bt("GSTIN सही नहीं लगता","GSTIN does not look right");return}
     const nid=id||("l"+Date.now().toString(36)+Math.random().toString(36).slice(2,5));const o=r2((+$("#blO").value||0)*(+$("#blD").value));
-    const rec={n,g:$("#blG").value,gstin:gi,st:$("#blS").value||"",op:{[bk.fy]:o}};$("#blGo").disabled=true;
+    const rec={n,g:$("#blG").value,gstin:gi,st:$("#blS").value||"",addr:($("#blA").value||"").trim(),op:{[bk.fy]:o}};$("#blGo").disabled=true;
     try{await bkMerge("bk_books",bk.pid,{L:{[nid]:rec}},true);closeSheet();toast(bt("लेजर सेव हुआ","Ledger saved"));if(after)after(nid)}catch(e){$("#blGo").disabled=false;$("#blE").textContent=t("saveFail")}}}
 /* ---- voucher entry ---- */
 const BK_TAXL=/^(ocgst|osgst|oigst|icgst|isgst|iigst|round)$/;
@@ -5823,13 +5824,13 @@ function bkNextNo(t0){const n=bkV().filter(v=>v.t===t0).map(v=>parseInt(v.no,10)
 function bkVForm(id,draft){if(!bkCan()&&!id)return;const V=id?bkV().find(v=>v.id===id):null;if(id&&!V)return;
   const d0=draft||(V?JSON.parse(JSON.stringify(V)):{t:"pay",d:(bkFyOfD(todayStr())===bk.fy?todayStr():(bk.fy+1)+"-03-31"),nar:"",ln:[]});
   if(!d0.no)d0.no=bkNextNo(d0.t);const isInv=["sales","purch","cn","dn"].includes(d0.t);
-  const L=bkL().sort((a,b)=>a.n.localeCompare(b.n));const dl=`<datalist id="bkDl">${L.map(l=>`<option value="${esc(l.n)}">${esc(bkGN(l.g))}</option>`).join("")}</datalist>`;
+  const L=bkL().sort((a,b)=>a.n.localeCompare(b.n));const dl=`<datalist id="bkDl">${L.map(l=>`<option value="${esc(l.n)}">${esc(bkGN(l.g))}</option>`).join("")}</datalist><datalist id="bkDlI">${bkItems().map(x=>`<option value="${esc(x.n)}">${esc((x.hsn?"HSN "+x.hsn+" · ":"")+(x.r!=null?x.r+"%":""))}</option>`).join("")}</datalist>`;
   const ro=!bkCan();
   let body;
   if(isInv){const g=d0.gst||{party:"",items:[{l:d0.t==="purch"||d0.t==="dn"?"purch":"sales",v:"",r:18}],inv:"",ro:true};
     const pl=g.party?bkLN(g.party):"";
     body=`<label>${esc(d0.t==="sales"||d0.t==="cn"?bt("ग्राहक / पार्टी (या Cash)","Customer / party (or Cash)"):bt("सप्लायर / पार्टी (या Cash)","Supplier / party (or Cash)"))}</label><input id="bvParty" list="bkDl" value="${esc(pl)}" autocomplete="off">
-     <label>${esc(bt("बिल नंबर","Invoice no."))}</label><input id="bvInv" maxlength="16" value="${esc(g.inv||"")}">
+     <label>${esc(bt("बिल नंबर","Invoice no."))}</label><input id="bvInv" maxlength="16" value="${esc(g.inv||(!id&&(d0.t==="sales"||d0.t==="cn")?bkInvNo(d0.t,d0.no):""))}">
      <div id="bvItems">${g.items.map((it,i)=>bkItemRow(it,i)).join("")}</div><button class="btn ghost" id="bvAddI" type="button">＋ ${esc(bt("और लाइन","Another line"))}</button>
      <label class="chk" style="margin-top:8px"><input type="checkbox" id="bvRo"${g.ro!==false?" checked":""}> ${esc(bt("रुपये तक राउंड करें","Round to rupee"))}</label><div id="bvSum" class="note"></div>`}
   else{const ln=(d0.ln&&d0.ln.length)?d0.ln:(d0.t==="rcpt"?[{l:"cash",a:0.0001},{l:"",a:-0.0001}]:d0.t==="pay"?[{l:"",a:0.0001},{l:"cash",a:-0.0001}]:[{l:"",a:0.0001},{l:"",a:-0.0001}]);
@@ -5839,18 +5840,18 @@ function bkVForm(id,draft){if(!bkCan()&&!id)return;const V=id?bkV().find(v=>v.id
    <div class="row2"><div><label>${esc(bt("तारीख़","Date"))}</label><input id="bvD" type="date" value="${esc(d0.d)}" min="${bk.fy}-04-01" max="${bk.fy+1}-03-31"></div><div><label>${esc(bt("नंबर","No."))}</label><input id="bvNo" value="${esc(d0.no)}" maxlength="16"></div></div>
    ${body}<label>${esc(bt("विवरण (नैरेशन)","Narration"))}</label><textarea id="bvNar" rows="2" maxlength="300">${esc(d0.nar||"")}</textarea>
    ${V&&V.by?`<div class="m">${esc(bt("बनाया/बदला: ","Made/changed: "))}${esc(names&&names[V.by]||"")} ${esc((V.at||"").slice(0,10))}</div>`:""}
-   <div class="actions">${ro?"":`<button class="btn" id="bvGo">${esc(bt("सेव","Save"))}</button><button class="btn ghost" id="bvNewL" type="button">＋ ${esc(bt("नया लेजर","New ledger"))}</button>`}${id&&!ro?`<button class="btn ghost red" id="bvDel">🗑 ${esc(bt("हटाएँ","Delete"))}</button>`:""}<button class="btn ghost" id="bvX">${esc(t("cancel")||"Close")}</button></div><div class="err" id="bvE"></div>`,{k:"bkv",id});
+   <div class="actions">${ro?"":`<button class="btn" id="bvGo">${esc(bt("सेव","Save"))}</button><button class="btn ghost" id="bvNewL" type="button">＋ ${esc(bt("नया लेजर","New ledger"))}</button>`}${!id&&bk.lastV&&(bk.lastV.t==="sales"||bk.lastV.t==="cn")?`<button class="btn ghost" id="bvPrL" type="button">🖨 ${esc(bt("पिछला बिल प्रिंट","Print last bill"))}</button>`:""}${id&&V&&(V.t==="sales"||V.t==="cn")?`<button class="btn ghost" id="bvPr" type="button">🖨 ${esc(bt("बिल प्रिंट","Print invoice"))}</button>`:""}${id&&!ro?`<button class="btn ghost red" id="bvDel">🗑 ${esc(bt("हटाएँ","Delete"))}</button>`:""}<button class="btn ghost" id="bvX">${esc(t("cancel")||"Close")}</button></div><div class="err" id="bvE"></div>`,{k:"bkv",id});
   const grab=()=>{const d={t:d0.t,d:$("#bvD").value,no:$("#bvNo").value.trim(),nar:$("#bvNar").value.trim()};
-    if(isInv){d.gst={party:bkIdOf($("#bvParty").value),inv:$("#bvInv").value.trim(),ro:$("#bvRo").checked,items:[...document.querySelectorAll(".bvI")].map(r=>({l:bkIdOf(r.querySelector(".biL").value)||r.querySelector(".biL").value,v:r.querySelector(".biV").value,r:+r.querySelector(".biR").value}))}}
+    if(isInv){d.gst={party:bkIdOf($("#bvParty").value),inv:$("#bvInv").value.trim(),ro:$("#bvRo").checked,items:[...document.querySelectorAll(".bvI")].map(r=>({it:bkItemOf(r.querySelector(".biIt").value)||r.querySelector(".biIt").value.trim(),q:r.querySelector(".biQ").value,p:r.querySelector(".biP").value,l:bkIdOf(r.querySelector(".biL").value)||r.querySelector(".biL").value,v:r.querySelector(".biV").value,r:+r.querySelector(".biR").value}))}}
     else d.ln=[...document.querySelectorAll(".bvL")].map(r=>({l:bkIdOf(r.querySelector(".blL").value)||r.querySelector(".blL").value,a:r2(r.querySelector(".blA").value)*(+r.querySelector(".blDC").value)}));return d};
   const sum=()=>{const d=grab(),p=bkPost(d);const s=$("#bvSum");if(!s)return;if(p.err){s.innerHTML=esc(p.err);return}
     const dr=r2(p.ln.reduce((a,x)=>a+(x.a>0?x.a:0),0)),cr=r2(p.ln.reduce((a,x)=>a+(x.a<0?-x.a:0),0));
     s.innerHTML=(isInv?p.ln.map(x=>`${esc(bkLN(x.l))}: ${bkDC(x.a)}`).join("<br>")+"<br>":"")+`<b>Dr ${bkN(dr)} · Cr ${bkN(cr)}</b>${Math.abs(dr-cr)>=0.005?` <span style="color:var(--red)">${esc(bt("फ़र्क़ ","Difference "))}${bkN(dr-cr)}</span>`:" ✔"}`};
   document.querySelectorAll(".bvT").forEach(b=>b.onclick=()=>{const d=grab();d.t=b.dataset.t;if(!id||d.t!==d0.t)d.no=bkNextNo(d.t);if(["sales","purch","cn","dn"].includes(d.t)!==isInv){delete d.ln;delete d.gst}else if(d.gst){const want=d.t==="purch"||d.t==="dn"?"purch":"sales";d.gst.items.forEach(it=>{if(!it.l||it.l==="sales"||it.l==="purch"||!bk.book.L[it.l])it.l=want})}bkVForm(id,d)});
-  const sheet=$("#sheet");sheet.oninput=sheet.onchange=e=>{if(!$("#bvD")){sheet.oninput=sheet.onchange=null;return}if(e.target&&e.target.id!=="bvNar")sum()};sum();
+  const sheet=$("#sheet");sheet.oninput=sheet.onchange=e=>{if(!$("#bvD")){sheet.oninput=sheet.onchange=null;return}const row=e.target&&e.target.closest&&e.target.closest(".bvI");if(row)bkItemAuto(row,e.target,d0.t);if(e.target&&e.target.id!=="bvNar")sum()};sum();
   const ai=$("#bvAddI");if(ai)ai.onclick=()=>{$("#bvItems").insertAdjacentHTML("beforeend",bkItemRow({l:d0.t==="purch"||d0.t==="dn"?"purch":"sales",v:"",r:18},document.querySelectorAll(".bvI").length));sum()};
   const al=$("#bvAddL");if(al)al.onclick=()=>{const d=grab(),bal=r2(d.ln.reduce((a,x)=>a+(+x.a||0),0));$("#bvLines").insertAdjacentHTML("beforeend",bkLineRow({l:"",a:-bal||0.0001},document.querySelectorAll(".bvL").length));sum()};
-  $("#bvX").onclick=closeSheet;
+  $("#bvX").onclick=closeSheet;const pr=$("#bvPr");if(pr)pr.onclick=()=>bkPrint(id);const prl=$("#bvPrL");if(prl)prl.onclick=()=>bkPrint(bk.lastV.id);
   const nl=$("#bvNewL");if(nl)nl.onclick=()=>{const keep=grab();bkLForm(null,()=>bkVForm(id,keep))};
   const del=$("#bvDel");if(del)del.onclick=async()=>{if(!del.dataset.sure){del.dataset.sure=1;del.textContent=bt("पक्का हटाएँ?","Delete for sure?");return}
     try{await bkMerge("bk_vm",V.doc,{v:{[id]:{del:true,at:new Date().toISOString(),by:me.id||"local"}}},true);closeSheet();toast(bt("वाउचर हटाया","Voucher deleted"))}catch(e){$("#bvE").textContent=t("saveFail")}};
@@ -5861,17 +5862,17 @@ function bkVForm(id,draft){if(!bkCan()&&!id)return;const V=id?bkV().find(v=>v.id
     const vid=id||("v"+Date.now().toString(36)+Math.random().toString(36).slice(2,6));go.disabled=true;
     try{const doc=bkDocFor(d.d,JSON.stringify(rec).length);if(V&&V.doc!==doc.id)await bkMerge("bk_vm",V.doc,{v:{[vid]:{del:true,at:rec.at,by:rec.by}}},true);
       await bkMerge("bk_vm",doc.id,Object.assign(doc.exists?{}:{pid:bk.pid,fy:bk.fy,ym:d.d.slice(0,7)},{v:{[vid]:rec}}),doc.exists);
-      toast(bt("वाउचर सेव हुआ","Voucher saved"));if(id)closeSheet();else bkVForm(null,{t:d.t,d:d.d,nar:"",ln:[]})}catch(e){go.disabled=false;$("#bvE").textContent=t("saveFail")}}}
+      toast(bt("वाउचर सेव हुआ","Voucher saved"));bk.lastV={id:vid,t:d.t};if(id)closeSheet();else bkVForm(null,{t:d.t,d:d.d,nar:"",ln:[]})}catch(e){go.disabled=false;$("#bvE").textContent=t("saveFail")}}}
 function bkIdOf(name){name=(name||"").trim().toLowerCase();if(!name)return"";const l=bkL().find(x=>x.n.toLowerCase()===name);return l?l.id:""}
 function bkLineRow(x,i){return `<div class="bvL row2" style="grid-template-columns:2fr 1fr 70px;gap:6px;margin-bottom:6px"><input class="blL" list="bkDl" placeholder="${esc(bt("लेजर","Ledger"))}" value="${esc(x.l?bkLN(x.l):"")}" autocomplete="off"><input class="blA" type="number" step="0.01" inputmode="decimal" placeholder="₹" value="${Math.abs(x.a)>=0.01?Math.abs(x.a):""}"><select class="blDC"><option value="1">Dr</option><option value="-1"${x.a<0?" selected":""}>Cr</option></select></div>`}
-function bkItemRow(it,i){return `<div class="bvI row2" style="grid-template-columns:2fr 1fr 70px;gap:6px;margin-bottom:6px"><input class="biL" list="bkDl" value="${esc(it.l?bkLN(it.l):"")}" placeholder="${esc(bt("बिक्री / ख़रीद लेजर","Sales / purchase ledger"))}" autocomplete="off"><input class="biV" type="number" step="0.01" inputmode="decimal" placeholder="${esc(bt("टैक्सेबल ₹","Taxable ₹"))}" value="${esc(it.v)}"><select class="biR">${[0,0.25,3,5,12,18,28,40].map(r=>`<option value="${r}"${+it.r===r?" selected":""}>${r}%</option>`).join("")}</select></div>`}
+function bkItemRow(it,i){const I=it.it&&bk.book.I&&bk.book.I[it.it];return `<div class="bvI" style="border:1px solid var(--line);border-radius:10px;padding:6px;margin-bottom:6px"><div class="row2" style="grid-template-columns:2fr 1fr 1fr;gap:6px"><input class="biIt" list="bkDlI" placeholder="${esc(bt("आइटम (ज़रूरी नहीं)","Item (optional)"))}" value="${esc(I?I.n:"")}" autocomplete="off"><input class="biQ" type="number" step="0.001" inputmode="decimal" placeholder="${esc(bt("मात्रा","Qty"))}${I&&I.u?" "+esc(I.u):""}" value="${esc(it.q||"")}"><input class="biP" type="number" step="0.01" inputmode="decimal" placeholder="${esc(bt("रेट ₹","Rate ₹"))}" value="${esc(it.p||"")}"></div><div class="row2" style="grid-template-columns:2fr 1fr 70px;gap:6px;margin-top:6px"><input class="biL" list="bkDl" value="${esc(it.l?bkLN(it.l):"")}" placeholder="${esc(bt("बिक्री / ख़रीद लेजर","Sales / purchase ledger"))}" autocomplete="off"><input class="biV" type="number" step="0.01" inputmode="decimal" placeholder="${esc(bt("टैक्सेबल ₹","Taxable ₹"))}" value="${esc(it.v)}"><select class="biR">${[0,0.1,0.25,1.5,3,5,6,12,18,28,40].map(r=>`<option value="${r}"${+it.r===r?" selected":""}>${r}%</option>`).join("")}</select></div></div>`}
 /* turn a voucher draft into Dr/Cr lines; for invoices work out GST */
 function bkPost(d){if(!["sales","purch","cn","dn"].includes(d.t)){const ln=(d.ln||[]).filter(x=>x.l||Math.abs(x.a)>=0.01);
     for(const x of ln){if(!x.l||!bk.book.L[x.l])return{err:bt("लेजर नहीं मिला: ","Ledger not found: ")+(x.l||"—")+bt(" — '＋ नया लेजर' से बनाएँ"," — create it with '＋ New ledger'")};if(Math.abs(x.a)<0.01)return{err:bt("रकम लिखें: ","Enter the amount: ")+bkLN(x.l)}}
     if(ln.length<2)return{err:bt("कम से कम दो लाइन चाहिए","At least two lines are needed")};return{ln:ln.map(x=>({l:x.l,a:r2(x.a)}))}}
   const g=d.gst||{};if(!g.party||!bk.book.L[g.party])return{err:bt("पार्टी का लेजर चुनें / बनाएँ","Choose / create the party ledger")};
   const items=(g.items||[]).filter(it=>it.l||+it.v);if(!items.length)return{err:bt("रकम लिखें","Enter the amount")};
-  for(const it of items){if(!bk.book.L[it.l])return{err:bt("लेजर नहीं मिला: ","Ledger not found: ")+(it.l||"—")};if(!(+it.v>0))return{err:bt("टैक्सेबल रकम लिखें","Enter the taxable amount")}}
+  for(const it of items){if(it.it&&!(bk.book.I&&bk.book.I[it.it]))return{err:bt("आइटम नहीं मिला: ","Item not found: ")+it.it+bt(" — 📦 स्टॉक में बनाएँ"," — create it under 📦 Stock")};if(it.it&&!(+it.q>0))return{err:bt("मात्रा लिखें: ","Enter the quantity: ")+bk.book.I[it.it].n};if(!bk.book.L[it.l])return{err:bt("लेजर नहीं मिला: ","Ledger not found: ")+(it.l||"—")};if(!(+it.v>0))return{err:bt("टैक्सेबल रकम लिखें","Enter the taxable amount")}}
   const P=bk.book.L[g.party],ps=P.st||(P.gstin||"").slice(0,2)||bk.book.st,inter=!!ps&&ps!==bk.book.st;
   const isOut=d.t==="sales"||d.t==="cn";const pre=isOut?"o":"i";
   const realSgn=d.t==="sales"?1:d.t==="cn"?-1:d.t==="purch"?-1:1; /* party side: sales Dr, credit note Cr, purchase Cr, debit note Dr */
@@ -5881,7 +5882,7 @@ function bkPost(d){if(!["sales","purch","cn","dn"].includes(d.t)){const ln=(d.ln
   let gross=r2(tot+taxT);if(g.ro!==false){const rr=Math.round(gross);const diff=r2(rr-gross);if(diff){add("round",-realSgn*diff);gross=rr}}
   add(g.party,realSgn*gross);
   for(const k of Object.keys(m))if(!bk.book.L[k]&&BK_DEF[k])return{err:bt("GST / Round Off लेजर नहीं मिला — लेजर सूची देखें","GST / Round Off ledger missing — check the ledger list")};
-  return{ln:Object.keys(m).filter(k=>Math.abs(m[k])>=0.005).map(k=>({l:k,a:m[k]})),items:items.map(it=>({l:it.l,v:r2(it.v),r:+it.r||0})),ps,inter}}
+  return{ln:Object.keys(m).filter(k=>Math.abs(m[k])>=0.005).map(k=>({l:k,a:m[k]})),items:items.map(it=>Object.assign({l:it.l,v:r2(it.v),r:+it.r||0},it.it?{it:it.it,q:+it.q,p:r2(it.p)}:{})),ps,inter}}
 /* which month document gets this voucher (a new part when one grows past ~700 KB) */
 function bkDocFor(d,sz){const base=bk.pid+"_"+bk.fy+"_"+d.slice(5,7);for(let k=1;k<50;k++){const id=k===1?base:base+"_"+k,doc=bk.vm[id];if(!doc)return{id,exists:false};if(JSON.stringify(doc).length+sz<700000)return{id,exists:true}}return{id:base+"_x"+Date.now(),exists:false}}
 /* carry closing balances to next year */
@@ -5889,7 +5890,8 @@ async function bkCarry(){const b=$("#bkCf");if(!b.dataset.sure){b.dataset.sure=1
   const R=bkReport(),ny=bk.fy+1,L={};R.L.forEach(l=>{const nat=BK_GM[l.g]&&BK_GM[l.g].nat;let v=(nat==="A"||nat==="L")?(R.B[l.id]||0):0;if(l.g==="stock")v=0;L[l.id]={op:{[ny]:r2(v)}}});
   const capId=bk.book.L.capital&&!bk.book.L.capital.del?"capital":(R.L.find(l=>l.g==="cap")||{}).id;if(capId)L[capId].op[ny]=r2((L[capId].op[ny]||0)-R.np);
   const stk=R.L.find(l=>l.g==="stock");if(R.cs){if(stk)L[stk.id].op[ny]=R.cs;else L["stock"]={n:"Opening Stock",g:"stock",op:{[ny]:R.cs}}}
-  b.disabled=true;try{await bkMerge("bk_books",bk.pid,{L},true);toast(bt("अगले साल में बैलेंस पहुँच गए","Balances carried to next year"));bkOpen(bk.pid,ny)}catch(e){b.disabled=false;toast(t("saveFail"))}}
+  const IT={};(R.SK.list||[]).forEach(x=>IT[x.id]={op:{[ny]:{q:x.cq,v:x.cv}}});
+  b.disabled=true;try{await bkMerge("bk_books",bk.pid,Object.keys(IT).length?{L,I:IT}:{L},true);toast(bt("अगले साल में बैलेंस पहुँच गए","Balances carried to next year"));bkOpen(bk.pid,ny)}catch(e){b.disabled=false;toast(t("saveFail"))}}
 /* Excel: day book, trial balance, P&L, balance sheet */
 async function bkExcel(){if(!window.XLSX)await loadScript(XLSX_SRC);const R=bkReport(),wb=XLSX.utils.book_new(),nm=(bk.book.name||"Books").replace(/[^\w]+/g,"_").slice(0,30);
   const day=[["Date","Type","No","Ledger","Dr","Cr","Narration"]];R.V.forEach(v=>(v.ln||[]).forEach((x,i)=>day.push([i?"":v.d,i?"":bkTN(v.t),i?"":v.no,bkLN(x.l),x.a>0?x.a:"",x.a<0?-x.a:"",i?"":v.nar||""])));
@@ -5953,7 +5955,7 @@ async function bkGstExcel(){if(!window.XLSX)await loadScript(XLSX_SRC);const R=b
   const s3=[["GSTR-3B",bk.book.name,per],[],["Table","Taxable","IGST","CGST","SGST"],["3.1(a) Outward taxable",R.t31a.tv,R.t31a.i,R.t31a.c,R.t31a.s],["3.1(c) Nil / exempt",R.t31c.tv],["4(A)(5) All other ITC","",R.itc.i,R.itc.c,R.itc.s],["4(B) ITC reversed","",R.itcRev.i,R.itcRev.c,R.itcRev.s],["4(C) Net ITC","",R.itcNet.i,R.itcNet.c,R.itcNet.s],["6.1 Cash payable (estimate)","",R.cash.i,R.cash.c,R.cash.s]];
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(s3),"GSTR-3B");XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(inv(R.b2b)),"b2b");XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(inv(R.b2cl)),"b2cl");
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["Place of supply","Rate","Taxable","IGST","CGST","SGST"]].concat(Object.values(R.b2cs).map(r=>[r.pos+"-"+(STATES[r.pos]||""),r.r,r.tv,r.i,r.c,r.s]))),"b2cs");
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(inv(R.cdnr.concat(R.cdnur))),"cdn");
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(inv(R.cdnr.concat(R.cdnur))),"cdn");if(R.hsn)XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["HSN","UQC","Rate","Qty","Taxable","IGST","CGST","SGST"]].concat(Object.values(R.hsn).map(h=>[h.hsn,h.u,h.r,h.q,h.tv,h.i,h.c,h.s]))),"hsn");
   const blob=new Blob([XLSX.write(wb,{type:"array",bookType:"xlsx"})],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),fname="GST-"+(bk.book.name||"").replace(/[^\w]+/g,"_").slice(0,30)+"-"+per.replace(/[^\w]+/g,"_")+".xlsx";
   if(dlCap===undefined)dlCap=(window.claude&&claude.use)?await claude.use("downloads").catch(()=>null):null;
   if(dlCap){await dlCap.save({filename:fname,data:blob});toast(t("fSaved"))}else{const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();a.remove()}}
@@ -5966,6 +5968,101 @@ function bkOutHtml(R){const last={};R.V.forEach(v=>(v.ln||[]).forEach(x=>{if(v.t
 {const _bkTab=bkTab;bkTab=function(R){if(bk.tab==="gst")return bkGstHtml();if(bk.tab==="out")return bkOutHtml(R);return _bkTab(R)}}
 {const _bkWire=bkWire;bkWire=function(){_bkWire();const gp=$("#bkGp");if(gp)gp.onchange=()=>{bk.gp=gp.value;renderBk()};const gx=$("#bkGx");if(gx)gx.onclick=()=>bkGstExcel()}}
 {const _bkOpen=bkOpen;bkOpen=function(pid,fy){if(fy!==bk.fy)bk.gp="";return _bkOpen(pid,fy)}}
+
+/* ===== 📒 Accounts part 3: stock items (inventory), HSN, business details, invoice print =====
+   bk_books/{pid}.I : {id:{n,hsn,u,r,op:{fy:{q,v}},del}}   .info : {addr,ph,em,bank,ac,ifsc,pre,terms}
+   bill item lines may carry it (item id), q (qty), p (rate); stock = weighted average cost */
+const BK_UQC=["NOS","PCS","KGS","GMS","TON","LTR","MLT","MTR","SQM","SQF","BOX","CTN","BAG","SET","DOZ","PAC","ROL","OTH"];
+const bkSelfName=()=>(window.__site&&__site.firm&&__site.firm.name)||bt("मेरी फ़र्म","My firm");
+function bkItems(){const I=(bk.book&&bk.book.I)||{};return Object.keys(I).filter(id=>!I[id].del).map(id=>Object.assign({id},I[id])).sort((a,b)=>a.n.localeCompare(b.n))}
+function bkItemOf(name){name=(name||"").trim().toLowerCase();if(!name)return"";const x=bkItems().find(i=>i.n.toLowerCase()===name);return x?x.id:""}
+function bkInvNo(t0,no){const pre=(bk.book&&bk.book.info&&bk.book.info.pre)||"";return (t0==="cn"?"CN/":"")+pre+no}
+function bkLastRate(itId,t0){const sale=t0==="sales"||t0==="cn";const V=bkV();for(let i=V.length-1;i>=0;i--){const v=V[i];if(!v.gst||((v.t==="sales"||v.t==="cn")!==sale))continue;const x=(v.gst.items||[]).find(y=>y.it===itId&&y.p);if(x)return x.p}return ""}
+function bkItemAuto(row,tg,t0){const q=row.querySelector(".biQ"),p=row.querySelector(".biP"),v=row.querySelector(".biV"),r=row.querySelector(".biR"),it=row.querySelector(".biIt");
+  if(tg===it){const id=bkItemOf(it.value),I=id&&bk.book.I[id];if(I){if(I.r!=null&&I.r!=="")r.value=String(I.r);q.placeholder=bt("मात्रा","Qty")+(I.u?" "+I.u:"");if(!p.value){const lr=bkLastRate(id,t0);if(lr)p.value=lr}}}
+  if((tg===it||tg===q||tg===p)&&+q.value>0&&+p.value>0)v.value=r2(+q.value*+p.value)}
+function bkStock(V){const I=bkItems(),fy=bk.fy,S={};I.forEach(x=>{const op=(x.op&&x.op[fy])||{};S[x.id]={id:x.id,n:x.n,u:x.u||"",hsn:x.hsn||"",oq:+op.q||0,ov:r2(op.v),iq:0,iv:0,sq:0,mv:[]}});
+  (V||bkV()).forEach(v=>{if(!v.gst)return;(v.gst.items||[]).forEach(it=>{const s0=it.it&&S[it.it];if(!s0||!(+it.q))return;const q=+it.q;
+    if(v.t==="purch"){s0.iq+=q;s0.iv=r2(s0.iv+(+it.v||0))}else if(v.t==="dn"){s0.iq-=q;s0.iv=r2(s0.iv-(+it.v||0))}else if(v.t==="sales")s0.sq+=q;else if(v.t==="cn")s0.sq-=q;
+    s0.mv.push({id:v.id,d:v.d,t:v.t,q:(v.t==="purch"||v.t==="cn")?q:-q,p:it.p,party:v.gst.party})})});
+  const list=Object.values(S).map(x=>{const dq=x.oq+x.iq,avg=dq>0?(x.ov+x.iv)/dq:0;x.cq=Math.round((x.oq+x.iq-x.sq)*1000)/1000;x.avg=r2(avg);x.cv=r2(x.cq>0?x.cq*avg:0);return x});
+  return{list,cv:r2(list.reduce((s,x)=>s+x.cv,0)),ov:r2(list.reduce((s,x)=>s+x.ov,0))}}
+function bkStkHtml(R){const S=R.SK,top=bkCan()?`<div class="actions" style="margin:0 0 8px"><button class="btn ghost" id="bkNewI">＋ ${esc(bt("आइटम","Item"))}</button></div>`:"";
+  if(!S.list.length)return top+`<div class="empty">${esc(bt("अभी कोई आइटम नहीं। आइटम बनाएँ तो बिक्री / ख़रीद के बिल में मात्रा × रेट से स्टॉक अपने-आप चलेगा, और क्लोज़िंग स्टॉक भी अपने-आप बनेगा।","No items yet. Once items exist, quantity × rate in sales / purchase bills keeps the stock, and the closing stock is worked out for you."))}</div>`;
+  const rows=S.list.map(x=>`<tr class="bkIe" data-id="${esc(x.id)}" style="cursor:pointer">${bkTd(esc(x.n)+(x.hsn?"<br><span class='m'>HSN "+esc(x.hsn)+"</span>":""))}${bkTd(bkQ(x.oq),1)}${bkTd(bkQ(x.iq),1)}${bkTd(bkQ(x.sq),1)}${bkTd((x.cq<0?"<span style='color:var(--red)'>":"")+bkQ(x.cq)+" "+esc(x.u)+(x.cq<0?"</span>":""),1,1)}${bkTd(bkN(x.cv)+"<br><span class='m'>@ "+bkN(x.avg)+"</span>",1)}</tr>`);
+  rows.push(`<tr>${bkTd(esc(bt("कुल स्टॉक","Total stock")),0,1)}${bkTd("")}${bkTd("")}${bkTd("")}${bkTd("")}${bkTd(bkN(S.cv),1,1)}</tr>`);
+  return top+bkTbl(rows,[bt("आइटम","Item"),bt("ओपनिंग","Opening"),bt("आया","In"),bt("गया","Out"),bt("बचा","Closing"),"₹"])+(S.list.some(x=>x.cq<0)?`<div class="warn">${esc(bt("कुछ आइटम का स्टॉक माइनस में है — ख़रीद या ओपनिंग स्टॉक देखें।","Some items are below zero — check purchases or the opening stock."))}</div>`:"")}
+const bkQ=q=>(Math.round((+q||0)*1000)/1000).toLocaleString("en-IN",{maximumFractionDigits:3});
+function bkIForm(id){const I=id?bk.book.I[id]:null,op=(I&&I.op&&I.op[bk.fy])||{};const S=id?bkStock().list.find(x=>x.id===id):null;
+  openSheet(`<h3>${esc(id?bt("आइटम","Item"):bt("नया आइटम","New item"))}</h3>
+   <label>${esc(bt("नाम","Name"))}</label><input id="biN" maxlength="80" value="${esc(I?I.n:"")}">
+   <div class="row2"><div><label>HSN / SAC</label><input id="biH" maxlength="8" inputmode="numeric" value="${esc(I&&I.hsn||"")}"></div><div><label>${esc(bt("यूनिट","Unit"))}</label><select id="biU">${BK_UQC.map(u=>`<option${I&&I.u===u?" selected":""}>${u}</option>`).join("")}</select></div></div>
+   <label>GST %</label><select id="biRr">${[0,0.1,0.25,1.5,3,5,6,12,18,28,40].map(r=>`<option value="${r}"${(I?+I.r:18)===r?" selected":""}>${r}%</option>`).join("")}</select>
+   <label>${esc(bt("ओपनिंग स्टॉक (FY "+bk.fy+"-"+String(bk.fy+1).slice(2)+")","Opening stock (FY "+bk.fy+"-"+String(bk.fy+1).slice(2)+")"))}</label><div class="row2"><input id="biOq" type="number" step="0.001" placeholder="${esc(bt("मात्रा","Qty"))}" value="${op.q||""}"><input id="biOv" type="number" step="0.01" placeholder="${esc(bt("कुल क़ीमत ₹","Total value ₹"))}" value="${op.v||""}"></div>
+   ${S&&S.mv.length?`<h4 style="margin:12px 0 4px">${esc(bt("आवक-जावक","Movements"))}</h4>`+S.mv.slice(-40).reverse().map(m=>`<div class="m">${esc(m.d.split("-").reverse().join("/"))} · ${esc(bkTN(m.t))} · ${esc(bkLN(m.party))} · <b style="color:${m.q<0?"var(--red)":"inherit"}">${m.q>0?"+":""}${bkQ(m.q)}</b>${m.p?" @ "+bkN(m.p):""}</div>`).join(""):""}
+   <div class="actions"><button class="btn" id="biGo">${esc(bt("सेव","Save"))}</button>${id?`<button class="btn ghost red" id="biDel">🗑 ${esc(bt("हटाएँ","Delete"))}</button>`:""}<button class="btn ghost" id="biX">${esc(t("cancel")||"Cancel")}</button></div><div class="err" id="biE"></div>`);
+  $("#biX").onclick=closeSheet;
+  const dl=$("#biDel");if(dl)dl.onclick=async()=>{if(S&&S.mv.length){$("#biE").textContent=bt("इस आइटम के बिल हैं — पहले उन्हें बदलें।","This item is used in bills — change them first.");return}if(!dl.dataset.sure){dl.dataset.sure=1;dl.textContent=bt("पक्का हटाएँ?","Delete for sure?");return}
+    try{await bkMerge("bk_books",bk.pid,{I:{[id]:{del:true}}},true);await bkSyncStockLedger({[id]:null});closeSheet()}catch(e){$("#biE").textContent=t("saveFail")}};
+  $("#biGo").onclick=async()=>{const n=$("#biN").value.trim();if(n.length<2){$("#biE").textContent=bt("नाम लिखें","Enter the name");return}
+    if(bkItems().some(x=>x.id!==id&&x.n.toLowerCase()===n.toLowerCase())){$("#biE").textContent=bt("इस नाम का आइटम पहले से है","An item with this name exists");return}
+    const h=$("#biH").value.trim();if(h&&!/^\d{4,8}$/.test(h)){$("#biE").textContent=bt("HSN 4 से 8 अंकों का होता है","HSN has 4 to 8 digits");return}
+    const nid=id||("i"+Date.now().toString(36)+Math.random().toString(36).slice(2,5));const rec={n,hsn:h,u:$("#biU").value,r:+$("#biRr").value,op:{[bk.fy]:{q:+$("#biOq").value||0,v:r2($("#biOv").value)}}};
+    $("#biGo").disabled=true;try{await bkMerge("bk_books",bk.pid,{I:{[nid]:rec}},true);await bkSyncStockLedger({[nid]:rec});closeSheet();toast(bt("आइटम सेव हुआ","Item saved"))}catch(e){$("#biGo").disabled=false;$("#biE").textContent=t("saveFail")}}}
+/* opening stock ledger = total of the items' opening values (keeps the trial balance in step) */
+async function bkSyncStockLedger(ov){const its={};bkItems().forEach(x=>its[x.id]=x);for(const k in ov||{}){if(ov[k])its[k]=Object.assign({},its[k]||{},ov[k]);else delete its[k]}const tot=r2(Object.values(its).reduce((s,x)=>s+r2(x.op&&x.op[bk.fy]&&x.op[bk.fy].v||0),0));
+  const L=bk.book.L||{},stk=Object.keys(L).find(k=>!L[k].del&&L[k].g==="stock");const id=stk||"stock";
+  if(r2(L[id]&&L[id].op&&L[id].op[bk.fy]||0)===tot)return;const patch=stk?{op:{[bk.fy]:tot}}:{n:"Opening Stock",g:"stock",op:{[bk.fy]:tot}};
+  await bkMerge("bk_books",bk.pid,{L:{[id]:patch}},true)}
+/* business details printed on bills */
+function bkInfoForm(){const f=(bk.book&&bk.book.info)||{};const fld=(id,lab,v,ta)=>`<label>${esc(lab)}</label>${ta?`<textarea id="${id}" rows="2" maxlength="300">${esc(v||"")}</textarea>`:`<input id="${id}" maxlength="80" value="${esc(v||"")}">`}`;
+  openSheet(`<h3>🏢 ${esc(bt("बिल की जानकारी","Bill details"))}</h3><div class="m">${esc(bk.book.name||"")} · GSTIN ${esc(bk.book.gstin||"—")}</div>
+   ${fld("bfN",bt("बिल पर नाम","Name on bills"),f.name||bk.book.name)}${fld("bfA",bt("पता","Address"),f.addr,1)}<div class="row2"><div>${fld("bfP",bt("फ़ोन","Phone"),f.ph)}</div><div>${fld("bfE",bt("ईमेल","Email"),f.em)}</div></div>
+   ${fld("bfB",bt("बैंक का नाम","Bank name"),f.bank)}<div class="row2"><div>${fld("bfAc",bt("खाता नंबर","Account no."),f.ac)}</div><div>${fld("bfI","IFSC",f.ifsc)}</div></div>
+   ${fld("bfPre",bt("बिल नंबर से पहले (जैसे INV/26-27/)","Invoice no. prefix (e.g. INV/26-27/)"),f.pre)}${fld("bfT",bt("शर्तें (बिल के नीचे)","Terms (bottom of the bill)"),f.terms,1)}
+   <div class="actions"><button class="btn" id="bfGo">${esc(bt("सेव","Save"))}</button><button class="btn ghost" id="bfX">${esc(t("cancel")||"Cancel")}</button></div><div class="err" id="bfEr"></div>`);
+  $("#bfX").onclick=closeSheet;$("#bfGo").onclick=async()=>{const v=id=>($("#"+id).value||"").trim();const info={name:v("bfN"),addr:v("bfA"),ph:v("bfP"),em:v("bfE"),bank:v("bfB"),ac:v("bfAc"),ifsc:v("bfI").toUpperCase(),pre:v("bfPre"),terms:v("bfT")};
+    $("#bfGo").disabled=true;try{await bkMerge("bk_books",bk.pid,{info},true);closeSheet();toast(bt("सेव हो गया","Saved"))}catch(e){$("#bfGo").disabled=false;$("#bfEr").textContent=t("saveFail")}}}
+/* amount in words, Indian style */
+function bkWords(n){const a=["","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"],b=["","","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];
+  const w=x=>x<20?a[x]:b[Math.floor(x/10)]+(x%10?" "+a[x%10]:"");const h=x=>(x>=100?a[Math.floor(x/100)]+" Hundred"+(x%100?" ":""):"")+(x%100?w(x%100):"");
+  const big=x=>{if(!x)return"";const out=[],cr=Math.floor(x/1e7);x%=1e7;const lk=Math.floor(x/1e5);x%=1e5;const th=Math.floor(x/1e3);x%=1e3;if(cr)out.push(big(cr)+" Crore");if(lk)out.push(w(lk)+" Lakh");if(th)out.push(w(th)+" Thousand");if(x)out.push(h(x));return out.join(" ")};
+  n=Math.round(Math.abs(n)*100);const r=Math.floor(n/100),p=n%100;return "Rupees "+(big(r)||"Zero")+(p?" and "+w(p)+" Paise":"")+" Only"}
+/* the printed bill */
+function bkInvoiceHtml(v){const B=bk.book,f=B.info||{},g=v.gst||{},P=B.L[g.party]||{},I=B.I||{},inter=!!g.inter,e=s=>esc(s==null?"":String(s));
+  const items=(g.items||[]).map((it,k)=>{const x=it.it&&I[it.it],tx=r2(it.v*it.r/100);return{k:k+1,desc:x?x.n:bkLN(it.l),hsn:x&&x.hsn||"",q:it.q||"",u:x&&x.u||"",p:it.p||"",v:it.v,r:it.r,tx}});
+  const tv=r2(items.reduce((s,x)=>s+x.v,0)),tx=r2(items.reduce((s,x)=>s+x.tx,0)),tot=Math.abs(((v.ln||[]).find(x=>x.l===g.party)||{}).a||r2(tv+tx)),ro=r2(tot-tv-tx);
+  const ps=g.ps||P.st||"",title=v.t==="cn"?"CREDIT NOTE":"TAX INVOICE";
+  const th="border:1px solid #999;padding:4px 5px;font-size:11px;background:#f2f2f2;text-align:left",td="border:1px solid #999;padding:4px 5px;font-size:11px;vertical-align:top",tr="text-align:right;white-space:nowrap";
+  return `<div style="font-family:Arial,Helvetica,sans-serif;color:#000;background:#fff;max-width:780px;margin:0 auto;padding:14px;border:1px solid #999">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div><div style="font-size:18px;font-weight:700">${e(f.name||B.name)}</div><div style="font-size:11px;white-space:pre-line">${e(f.addr)}</div><div style="font-size:11px">${B.gstin?"GSTIN: <b>"+e(B.gstin)+"</b> · ":""}State: ${e(B.st)} ${e(STATES[B.st]||"")}</div><div style="font-size:11px">${[f.ph?"Ph: "+e(f.ph):"",f.em?e(f.em):""].filter(Boolean).join(" · ")}</div></div>
+   <div style="text-align:right"><div style="font-size:16px;font-weight:700;letter-spacing:1px">${title}</div><div style="font-size:10px;color:#555">Original for recipient</div><div style="font-size:12px;margin-top:6px">No: <b>${e(g.inv||v.no)}</b><br>Date: <b>${e(v.d.split("-").reverse().join("-"))}</b></div></div></div>
+  <div style="display:flex;gap:10px;margin:10px 0;border-top:1px solid #999;border-bottom:1px solid #999;padding:6px 0"><div style="flex:1;font-size:11px"><div style="color:#555">Bill to</div><b style="font-size:13px">${e(P.n)}</b><div style="white-space:pre-line">${e(P.addr)}</div>${P.gstin?"GSTIN: <b>"+e(P.gstin)+"</b><br>":""}</div>
+   <div style="font-size:11px;text-align:right">Place of supply:<br><b>${e(ps)} ${e(STATES[ps]||"")}</b><br>${inter?"IGST":"CGST + SGST"}</div></div>
+  <table style="width:100%;border-collapse:collapse"><tr><th style="${th}">#</th><th style="${th}">Description</th><th style="${th}">HSN</th><th style="${th};${tr}">Qty</th><th style="${th};${tr}">Rate</th><th style="${th};${tr}">Taxable</th><th style="${th};${tr}">GST</th><th style="${th};${tr}">Tax</th></tr>
+   ${items.map(x=>`<tr><td style="${td}">${x.k}</td><td style="${td}">${e(x.desc)}</td><td style="${td}">${e(x.hsn)}</td><td style="${td};${tr}">${x.q?e(bkQ(x.q))+" "+e(x.u):""}</td><td style="${td};${tr}">${x.p?bkN(x.p):""}</td><td style="${td};${tr}">${bkN(x.v)}</td><td style="${td};${tr}">${x.r}%</td><td style="${td};${tr}">${bkN(x.tx)}</td></tr>`).join("")}
+  </table>
+  <div style="display:flex;justify-content:space-between;gap:10px;margin-top:8px"><div style="flex:1;font-size:11px"><div><b>Amount in words:</b> ${e(bkWords(tot))}</div>
+    ${f.bank||f.ac?`<div style="margin-top:8px"><b>Bank:</b> ${e(f.bank)}<br>A/c: ${e(f.ac)} · IFSC: ${e(f.ifsc)}</div>`:""}${f.terms?`<div style="margin-top:8px;white-space:pre-line"><b>Terms:</b> ${e(f.terms)}</div>`:""}${v.nar?`<div style="margin-top:8px">${e(v.nar)}</div>`:""}</div>
+   <table style="border-collapse:collapse;min-width:230px">${[["Taxable value",tv]].concat(inter?[["IGST",tx]]:[["CGST",r2(tx/2)],["SGST",r2(tx-r2(tx/2))]]).concat(ro?[["Round off",ro]]:[]).map(r=>`<tr><td style="${td}">${r[0]}</td><td style="${td};${tr}">${bkN(r[1])}</td></tr>`).join("")}<tr><td style="${td};font-weight:700;font-size:13px">Total</td><td style="${td};${tr};font-weight:700;font-size:13px">₹ ${bkN(tot)}</td></tr></table></div>
+  <div style="display:flex;justify-content:space-between;margin-top:30px;font-size:11px"><div style="color:#555">This is a computer-generated ${v.t==="cn"?"credit note":"invoice"}.</div><div style="text-align:right">For <b>${e(f.name||B.name)}</b><br><br><br>Authorised Signatory</div></div></div>`}
+function bkPrint(id){const v=bkV().find(x=>x.id===id);if(!v||!v.gst)return;const html=bkInvoiceHtml(v);closeSheet();
+  let o=$("#bkPrint");if(o)o.remove();o=document.createElement("div");o.id="bkPrint";o.style.cssText="position:fixed;inset:0;z-index:9999;background:#e9ebef;overflow:auto;padding:12px";
+  o.innerHTML=`<div class="bkNoPrint" style="max-width:780px;margin:0 auto 10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="bkPp">🖨 ${esc(bt("प्रिंट / PDF","Print / PDF"))}</button><button class="btn ghost" id="bkPd">⬇ ${esc(bt("फ़ाइल डाउनलोड","Download file"))}</button><button class="btn ghost" id="bkPx">✕ ${esc(bt("बंद","Close"))}</button><span class="m" style="align-self:center">${esc(bt("PDF के लिए प्रिंट में \"Save as PDF\" चुनें।","For a PDF choose \"Save as PDF\" in print."))}</span></div>${html}`;
+  document.body.appendChild(o);if(!$("#bkPrintCss")){const st=document.createElement("style");st.id="bkPrintCss";st.textContent="@media print{body>*:not(#bkPrint){display:none!important}#bkPrint{position:static!important;padding:0!important;background:#fff!important}.bkNoPrint{display:none!important}@page{size:A4;margin:10mm}}";document.head.appendChild(st)}
+  $("#bkPx").onclick=()=>o.remove();$("#bkPp").onclick=()=>{try{window.print()}catch(e){toast(bt("प्रिंट नहीं खुला — फ़ाइल डाउनलोड करके खोलें","Print did not open — download the file and open it"))}};
+  $("#bkPd").onclick=async()=>{const doc=`<!doctype html><html><head><meta charset="utf-8"><title>${esc((v.gst.inv||v.no))}</title><style>@page{size:A4;margin:10mm}body{margin:0}</style></head><${"bo"+"dy"}>${html}<script>setTimeout(()=>print(),400)<\/script></${"bo"+"dy"}></html>`;
+    const blob=new Blob([doc],{type:"text/html"}),fname=(v.t==="cn"?"CreditNote-":"Invoice-")+String(v.gst.inv||v.no).replace(/[^\w-]+/g,"_")+".html";
+    if(dlCap===undefined)dlCap=(window.claude&&claude.use)?await claude.use("downloads").catch(()=>null):null;
+    if(dlCap){try{await dlCap.save({filename:fname,data:blob});toast(t("fSaved"))}catch(e){}}else{const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();a.remove()}}}
+/* HSN summary for GSTR-1 */
+{const _g=bkGst;bkGst=function(per){const R=_g(per),I=(bk.book&&bk.book.I)||{},H={};
+  bkV().filter(v=>v.gst&&(v.t==="sales"||v.t==="cn")&&bkInPer(v.d,per)).forEach(v=>(v.gst.items||[]).forEach(it=>{const x=it.it&&I[it.it],hsn=x&&x.hsn||"",u=x&&x.u||"",sg=v.t==="sales"?1:-1,k=hsn+"|"+it.r+"|"+u,tx=r2(it.v*it.r/100);
+    const o=H[k]=H[k]||{hsn:hsn||"—",u:u||"—",r:it.r,q:0,tv:0,i:0,c:0,s:0};o.q=Math.round((o.q+sg*(+it.q||0))*1000)/1000;o.tv=r2(o.tv+sg*it.v);if(v.gst.inter)o.i=r2(o.i+sg*tx);else{o.c=r2(o.c+sg*r2(tx/2));o.s=r2(o.s+sg*r2(tx-r2(tx/2)))}}));
+  R.hsn=Object.keys(H).length?H:null;return R}}
+{const _h=bkGstHtml;bkGstHtml=function(){let h=_h();const R=bkGst(bk.gp);if(R.n&&R.hsn)h+=`<h3 style="margin:14px 0 6px">GSTR-1 · HSN</h3>`+bkTbl(Object.values(R.hsn).map(x=>`<tr>${bkTd(esc(x.hsn)+"<br><span class='m'>"+esc(x.u)+"</span>")}${bkTd(x.r+"%",1)}${bkTd(bkQ(x.q),1)}${bkTd(bkN(x.tv),1)}${bkTd(bkN(x.i),1)}${bkTd(bkN(x.c),1)}${bkTd(bkN(x.s),1)}</tr>`),["HSN",bt("दर","Rate"),bt("मात्रा","Qty"),bt("टैक्सेबल","Taxable"),"IGST","CGST","SGST"]);return h}}
+{const _t=bkTab;bkTab=function(R){if(bk.tab==="stk")return bkStkHtml(R);return _t(R)}}
+{const _w=bkWire;bkWire=function(){_w();const el=$("#bk");if(!el)return;const ni=$("#bkNewI");if(ni)ni.onclick=()=>bkIForm(null);el.querySelectorAll(".bkIe").forEach(b=>b.onclick=()=>bkIForm(b.dataset.id));const inf=$("#bkInfo");if(inf)inf.onclick=()=>bkInfoForm()}}
 
 paintStatic();render();init();
 </script>
