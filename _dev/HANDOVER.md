@@ -178,3 +178,8 @@ Approach that worked for GST: ask him for REAL sample files of one client, read 
 - New module (just before the trash module): wraps `checkFiles`. For GSTR-1 / GSTR-3B PDF proofs it parses the figures with `grParse3B`/`grParse1`, and adds rows to the proof-check table: sales taxable value + tax vs the other return (from gst_recon rec or the other entry's proof via blobGet; tolerance ₹1.5) and vs the 🧮 working; for 3B also RCM 3.1(d), net ITC 4(C), cash 6.1 (info only). Parsed figures are saved to `gst_recon` (same key as 🧮 GST check).
 - A figure mismatch shows ✖ rows but does not block saving the proof (the file still belongs to the entry).
 - Tested only on synthetic reportlab PDFs (pdf.js merges headers if columns are too close); parsers were earlier verified on real Sep-26 portal files.
+
+### Update 23 Nov 2026 — firm self-setup (site only, no rules change)
+- 👤 menu (firm owner / admin, not when expired): **🏢 फ़र्म की जानकारी** — firm edits its own name + phone (`firms/{fid}` update; rules already allow `name`,`phone`). **🚀 शुरुआत के कदम** — getting-started checklist.
+- Checklist pops once ~2.5 s after login for a new firm's owner/admin (not the provider's own firm `first:true`), until "Don't show again" or all steps done. Steps tick themselves: firm name checked (`settings/onboard.nameOk`), first client (`parties`), team (members>1 or invites), vault master password (`vault/meta`), optional backup import (manual ✔ → `impOk`). State in `firms/{fid}/settings/onboard`.
+- Tested on the fake Firebase with site2_test (+ onboarding checks; the test needed the What's-new card removed in `login()` — it intercepts clicks). Not tested on real Firebase.

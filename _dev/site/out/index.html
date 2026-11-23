@@ -278,7 +278,7 @@ async function admit(user){
   fs.collection(F("invites")).onSnapshot(s=>{site.invites=s.docs.map(d=>Object.assign({email:d.id},d.data()));if(typeof renderTeam==="function")try{renderTeam()}catch(e){}},()=>{});
   /* law updates published by the daily search as a file next to this page */
   if(!expired)fetch("law_updates.json",{cache:"no-store"}).then(r=>r.ok?r.json():[]).then(async L=>{for(const u of (L||[])){if(!u||!u.id)continue;try{const ref=fs.doc(F("law_updates/"+u.id));if(!(await ref.get()).exists){const d=Object.assign({},u);delete d.id;await ref.set(d)}}catch(e){}}}).catch(()=>{});
-  $g("siteGate").style.display="none";topBar();readyRes();
+  $g("siteGate").style.display="none";topBar();readyRes();setTimeout(()=>startCard(false),2500);
   /* services the provider turns on / off reach the firm at once; a change of status re-opens the page */
   fs.doc("firms/"+fid).onSnapshot(d=>{if(!d.exists)return;const n=d.data();if(n.status!==firm.status||n.trialEndsMs!==firm.trialEndsMs){location.reload();return}firm=n;Object.assign(site.firm,n);if(typeof window.ftRefresh==="function")try{window.ftRefresh()}catch(e){}},()=>{});
   /* light usage figures for the provider: counts only, never client data */
@@ -298,13 +298,57 @@ function meMenu(){let m=$g("siteMenu");if(m){m.remove();return}m=document.create
   const pw=(auth.currentUser.providerData||[]).some(p=>p.providerId==="password");
   m.innerHTML="<div style='font-weight:600;word-break:break-all'>"+site.email+"</div><div style='font-size:12px;color:#666;margin-bottom:10px'>🏢 "+(firm.name||"")+" · "+(isSuper?"सुपर-एडमिन":uid===ownerUid?"फ़र्म के मालिक / owner":"टीम सदस्य / member")+"</div>"+
    "<div id='smPw'><input id='smNew' type='password' autocomplete='new-password' placeholder='"+(pw?"नया पासवर्ड / New password":"पासवर्ड बनाएँ / Set a password")+"' style='width:100%;box-sizing:border-box;padding:9px;border:1px solid #ccd;border-radius:8px;margin-bottom:6px'><button id='smPwGo' style='width:100%;padding:9px;border-radius:8px;border:1px solid #1a56db;background:#fff;color:#1a56db;cursor:pointer'>🔑 पासवर्ड बदलें / Change password</button><div id='smMsg' style='font-size:12px;color:#9a6700;min-height:16px;margin:4px 0'></div></div>"+
-   "<button id='smOut' style='width:100%;padding:10px;border-radius:8px;border:0;background:#c0392b;color:#fff;cursor:pointer;font-size:15px'>⎋ लॉग आउट / Log out</button><div style='font-size:11px;color:#888;margin-top:8px'>20 मिनट कोई हलचल न हो तो अपने-आप लॉग आउट हो जाएगा। / Auto log-out after 20 minutes of no activity.</div>";
+   (canAdmin()?"<div style='border-top:1px solid #eee;margin:8px 0;padding-top:8px'><button id='smFirm' style='width:100%;padding:9px;border-radius:8px;border:1px solid #1a56db;background:#fff;color:#1a56db;cursor:pointer;margin-bottom:6px'>🏢 फ़र्म की जानकारी / Firm details</button><button id='smStart' style='width:100%;padding:9px;border-radius:8px;border:1px solid #1a56db;background:#fff;color:#1a56db;cursor:pointer;margin-bottom:6px'>🚀 शुरुआत के कदम / Getting started</button></div>":"")+"<button id='smOut' style='width:100%;padding:10px;border-radius:8px;border:0;background:#c0392b;color:#fff;cursor:pointer;font-size:15px'>⎋ लॉग आउट / Log out</button><div style='font-size:11px;color:#888;margin-top:8px'>20 मिनट कोई हलचल न हो तो अपने-आप लॉग आउट हो जाएगा। / Auto log-out after 20 minutes of no activity.</div>";
   document.body.appendChild(m);
   $g("smOut").onclick=()=>site.signOut();
+  if($g("smFirm"))$g("smFirm").onclick=()=>{m.remove();firmForm()};if($g("smStart"))$g("smStart").onclick=()=>{m.remove();startCard(true)};
   $g("smPwGo").onclick=async()=>{const v=$g("smNew").value;if(v.length<6){$g("smMsg").textContent="कम से कम 6 अक्षर। / At least 6 characters.";return}
     try{await auth.currentUser.updatePassword(v);$g("smNew").value="";$g("smMsg").style.color="#1a7f37";$g("smMsg").textContent="✅ पासवर्ड बदल गया। / Password changed."}
     catch(e){if(e&&e.code==="auth/requires-recent-login"){try{await auth.sendPasswordResetEmail(site.email);$g("smMsg").textContent="सुरक्षा के लिए लिंक "+site.email+" पर भेजा है — उससे बदलें। / For safety a link was emailed — use it."}catch(x){$g("smMsg").textContent=emsg(x)}}else $g("smMsg").textContent=emsg(e)}};
   setTimeout(()=>document.addEventListener("click",function h(ev){if(!m.contains(ev.target)&&ev.target.id!=="sbMe"){m.remove();document.removeEventListener("click",h)}}),0)}
+/* firm owner / admin: edit own firm name and phone (rules allow only these two) */
+let myRole=null;
+const canAdmin=()=>!expired&&(uid===ownerUid||myRole==="admin");
+const escH=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function modal(id,html){let o=$g(id);if(o)o.remove();o=document.createElement("div");o.id=id;o.style.cssText="position:fixed;inset:0;z-index:8500;background:rgba(0,0,0,.35);display:flex;align-items:flex-start;justify-content:center;padding:50px 12px;overflow:auto;font:14px system-ui,'Noto Sans Devanagari',sans-serif";
+  o.innerHTML="<div style='background:#fff;border-radius:14px;padding:16px;width:min(440px,100%);box-shadow:0 10px 40px rgba(0,0,0,.2)'>"+html+"</div>";o.onclick=e=>{if(e.target===o)o.remove()};document.body.appendChild(o);return o}
+const inp="width:100%;box-sizing:border-box;padding:9px;border:1px solid #ccd;border-radius:8px;margin:4px 0 10px;font-size:15px";
+const btn="padding:9px 14px;border-radius:8px;border:0;background:#1a56db;color:#fff;cursor:pointer;font-size:14px";
+function firmForm(){const o=modal("siteFirm","<h3 style='margin:0 0 10px'>🏢 फ़र्म की जानकारी <span style='font-size:12px;color:#666'>/ Firm details</span></h3>"+
+   "<label style='font-size:13px'>फ़र्म का नाम / Firm name</label><input id='ffName' maxlength='80' style='"+inp+"' value=\""+escH(firm.name)+"\">"+
+   "<label style='font-size:13px'>मोबाइल नंबर / Mobile</label><input id='ffPh' type='tel' maxlength='20' style='"+inp+"' value=\""+escH(firm.phone||"")+"\">"+
+   "<div style='font-size:12px;color:#666;margin-bottom:10px'>ये नाम ऊपर की पट्टी में और टीम को दिखता है। सदस्यता / डेमो की तारीख़ ऐप चलाने वाले ही बदलते हैं।<br>Shown in the top bar and to your team. Plan dates are set by the provider.</div>"+
+   "<div style='display:flex;gap:8px;justify-content:flex-end'><span id='ffMsg' style='flex:1;font-size:13px;color:#c00;align-self:center'></span><button id='ffX' style='padding:9px 14px;border-radius:8px;border:1px solid #ccd;background:#fff;cursor:pointer'>बंद / Close</button><button id='ffGo' style='"+btn+"'>सेव / Save</button></div>");
+  $g("ffX").onclick=()=>o.remove();
+  $g("ffGo").onclick=async()=>{const nm=$g("ffName").value.trim(),ph=$g("ffPh").value.trim();if(nm.length<2){$g("ffMsg").textContent="नाम लिखें / Enter the name";return}
+    if(ph&&ph.replace(/\D/g,"").length<8){$g("ffMsg").textContent="पूरा नंबर लिखें / Enter a full number";return}
+    $g("ffGo").disabled=true;try{await fs.doc("firms/"+fid).update({name:nm.slice(0,80),phone:ph.slice(0,20)});firm.name=nm;firm.phone=ph;site.firm.name=nm;topBar();
+      try{await fs.doc(F("settings/onboard")).set({nameOk:true},{merge:true})}catch(e){}o.remove();if($g("siteStart"))startCard(true)}
+    catch(e){$g("ffGo").disabled=false;$g("ffMsg").textContent="सेव नहीं हुआ / Not saved ["+((e&&e.code)||"error")+"]"}}}
+/* getting-started checklist for a new firm (owner / admin). Steps tick themselves from the firm's own data. */
+async function startCard(force){if(expired)return;try{if(myRole===null){const me=await fs.doc(F("members/"+uid)).get();myRole=me.exists?me.data().role:""}}catch(e){myRole=""}
+  if(!canAdmin())return;
+  let ob={};try{const d=await fs.doc(F("settings/onboard")).get();ob=d.exists?d.data():{}}catch(e){}
+  if(!force&&(ob.hidden||firm.first))return;
+  const cnt=async c=>{try{return (await fs.collection(F(c)).limit(2).get()).docs.length}catch(e){return 0}};
+  const [cl,mem,vm]=await Promise.all([cnt("parties"),cnt("members"),(async()=>{try{return (await fs.doc(F("vault/meta")).get()).exists}catch(e){return false}})()]);
+  const S=[
+   {ok:!!ob.nameOk,t:"फ़र्म का नाम और मोबाइल जाँचें",e:"Check firm name and mobile",go:()=>firmForm()},
+   {ok:cl>0,t:"पहला ग्राहक जोड़ें",e:"Add your first client",go:()=>{const b=$g("nClients");if(b)b.click()}},
+   {ok:mem>1||(site.invites||[]).length>0,t:"टीम के लोग जोड़ें (👥 टीम)",e:"Add your team (👥 Team)",go:()=>{const b=$g("nTeam");if(b)b.click()}},
+   {ok:!!vm,t:"पासवर्ड वॉल्ट का मास्टर पासवर्ड बनाएँ",e:"Set the password-vault master password",go:()=>{const b=$g("nVault");if(b)b.click()}},
+   {ok:!!ob.impOk,opt:true,t:"पुराना डेटा हो तो लाएँ: 👥 टीम → 📥 बैकअप से डेटा",e:"Old data? 👥 Team → 📥 Import from backup",go:()=>{const b=$g("nTeam");if(b)b.click()},mark:"impOk"}];
+  const done=S.filter(x=>x.ok||x.opt).length===S.length&&S.filter(x=>!x.opt).every(x=>x.ok);
+  if(!force&&done)return;
+  const o=modal("siteStart","<h3 style='margin:0 0 4px'>🚀 "+escH(firm.name||"")+" — शुरुआत के कदम</h3><div style='font-size:12px;color:#666;margin-bottom:10px'>Getting started · "+S.filter(x=>x.ok).length+"/"+S.length+" पूरे / done</div>"+
+   S.map((x,i)=>"<div style='display:flex;gap:10px;align-items:center;padding:8px;border-radius:10px;margin-bottom:6px;background:"+(x.ok?"#eaf7ee":"#f4f6fb")+"'><span style='font-size:18px'>"+(x.ok?"✅":(i+1)+".")+"</span><span style='flex:1'>"+escH(x.t)+(x.opt?" <span style='font-size:11px;color:#888'>(ज़रूरी नहीं / optional)</span>":"")+"<br><span style='font-size:12px;color:#666'>"+escH(x.e)+"</span></span>"+
+     (x.ok?"":"<button class='stGo' data-i='"+i+"' style='"+btn+";padding:6px 10px'>खोलें / Open</button>")+(x.mark&&!x.ok?"<button class='stMk' data-k='"+x.mark+"' title='हो गया / Done' style='padding:6px 8px;border-radius:8px;border:1px solid #ccd;background:#fff;cursor:pointer'>✔</button>":"")+"</div>").join("")+
+   "<div style='display:flex;gap:8px;justify-content:space-between;margin-top:10px;align-items:center'><label style='font-size:12px;display:flex;gap:6px;align-items:center'><input type='checkbox' id='stHide' "+(ob.hidden?"checked":"")+" style='width:auto'>अपने-आप न दिखाएँ / Don't show again</label><button id='stX' style='padding:9px 14px;border-radius:8px;border:1px solid #ccd;background:#fff;cursor:pointer'>बंद / Close</button></div>"+
+   "<div style='font-size:11px;color:#888;margin-top:8px'>फिर से देखने के लिए: ऊपर 👤 → 🚀 शुरुआत के कदम / Reopen from 👤 → 🚀 Getting started</div>");
+  const close=async()=>{const h=$g("stHide").checked;o.remove();if(h!==!!ob.hidden){try{await fs.doc(F("settings/onboard")).set({hidden:h},{merge:true})}catch(e){}}};
+  $g("stX").onclick=close;
+  o.querySelectorAll(".stGo").forEach(b=>b.onclick=async()=>{const x=S[+b.dataset.i];await close();x.go()});
+  o.querySelectorAll(".stMk").forEach(b=>b.onclick=async()=>{try{await fs.doc(F("settings/onboard")).set({[b.dataset.k]:true},{merge:true})}catch(e){}startCard(true)})}
 /* auto log-out after 20 minutes without activity (shared across tabs) */
 const IDLE_MS=20*60*1000,WARN_MS=60*1000,IK="__site_last";
 const touch=()=>{try{localStorage.setItem(IK,String(Date.now()))}catch(e){}idleStart.t=Date.now()};
