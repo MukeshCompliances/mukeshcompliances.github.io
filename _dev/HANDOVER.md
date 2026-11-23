@@ -13,7 +13,7 @@ Everything needed to continue is in this repository under `_dev/`.
 - He is not technical. Do not ask him to edit code. If Firebase rules must change, give the **whole rules text** to paste (Ctrl+A, paste, Publish) — never "find these two lines".
 - **Batch Firebase-rules changes.** He has pasted rules three times already and was annoyed. Collect rule changes and give them once.
 - Be honest about what was and was not tested. Rules cannot be tested here (see §8).
-- His email is private: never put it in public files or send it to outside services. In `firestore.rules` it appears only in the text you hand back to him (placeholder `OWNER_GMAIL_HERE` in the repo copy).
+- His email is private: never put it in public files or send it to outside services. Since 23 Nov 2026 the rules no longer contain his email (config/app create is closed because the record exists).
 - Never ask for passwords, OTPs, API keys in chat.
 - He worries about usage/credits: avoid unnecessary web searches and long replies.
 
@@ -49,7 +49,7 @@ There is one scheduled task: "कानून के नए बदलाव – 
   site/shim.html       the site layer (Firebase login, firms, provider panel, idle log-out)
   site/build.py        builds ../index.html + shim + firebase_config.json -> site/out/
   site/firebase_config.json   public web config of the Firebase project
-  site/firestore.rules        CURRENT published rules (owner email replaced by OWNER_GMAIL_HERE)
+  site/firestore.rules        rules to publish (no email inside since 23 Nov 2026)
   tests/*.py           Playwright tests; tests/site/fakefb.js = in-memory fake of Firebase
   tests/samples/       synthetic sample files made for tests (no real client data)
 ```
@@ -183,3 +183,11 @@ Approach that worked for GST: ask him for REAL sample files of one client, read 
 - 👤 menu (firm owner / admin, not when expired): **🏢 फ़र्म की जानकारी** — firm edits its own name + phone (`firms/{fid}` update; rules already allow `name`,`phone`). **🚀 शुरुआत के कदम** — getting-started checklist.
 - Checklist pops once ~2.5 s after login for a new firm's owner/admin (not the provider's own firm `first:true`), until "Don't show again" or all steps done. Steps tick themselves: firm name checked (`settings/onboard.nameOk`), first client (`parties`), team (members>1 or invites), vault master password (`vault/meta`), optional backup import (manual ✔ → `impOk`). State in `firms/{fid}/settings/onboard`.
 - Tested on the fake Firebase with site2_test (+ onboarding checks; the test needed the What's-new card removed in `login()` — it intercepts clicks). Not tested on real Firebase.
+
+### Update 23 Nov 2026 — security fixes, reload log-out, 🔄 update button
+- Rules (handed to him as full text, **publish status: ask him**): `config/app` create closed (`if false`), update only by super and `owner` unchanged → no email in rules; new `billing/{fid}` provider-only; `invidx` update needs admin of both old and new fid; firm self-create limited to the signup fields (no plan/features/trial dates).
+- Code: provider payment notes moved from `firms/{fid}.pays` (readable by the firm) to `billing/{fid}` (moved automatically when the 🛠 panel opens; firm's `pays` set to []). `config/app.ownerEmail` blanked on super login and no longer written. Firm names escaped in gate/menu HTML.
+- 4 page loads within 60 s → sign out with message (`localStorage.__site_rl`). Top-left **🔄 अपडेट** button reloads a fresh copy (`?v=` removed after load) and does not count.
+- Checked and fine: vault items AES-GCM 256 with PBKDF2-SHA256 250k (username/password/notes all encrypted), file passwords only stored encrypted. Not fixed: in-firm role limits (junior/viewer) are UI-only except viewer/expired writes; no automatic backups on Spark (firms should use 📦 backup); legacy top-level data copy still present (super-only).
+- OTP login asked for: phone SMS needs Blaze; email = link only, 5/day on Spark. Waiting for his decision.
+- fakefb.js: `sessionStorage.fakeAuto` keeps the fake sign-in across reloads (for reload tests).

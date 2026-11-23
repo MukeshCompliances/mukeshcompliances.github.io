@@ -113,10 +113,11 @@ async function admit(user){
   let cfg=null,cerr="";const rd=async()=>{try{const c=await fs.doc("config/app").get();cfg=c.exists?c.data():null;cerr=c.exists?"":"no-config"}catch(e){cerr=(e&&e.code)||"error"}};
   await rd();
   if(!cfg&&cerr!=="no-config"){try{await user.getIdToken(true);await new Promise(r=>setTimeout(r,800))}catch(e){}await rd()}
-  if(!cfg&&cerr==="no-config"){try{await fs.doc("config/app").set({owner:uid,ownerEmail:email,at:iso()});cfg={owner:uid}}catch(e){cerr="first-setup"}}
+  if(!cfg&&cerr==="no-config"){try{await fs.doc("config/app").set({owner:uid,at:iso()});cfg={owner:uid}}catch(e){cerr="first-setup"}}
   if(!cfg){gate.out=true;gate(cerr==="first-setup"?"⚙ साइट अभी चालू नहीं हुई है — पहले इसके मालिक को अपने ईमेल से एक बार लॉगिन करना होगा।<br><span style='font-size:12px'>The site is not set up yet — its owner must sign in once first.</span>"
      :"⚠ अभी अंदर नहीं जा पाए।<br>एक बार <b>लॉग आउट करके दोबारा लॉगिन</b> करें (ईमेल का लिंक खोलने के बाद ऐसा कभी-कभी ज़रूरी होता है)। फिर भी न खुले तो इंटरनेट देखें।<br><span style='font-size:12px'>Could not get in. Sign out and sign in again (sometimes needed right after confirming your email).</span><br><span style='font-size:11px;color:#999'>"+cerr+"</span><br><a href='#' onclick='location.reload();return false'>🔄 दोबारा कोशिश / Retry</a>","",false);return}
   isSuper=site.isSuper=cfg.owner===uid;site.support=cfg.support||"";
+  if(isSuper&&cfg.ownerEmail){try{await fs.doc("config/app").set({ownerEmail:""},{merge:true})}catch(e){}} /* email is not kept where every signed-in user can read it */
   /* which firm does this ID belong to? */
   fid=me0.firm||null;
   if(!fid&&isSuper)fid=uid;
@@ -131,8 +132,8 @@ async function admit(user){
     try{await fs.doc("firms/"+fid).set(firm);await fs.doc(F("members/"+uid)).set({role:"admin",email,name:uname});const n=await migrateLegacy();await fs.doc("config/app").set({migratedAt:iso(),migrated:n},{merge:true})}catch(e){firm=null}}
   if(!firm){gate.out=true;gate("❌ "+email+"<br>आपकी फ़र्म नहीं खुल पाई। एडमिन से कहें कि टीम टैब में आपका ईमेल दोबारा जोड़ें।<br><span style='font-size:12px'>Could not open your firm — ask your admin to add your email again.</span>","",false);try{await fs.collection("users").doc(uid).set({firm:null},{merge:true})}catch(e){}return}
   if((firm.status==="pending"||firm.status==="rejected")&&!isSuper){gate.out=true;if(me0.firm!==fid){try{await fs.collection("users").doc(uid).set({firm:fid},{merge:true})}catch(e){}}
-    gate(firm.status==="pending"?"⏳ <b>"+(firm.name||"")+"</b><br>आपका अनुरोध भेज दिया गया है। ऐप चलाने वाले की मंज़ूरी मिलते ही यह खुल जाएगा — फिर इसी ID से लॉगिन करें।"+(site.support?"<br>जल्दी हो तो संपर्क करें: <b>"+site.support+"</b>":"")+"<br><span style='font-size:12px'>Your request has been sent. The app opens once the provider approves it — then sign in with this same ID.</span><br><a href='#' onclick='location.reload();return false'>🔄 दोबारा देखें / Check again</a>"
-      :"❌ <b>"+(firm.name||"")+"</b><br>यह अनुरोध मंज़ूर नहीं हुआ।"+(site.support?"<br>संपर्क: "+site.support:"")+"<br><span style='font-size:12px'>This request was not approved.</span>","",false);return}
+    gate(firm.status==="pending"?"⏳ <b>"+escH(firm.name||"")+"</b><br>आपका अनुरोध भेज दिया गया है। ऐप चलाने वाले की मंज़ूरी मिलते ही यह खुल जाएगा — फिर इसी ID से लॉगिन करें।"+(site.support?"<br>जल्दी हो तो संपर्क करें: <b>"+site.support+"</b>":"")+"<br><span style='font-size:12px'>Your request has been sent. The app opens once the provider approves it — then sign in with this same ID.</span><br><a href='#' onclick='location.reload();return false'>🔄 दोबारा देखें / Check again</a>"
+      :"❌ <b>"+escH(firm.name||"")+"</b><br>यह अनुरोध मंज़ूर नहीं हुआ।"+(site.support?"<br>संपर्क: "+site.support:"")+"<br><span style='font-size:12px'>This request was not approved.</span>","",false);return}
   ownerUid=firm.owner;
   if(ownerUid!==uid){let ok=false,mref=fs.doc(F("members/"+uid));
     try{ok=(await mref.get()).exists}catch(e){}
@@ -141,7 +142,7 @@ async function admit(user){
     try{await mref.set({name:uname,email},{merge:true})}catch(e){}}
   else{try{await fs.doc(F("members/"+uid)).set({role:"admin",email,name:uname},{merge:true})}catch(e){}}
   if(me0.firm!==fid){try{await fs.collection("users").doc(uid).set({firm:fid},{merge:true})}catch(e){}}
-  if(firm.status==="stopped"&&!isSuper){gate.out=true;gate("⏸ <b>"+(firm.name||"")+"</b><br>यह फ़र्म अभी रोकी गई है। चालू कराने के लिए ऐप चलाने वाले से संपर्क करें।"+(site.support?"<br>"+site.support:"")+"<br><span style='font-size:12px'>This firm is paused. Contact the app provider to resume.</span>","",false);return}
+  if(firm.status==="stopped"&&!isSuper){gate.out=true;gate("⏸ <b>"+escH(firm.name||"")+"</b><br>यह फ़र्म अभी रोकी गई है। चालू कराने के लिए ऐप चलाने वाले से संपर्क करें।"+(site.support?"<br>"+site.support:"")+"<br><span style='font-size:12px'>This firm is paused. Contact the app provider to resume.</span>","",false);return}
   const dl=daysLeft(firm);expired=firm.status==="stopped"||(dl!=null&&dl<=0);site.firm=Object.assign({id:fid,daysLeft:dl,expired},firm);
   fs.collection(F("invites")).onSnapshot(s=>{site.invites=s.docs.map(d=>Object.assign({email:d.id},d.data()));if(typeof renderTeam==="function")try{renderTeam()}catch(e){}},()=>{});
   /* law updates published by the daily search as a file next to this page */
@@ -160,11 +161,16 @@ function topBar(){let b=$g("siteBar");if(!b){b=document.createElement("div");b.i
   else if(dl!=null&&paid){if(dl<=30){msg+=" · सदस्यता "+dl+" दिन में ख़त्म ("+till+") / subscription ends in "+dl+" days";b.style.background="#fff3cd"}}
   else if(dl!=null){msg+=" · डेमो: "+dl+" दिन बाक़ी / demo: "+dl+" days left";if(dl<=5)b.style.background="#fff3cd"}
   const bs="border:1px solid #1a56db;background:#fff;color:#1a56db;border-radius:8px;padding:2px 8px;font-size:12px;cursor:pointer;white-space:nowrap";
-  b.innerHTML="<span style='flex:1;min-width:0'></span>"+(isSuper?"<button id='sbSuper' style=\""+bs+"\">🛠 फ़र्में</button>":"")+"<button id='sbMe' style=\""+bs+";max-width:42vw;overflow:hidden;text-overflow:ellipsis\"></button>";b.firstChild.textContent=msg;$g("sbMe").textContent="👤 "+site.email.split("@")[0]+" ▾";
-  if(isSuper){$g("sbSuper").onclick=superPanel;fs.collection("firms").onSnapshot(q=>{const n=q.docs.filter(d=>d.data().status==="pending").length,bb=$g("sbSuper");if(bb){bb.textContent="🛠 फ़र्में"+(n?" ("+n+" नया)":"");bb.style.background=n?"#fff3cd":"#fff"}},()=>{})}$g("sbMe").onclick=meMenu;idleStart()}
+  b.innerHTML="<button id='sbUpd' title='नया अपडेट लाएँ / Get the latest version' style=\""+bs+"\">🔄 अपडेट</button><span id='sbMsg' style='flex:1;min-width:0'></span>"+(isSuper?"<button id='sbSuper' style=\""+bs+"\">🛠 फ़र्में</button>":"")+"<button id='sbMe' style=\""+bs+";max-width:42vw;overflow:hidden;text-overflow:ellipsis\"></button>";$g("sbMsg").textContent=msg;$g("sbMe").textContent="👤 "+site.email.split("@")[0]+" ▾";
+  if(isSuper){$g("sbSuper").onclick=superPanel;fs.collection("firms").onSnapshot(q=>{const n=q.docs.filter(d=>d.data().status==="pending").length,bb=$g("sbSuper");if(bb){bb.textContent="🛠 फ़र्में"+(n?" ("+n+" नया)":"");bb.style.background=n?"#fff3cd":"#fff"}},()=>{})}$g("sbMe").onclick=meMenu;$g("sbUpd").onclick=siteUpdate;idleStart()}
+/* the 🔄 button: fresh copy of the site, does not count as "reloading again and again" */
+async function siteUpdate(){const b=$g("sbUpd");if(b){b.disabled=true;b.textContent="⏳"}
+  try{sessionStorage.setItem("__site_okrl","1")}catch(e){}
+  try{await fetch(location.pathname,{cache:"reload"})}catch(e){}
+  location.replace(location.pathname+"?v="+Date.now()+location.hash)}
 function meMenu(){let m=$g("siteMenu");if(m){m.remove();return}m=document.createElement("div");m.id="siteMenu";m.style.cssText="position:fixed;top:30px;right:8px;z-index:8000;background:#fff;border:1px solid #d5dcf5;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.15);padding:12px;width:min(300px,92vw);font:14px system-ui,'Noto Sans Devanagari',sans-serif";
   const pw=(auth.currentUser.providerData||[]).some(p=>p.providerId==="password");
-  m.innerHTML="<div style='font-weight:600;word-break:break-all'>"+site.email+"</div><div style='font-size:12px;color:#666;margin-bottom:10px'>🏢 "+(firm.name||"")+" · "+(isSuper?"सुपर-एडमिन":uid===ownerUid?"फ़र्म के मालिक / owner":"टीम सदस्य / member")+"</div>"+
+  m.innerHTML="<div style='font-weight:600;word-break:break-all'>"+site.email+"</div><div style='font-size:12px;color:#666;margin-bottom:10px'>🏢 "+escH(firm.name||"")+" · "+(isSuper?"सुपर-एडमिन":uid===ownerUid?"फ़र्म के मालिक / owner":"टीम सदस्य / member")+"</div>"+
    "<div id='smPw'><input id='smNew' type='password' autocomplete='new-password' placeholder='"+(pw?"नया पासवर्ड / New password":"पासवर्ड बनाएँ / Set a password")+"' style='width:100%;box-sizing:border-box;padding:9px;border:1px solid #ccd;border-radius:8px;margin-bottom:6px'><button id='smPwGo' style='width:100%;padding:9px;border-radius:8px;border:1px solid #1a56db;background:#fff;color:#1a56db;cursor:pointer'>🔑 पासवर्ड बदलें / Change password</button><div id='smMsg' style='font-size:12px;color:#9a6700;min-height:16px;margin:4px 0'></div></div>"+
    (canAdmin()?"<div style='border-top:1px solid #eee;margin:8px 0;padding-top:8px'><button id='smFirm' style='width:100%;padding:9px;border-radius:8px;border:1px solid #1a56db;background:#fff;color:#1a56db;cursor:pointer;margin-bottom:6px'>🏢 फ़र्म की जानकारी / Firm details</button><button id='smStart' style='width:100%;padding:9px;border-radius:8px;border:1px solid #1a56db;background:#fff;color:#1a56db;cursor:pointer;margin-bottom:6px'>🚀 शुरुआत के कदम / Getting started</button></div>":"")+"<button id='smOut' style='width:100%;padding:10px;border-radius:8px;border:0;background:#c0392b;color:#fff;cursor:pointer;font-size:15px'>⎋ लॉग आउट / Log out</button><div style='font-size:11px;color:#888;margin-top:8px'>20 मिनट कोई हलचल न हो तो अपने-आप लॉग आउट हो जाएगा। / Auto log-out after 20 minutes of no activity.</div>";
   document.body.appendChild(m);
@@ -230,7 +236,13 @@ async function superPanel(){let o=$g("sitePanel");if(!o){o=document.createElemen
   const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));const d8=s=>s?new Date(s).toLocaleDateString("en-IN"):"–";
   o.innerHTML="<div style='max-width:720px;margin:auto'><div style='display:flex;justify-content:space-between;align-items:center'><h2 style='margin:4px 0'>🛠 सारी फ़र्में (सुपर-एडमिन)</h2><button id='spX' style='padding:6px 12px'>✕ बंद</button></div><div id='spB'>लोड हो रहा है…</div></div>";
   $g("spX").onclick=()=>o.remove();
-  let L=[];try{L=(await fs.collection("firms").get()).docs.map(d=>Object.assign({id:d.id},d.data()))}catch(e){$g("spB").textContent="सूची नहीं खुली — Firebase के नए नियम डले हैं? / Could not load — are the new rules published?";return}
+  let L=[];try{L=(await fs.collection("firms").get()).docs.map(d=>Object.assign({id:d.id},d.data()))
+    let B={};try{(await fs.collection("billing").get()).docs.forEach(d=>B[d.id]=d.data().pays||[])}catch(e){}
+    for(const f of L){const inFirm=f.pays||[];if(inFirm.length){/* move old payment notes out of the firm's own record (the firm could read them) */
+        const all=(B[f.id]||[]).concat(inFirm.filter(p=>!(B[f.id]||[]).some(q=>q.at===p.at))).slice(-20);
+        try{await fs.doc("billing/"+f.id).set({pays:all,at:iso()});await fs.doc("firms/"+f.id).set({pays:[]},{merge:true});B[f.id]=all}catch(e){B[f.id]=all}}
+      f.pays=B[f.id]||[]}
+  }catch(e){$g("spB").textContent="सूची नहीं खुली — Firebase के नए नियम डले हैं? / Could not load — are the new rules published?";return}
   L.sort((a,b)=>((a.status==="pending"?0:1)-(b.status==="pending"?0:1))||((b.createdAt||"")<(a.createdAt||"")?-1:1));
   const stT={active:"♾ हमेशा के लिए चालू",trial:"🧪 डेमो",stopped:"⏸ रुकी",pending:"⏳ मंज़ूरी का इंतज़ार",rejected:"✖ नामंज़ूर"};
   $g("spB").innerHTML="<div style='color:#555;font-size:12px;margin-bottom:8px'>यहाँ सिर्फ़ फ़र्म का नाम, स्थिति और गिनती दिखती है। किसी फ़र्म के ग्राहकों का डेटा यहाँ से नहीं खुलता।</div>"+
@@ -260,13 +272,17 @@ async function superPanel(){let o=$g("sitePanel");if(!o){o=document.createElemen
       b.parentNode.insertBefore(box,b.nextSibling);box.querySelectorAll("button[data-m]").forEach(x=>x.onclick=()=>{box.querySelector(".pu").value=dstr(addM(cur,+x.dataset.m))});
       box.querySelector(".pg").onclick=async()=>{const v=box.querySelector(".pu").value;if(!v){box.querySelector(".pm").textContent="तारीख़ चुनें";return}const end=new Date(v+"T23:59:59").getTime();if(!(end>Date.now())){box.querySelector(".pm").textContent="तारीख़ आगे की होनी चाहिए";return}
         const pays=(f.pays||[]).concat([{at:iso(),until:new Date(end).toISOString(),note:box.querySelector(".pn").value.trim().slice(0,120)}]).slice(-20);
-        try{await fs.doc("firms/"+id).set({status:"trial",plan:"paid",trialEnds:new Date(end).toISOString(),trialEndsMs:end,pays,changedAt:iso()},{merge:true});superPanel()}catch(e){box.querySelector(".pm").textContent="✖ सेव नहीं हुआ"}};return}
+        try{await fs.doc("firms/"+id).set({status:"trial",plan:"paid",trialEnds:new Date(end).toISOString(),trialEndsMs:end,changedAt:iso()},{merge:true});await fs.doc("billing/"+id).set({pays,at:iso()});superPanel()}catch(e){box.querySelector(".pm").textContent="✖ सेव नहीं हुआ"}};return}
     if(a==="trial"){const ms=Math.max(Date.now(),f.status==="trial"&&f.plan!=="paid"&&f.trialEnds?new Date(f.trialEnds).getTime():0)+TRIAL_DAYS*864e5;up={status:"trial",plan:"demo",trialEnds:new Date(ms).toISOString(),trialEndsMs:ms}}else up={status:a};
     if((a==="stopped"||a==="rejected")&&id===uid){b.textContent="अपनी फ़र्म नहीं रोक सकते";return}
     try{await fs.doc("firms/"+id).set(Object.assign(up,{changedAt:iso()}),{merge:true});superPanel()}catch(e){b.textContent="✖ नहीं हुआ"}})}
-auth.onAuthStateChanged(u=>{let stale=false;try{const t=+localStorage.getItem(IK)||0;stale=!!u&&t>0&&Date.now()-t>IDLE_MS}catch(e){}
+try{if(/[?&]v=\d+/.test(location.search))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
+/* many reloads in a short time (4 in 60 s) = log out, for safety */
+const RL="__site_rl";let rapid=false;try{if(sessionStorage.getItem("__site_okrl")){sessionStorage.removeItem("__site_okrl");throw 0}const now=Date.now();const L=JSON.parse(localStorage.getItem(RL)||"[]").filter(t=>now-t<60000);L.push(now);rapid=L.length>=4;localStorage.setItem(RL,JSON.stringify(rapid?[]:L))}catch(e){}
+auth.onAuthStateChanged(u=>{if(u&&rapid){rapid=false;try{localStorage.removeItem(IK);sessionStorage.setItem("__site_idleout","rl")}catch(e){}auth.signOut();return}
+  let stale=false;try{const t=+localStorage.getItem(IK)||0;stale=!!u&&t>0&&Date.now()-t>IDLE_MS}catch(e){}
   if(u&&stale){try{localStorage.removeItem(IK);sessionStorage.setItem("__site_idleout","1")}catch(e){}auth.signOut();return}
-  if(u)admit(u);else{let io=false;try{io=sessionStorage.getItem("__site_idleout")==="1"}catch(e){}view("In");gate(LOGIN_MSG,io?"⏳ 20 मिनट कोई हलचल नहीं थी, इसलिए लॉग आउट कर दिया गया। दोबारा लॉगिन करें। / Logged out after 20 minutes of no activity.":"",true)}});
+  if(u)admit(u);else{let io=false;try{io=sessionStorage.getItem("__site_idleout");if(io!=="1"&&io!=="rl")io=false}catch(e){}view("In");gate(LOGIN_MSG,io==="rl"?"🔒 पेज बार-बार रिफ्रेश हुआ, इसलिए सुरक्षा के लिए लॉग आउट कर दिया गया। दोबारा लॉगिन करें। / Logged out for safety after repeated page reloads.":io?"⏳ 20 मिनट कोई हलचल नहीं थी, इसलिए लॉग आउट कर दिया गया। दोबारा लॉगिन करें। / Logged out after 20 minutes of no activity.":"",true)}});
 auth.getRedirectResult().catch(e=>{$g("sgErr").textContent=(e&&e.message)||""});
 /* file store: files are split into parts inside Firestore (no paid storage needed) */
 const toB64=async blob=>{const u=new Uint8Array(await blob.arrayBuffer());let s="";for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(s)};
