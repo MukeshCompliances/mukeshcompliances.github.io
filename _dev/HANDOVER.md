@@ -234,4 +234,4 @@ Approach that worked for GST: ask him for REAL sample files of one client, read 
 - `/<slug>` (e.g. /addenda): GitHub Pages serves root `404.html` → redirects to `/?f=<slug>`; shim reads `f`, `history.replaceState` back to `/<slug>`, loads `brands/{slug}` {fid,name,tag,color} **before login** (rules: read true, write super only) and paints the login box (name, tagline, colour), `--brand`, page title; app title = brand name · part.
 - Branded portal admits only members of `brand.fid` (super-admin passes). Others get "not on this portal's team" (+ link to main site if they have another firm). New people need an invite from that firm.
 - Provider panel per firm: **🎨 पोर्टल** — slug (2–30 a-z0-9-, reserved: index/404/admin/login/www/api), name, tagline, colour; copy link; turn off. Firm doc gets `portal: slug`.
-- Rules now = previous + `match /brands/{slug} { allow read: if true; allow write: if isSuper(); }`. Ask whether he published them.
+- Rules now = previous + `match /brands/{slug} { allow read: if true; allow write: if isSuper(); }`. **He published them on 23 Nov 2026 17:26 IST** (this text = `_dev/site/firestore.rules`).
