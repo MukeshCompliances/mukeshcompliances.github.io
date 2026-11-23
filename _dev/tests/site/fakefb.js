@@ -4,17 +4,18 @@ const store=JSON.parse(sessionStorage.getItem('__fakestore')||'{}');const L=[];/
 const parts=p=>p.split("/").filter(Boolean);
 const collOf=p=>parts(p).slice(0,-1).join("/");
 const notify=()=>{try{sessionStorage.setItem('__fakestore',JSON.stringify(store))}catch(e){};_n()};const _n=()=>L.forEach(l=>{try{l.fire()}catch(e){console.error(e)}});
+const deep=(a,b)=>{for(const k in b){if(b[k]&&typeof b[k]==='object'&&!Array.isArray(b[k])&&a[k]&&typeof a[k]==='object'&&!Array.isArray(a[k]))deep(a[k],b[k]);else a[k]=b[k]}return a};
 let nid=0;const newId=()=>"id"+(++nid)+Math.random().toString(36).slice(2,6);
 function DocSnap(path){const d=store[path];return{id:parts(path).pop(),exists:!!d,data:()=>d?JSON.parse(JSON.stringify(d)):undefined,ref:docRef(path)}}
 function docRef(path){return{id:parts(path).pop(),path,
   get:async()=>DocSnap(path),
-  set:async(data,opt)=>{const clean=JSON.parse(JSON.stringify(data));store[path]=opt&&opt.merge?Object.assign({},store[path]||{},clean):clean;notify()},
+  set:async(data,opt)=>{const clean=JSON.parse(JSON.stringify(data));store[path]=opt&&opt.merge?deep(JSON.parse(JSON.stringify(store[path]||{})),clean):clean;notify()},
   update:async data=>{if(!store[path])throw Object.assign(new Error("not-found"),{code:"not-found"});Object.assign(store[path],JSON.parse(JSON.stringify(data)));notify()},
   delete:async()=>{delete store[path];notify()},
   collection:c=>collRef(path+"/"+c),
   onSnapshot:(cb,err)=>{const l={fire:()=>cb(DocSnap(path))};L.push(l);setTimeout(l.fire,0);return()=>{L.splice(L.indexOf(l),1)}}}}
-function collRef(path){const q=()=>Object.keys(store).filter(k=>collOf(k)===path).map(k=>DocSnap(k));
-  const self={};Object.assign(self,{orderBy:()=>self,limit:()=>self,where:()=>self});
+function collRef(path,W){W=W||[];const q=()=>Object.keys(store).filter(k=>collOf(k)===path&&W.every(w=>w[1]!=="=="||(store[k]||{})[w[0]]===w[2])).map(k=>DocSnap(k));
+  const self={};Object.assign(self,{orderBy:()=>self,limit:()=>self,where:(f,op,v)=>collRef(path,W.concat([[f,op,v]]))});
   return Object.assign(self,{path,doc:id=>docRef(path+"/"+(id||newId())),add:async d=>{const r=docRef(path+"/"+newId());await r.set(d);return r},
    get:async()=>({docs:q(),metadata:{fromCache:false}}),
    onSnapshot:(cb,err)=>{const l={fire:()=>cb({docs:q(),metadata:{fromCache:false}})};L.push(l);setTimeout(l.fire,0);return()=>{L.splice(L.indexOf(l),1)}}})}

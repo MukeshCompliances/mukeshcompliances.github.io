@@ -191,3 +191,13 @@ Approach that worked for GST: ask him for REAL sample files of one client, read 
 - Checked and fine: vault items AES-GCM 256 with PBKDF2-SHA256 250k (username/password/notes all encrypted), file passwords only stored encrypted. Not fixed: in-firm role limits (junior/viewer) are UI-only except viewer/expired writes; no automatic backups on Spark (firms should use 📦 backup); legacy top-level data copy still present (super-only).
 - OTP login asked for: phone SMS needs Blaze; email = link only, 5/day on Spark. Waiting for his decision.
 - fakefb.js: `sessionStorage.fakeAuto` keeps the fake sign-in across reloads (for reload tests).
+
+### Update 23 Nov 2026 — 📒 Accounts (bk), part 1 (artifact v74 + site)
+- Module `bk` at the end of the script (before `paintStatic();render();init();`). Nav button `#nBk` / section `#bk` added by code; `show` and `paintStatic` wrapped.
+- Data: `bk_books/{pid}` {name,gstin,st,fy0,cs:{fy},L:{id:{n,g,op:{fy:signed},gstin,st,del}}}; `bk_vm/{pid}_{fy}_{mm}[_k]` {pid,fy,ym,v:{id:{d,t,no,nar,ln:[{l,a}],gst,by,at,del}}} — one doc per client-month (≤700 KB then a new part) so a year opens with ~12 reads. a>0 Dr, a<0 Cr. Deletes are tombstones (`del:true`); newest `at` wins when a voucher moved month.
+- Writes go through `bkMerge`: site = `set(...,{merge:true})` (deep merge), Claude db = `update` (deep merge) / `set` when new, local = deep merge in localStorage `compliance_bk_v1`.
+- 26 Tally groups (`BK_G`), default ledgers (`BK_DEF`), vouchers pay/rcpt/contra/jrnl/sales/purch/cn/dn; invoices compute GST (IGST if party state ≠ book state) + round off; `gst` block saved on the voucher (party GSTIN, state, items, inter) for GSTR-1/3B later.
+- Reports: day book, ledger, TB, trading+P&L (closing stock per FY), BS, ledger list, Excel, carry-forward to FY+1.
+- No rules change needed (firm sub-collections). Not in 🧩 services catalog yet (always visible).
+- Next asked: client's own login (role limited to own books), GSTR-1/3B from vouchers, invoice print, outstanding, cash/bank book.
+- fakefb.js: `where('==')` now filters, `set merge` deep-merges like Firestore.

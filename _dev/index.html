@@ -4886,7 +4886,8 @@ const _fpRow=row;row=function(i){const h=_fpRow(i);if(i.code!=="FS")return h;con
   return h.replace('<div style="margin-top:6px">','<div style="margin-top:6px"><span class="badge '+(d===L?"b-filed":"b-up")+'" style="margin-right:4px">📑 '+d+"/"+L+"</span>")};
 
 /* ===== what's new: shown once per person; add a new entry at the top for each change ===== */
-const WHATS_NEW=[{id:"2026-11-19c",items:[
+const WHATS_NEW=[{id:"2026-11-23",items:[
+ ["📒 नया \"हिसाब\" टैब (पहला हिस्सा): हर ग्राहक की Tally जैसी किताबें — लेजर, पेमेंट / रसीद / कॉन्ट्रा / जर्नल / बिक्री / ख़रीद / क्रेडिट-डेबिट नोट (GST अपने-आप), डे बुक, लेजर, ट्रायल बैलेंस, लाभ-हानि, बैलेंस शीट, Excel और अगले साल में बैलेंस ले जाना।","📒 New \"Accounts\" tab (first part): Tally-style books for each client — ledgers, payment / receipt / contra / journal / sales / purchase / credit-debit notes (GST worked out), day book, ledger, trial balance, P&L, balance sheet, Excel and carry-forward to next year."]]},{id:"2026-11-19c",items:[
  ["🔢 GSTR-1 / GSTR-3B का PDF प्रूफ लगाते ही अंदर के आँकड़े भी जाँचे जाते हैं: बिक्री का टैक्सेबल मूल्य और टैक्स दूसरी रिटर्न (और 🧮 GST जाँच की वर्किंग) से मिलाए जाते हैं, फ़र्क़ हो तो ✖ के साथ दिखता है। 3B का नेट ITC 4(C) और कैश भुगतान भी दिखता है।","🔢 Attaching a GSTR-1 / GSTR-3B PDF proof now checks the figures inside: taxable value and tax of sales are matched with the other return (and the 🧮 GST check working); any difference shows with ✖. 3B net ITC 4(C) and cash paid are shown too."]]},{id:"2026-11-19b",items:[
  ["✕ गलत प्रूफ फ़ाइल अब अलग से हटाई जा सकती है — प्रूफ के आगे \"✕ फ़ाइल हटाएँ\"। प्रविष्टि, ARN और इतिहास सुरक्षित रहते हैं।","✕ A wrong proof file can now be removed on its own — \"✕ Remove file\" next to the proof. The entry, ARN and history stay intact."],
  ["🗑 पूरी प्रविष्टि हटाने का विकल्प अब \"बदलें\" में सबसे नीचे है और पुष्टि के बाद ही चलता है। हटाई गई प्रविष्टि ट्रैश में जाती है — 👥 टीम टैब से \"↩ पुनः स्थापित करें\"।","🗑 Deleting an entire entry is now at the bottom of \"Edit\" and needs confirmation. Deleted entries move to Trash — \"↩ Restore\" from the 👥 Team tab."]]},{id:"2026-11-19",items:[
@@ -5361,6 +5362,232 @@ async function trashPurge(id,btn){if(btn.dataset.sure!=="1"){btn.dataset.sure="1
 {const _trRenderTeam=renderTeam;renderTeam=function(){_trRenderTeam();const el=document.getElementById("team");if(!el||el.hidden||!canDo("delete"))return;
   const old=el.querySelector("#trBox");if(old)old.remove();el.insertAdjacentHTML("beforeend",trashHtml());
   el.querySelectorAll(".trRs").forEach(b=>b.onclick=()=>{b.disabled=true;trashRestore(b.dataset.id)});el.querySelectorAll(".trPg").forEach(b=>b.onclick=()=>trashPurge(b.dataset.id,b))}}
+
+/* ===== 📒 Accounts (bk): Tally-style double entry books per client =====
+   bk_books/{pid}  : {pid,name,gstin,st,fy0,cs:{fy:closingStock},L:{id:{n,g,op:{fy:signed},gstin,st,del}}}
+   bk_vm/{pid}_{fy}_{mm}[_k] : {pid,fy,ym,v:{id:{d,t,no,nar,ln:[{l,a}],gst,by,at,del}}}   a>0 Dr, a<0 Cr
+   One document per client-month keeps reads low on the free plan (12 reads open a whole year). */
+Object.assign(I18N.hi,{navBk:"📒 हिसाब"});Object.assign(I18N.en,{navBk:"📒 Accounts"});Object.assign(I18N.zh,{navBk:"📒 账簿"});
+const BK_G=[["cap","पूँजी खाता","Capital Account","L"],["res","रिज़र्व व सरप्लस","Reserves & Surplus","L"],["sec","सिक्योर्ड लोन","Secured Loans","L"],["unsec","अनसिक्योर्ड लोन","Unsecured Loans","L"],["bod","बैंक OD / CC","Bank OD / CC","L"],
+ ["cl","चालू देनदारियाँ","Current Liabilities","L"],["dt","शुल्क व कर (GST, TDS)","Duties & Taxes","L"],["prov","प्रावधान","Provisions","L"],["scr","लेनदार (सप्लायर)","Sundry Creditors","L"],["sus","सस्पेंस","Suspense A/c","L"],
+ ["fa","स्थायी संपत्ति","Fixed Assets","A"],["inv","निवेश","Investments","A"],["ca","चालू संपत्ति","Current Assets","A"],["bank","बैंक खाते","Bank Accounts","A"],["cash","नकद","Cash-in-Hand","A"],["sdr","देनदार (ग्राहक)","Sundry Debtors","A"],
+ ["dep","जमा (एसेट)","Deposits (Asset)","A"],["la","कर्ज़ व एडवांस (एसेट)","Loans & Advances (Asset)","A"],["stock","स्टॉक (ओपनिंग)","Stock-in-Hand","A"],["misc","विविध ख़र्च (एसेट)","Misc. Expenses (Asset)","A"],
+ ["sales","बिक्री","Sales Accounts","I",1],["dinc","प्रत्यक्ष आय","Direct Incomes","I",1],["iinc","अप्रत्यक्ष आय","Indirect Incomes","I",0],["purch","ख़रीद","Purchase Accounts","E",1],["dexp","प्रत्यक्ष ख़र्च","Direct Expenses","E",1],["iexp","अप्रत्यक्ष ख़र्च","Indirect Expenses","E",0]];
+const BK_GM=Object.fromEntries(BK_G.map(g=>[g[0],{id:g[0],hi:g[1],en:g[2],nat:g[3],dir:g[4]}]));
+const bkGN=g=>BK_GM[g]?bt(BK_GM[g].hi,BK_GM[g].en):g;
+const BK_T=[["pay","पेमेंट","Payment"],["rcpt","रसीद","Receipt"],["contra","कॉन्ट्रा","Contra"],["jrnl","जर्नल","Journal"],["sales","बिक्री","Sales"],["purch","ख़रीद","Purchase"],["cn","क्रेडिट नोट","Credit Note"],["dn","डेबिट नोट","Debit Note"]];
+const bkTN=t0=>{const x=BK_T.find(y=>y[0]===t0);return x?bt(x[1],x[2]):t0};
+const BK_DEF={cash:["Cash","cash"],capital:["Capital","cap"],sales:["Sales","sales"],purch:["Purchase","purch"],ocgst:["Output CGST","dt"],osgst:["Output SGST","dt"],oigst:["Output IGST","dt"],icgst:["Input CGST","dt"],isgst:["Input SGST","dt"],iigst:["Input IGST","dt"],round:["Round Off","iexp"]};
+const bkN=n=>(Math.round((+n||0)*100)/100).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
+const bkDC=n=>Math.abs(n)<0.005?"0.00":bkN(Math.abs(n))+(n>0?" Dr":" Cr");
+const r2=n=>Math.round((+n||0)*100)/100;
+const bkFyNow=()=>{const d=new Date();return d.getMonth()>=3?d.getFullYear():d.getFullYear()-1};
+const bkFyOfD=d=>{const y=+d.slice(0,4),m=+d.slice(5,7);return m>=4?y:y-1};
+const bkCan=()=>typeof myRole!=="function"||myRole()!=="viewer";
+let bk={pid:"",fy:bkFyNow(),book:null,vm:{},tab:"day",led:"",f:{t:"",q:""},un:[]};
+const BK_LK="compliance_bk_v1";
+const bkLocal=()=>lget(BK_LK,'{"books":{},"vm":{}}');
+function bkDeep(a,b){for(const k in b){if(b[k]&&typeof b[k]==="object"&&!Array.isArray(b[k])&&a[k]&&typeof a[k]==="object"&&!Array.isArray(a[k]))bkDeep(a[k],b[k]);else a[k]=b[k]}return a}
+/* merge-write that works the same on the Claude db (update merges deep) and on Firestore (set merge) */
+async function bkMerge(col,id,patch,exists){if(mode!=="db"){const s=bkLocal(),k=col==="bk_books"?"books":"vm";s[k][id]=bkDeep(s[k][id]||{},JSON.parse(JSON.stringify(patch)));lset(BK_LK,s);bkLoadLocal();return}
+  const ref=appDb.collection(col).doc(id);if(window.__site)return ref.set(patch,{merge:true});if(exists)return ref.update(patch);return ref.set(patch)}
+function bkLoadLocal(){const s=bkLocal();bk.book=s.books[bk.pid]||null;bk.vm={};for(const k in s.vm){const d=s.vm[k];if(d.pid===bk.pid&&d.fy===bk.fy)bk.vm[k]=d}renderBk()}
+function bkOpen(pid,fy){bk.un.forEach(u=>{try{u()}catch(e){}});bk.un=[];bk.pid=pid;bk.fy=fy;bk.book=null;bk.vm={};bk.led="";
+  if(!pid){renderBk();return}
+  if(mode!=="db"){bkLoadLocal();return}
+  bk.loading=true;renderBk();
+  bk.un.push(appDb.collection("bk_books").doc(pid).onSnapshot(d=>{bk.book=d.exists?d.data():null;bk.loading=false;renderBk()},()=>{bk.loading=false;renderBk()}));
+  bk.un.push(appDb.collection("bk_vm").where("pid","==",pid).where("fy","==",fy).onSnapshot(s=>{const m={};s.docs.forEach(d=>m[d.id]=d.data());bk.vm=m;renderBk()},()=>{}))}
+/* ---- derived data ---- */
+function bkL(){const L=(bk.book&&bk.book.L)||{};return Object.keys(L).filter(id=>!L[id].del).map(id=>Object.assign({id},L[id]))}
+function bkV(){const all={};for(const k in bk.vm){const v=bk.vm[k].v||{};for(const id in v){const x=v[id];if(!all[id]||(x.at||"")>(all[id].at||""))all[id]=Object.assign({id,doc:k},x)}}
+  return Object.values(all).filter(x=>!x.del&&x.d).sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:(a.at||"")<(b.at||"")?-1:1)}
+function bkOp(l){const L=bk.book&&bk.book.L&&bk.book.L[l];return r2(L&&L.op&&L.op[bk.fy]||0)}
+function bkBal(V){const b={};bkL().forEach(l=>b[l.id]=bkOp(l.id));V.forEach(v=>(v.ln||[]).forEach(x=>{b[x.l]=r2((b[x.l]||0)+(+x.a||0))}));return b}
+const bkLN=id=>{const L=bk.book&&bk.book.L&&bk.book.L[id];return L?L.n:"?"};
+function bkReport(){const V=bkV(),B=bkBal(V),L=bkL(),G=g=>L.filter(l=>l.g===g);
+  const sumG=gs=>r2(L.filter(l=>gs.includes(l.g)).reduce((s,l)=>s+(B[l.id]||0),0));
+  const cs=r2(bk.book&&bk.book.cs&&bk.book.cs[bk.fy]||0),os=sumG(["stock"]);
+  const sales=-sumG(["sales"]),dinc=-sumG(["dinc"]),purch=sumG(["purch"]),dexp=sumG(["dexp"]),iinc=-sumG(["iinc"]),iexp=sumG(["iexp"]);
+  const gp=r2(sales+dinc+cs-os-purch-dexp),np=r2(gp+iinc-iexp);
+  const opDiff=r2(L.reduce((s,l)=>s+bkOp(l.id),0));
+  return{V,B,L,G,cs,os,sales,dinc,purch,dexp,iinc,iexp,gp,np,opDiff}}
+/* ---- screen ---- */
+function bkPartyOpts(){return (typeof parties!=="undefined"?parties:[]).slice().sort((a,b)=>(a.name||"").localeCompare(b.name||"")).map(p=>`<option value="${esc(p.id)}"${p.id===bk.pid?" selected":""}>${esc(p.name)}</option>`).join("")}
+function bkFyOpts(){const n=bkFyNow(),a=[];for(let y=n+1;y>=n-6;y--)a.push(y);return a.map(y=>`<option value="${y}"${y===bk.fy?" selected":""}>FY ${y}-${String(y+1).slice(2)}</option>`).join("")}
+function renderBk(){const el=$("#bk");if(!el||el.hidden)return;
+  let h=`<h2 style="margin:4px 0 10px">${esc(t("navBk"))}</h2><div class="filters"><select id="bkP"><option value="">${esc(bt("— ग्राहक चुनें —","— Choose client —"))}</option>${bkPartyOpts()}</select><select id="bkFy">${bkFyOpts()}</select></div>`;
+  if(!bk.pid){el.innerHTML=h+`<div class="empty">${esc(bt("जिस ग्राहक का हिसाब रखना है, उसे ऊपर से चुनें।","Choose the client whose books you want to keep."))}</div>`;bkWire();return}
+  if(bk.loading){el.innerHTML=h+`<div class="empty">${esc(t("loading"))}</div>`;bkWire();return}
+  if(!bk.book){el.innerHTML=h+`<div class="empty">${esc(bt("इस ग्राहक की किताबें अभी शुरू नहीं हुईं।","Books for this client have not been started yet."))}<br><br>${bkCan()?`<button class="btn" id="bkStart">📒 ${esc(bt("किताबें शुरू करें","Start books"))}</button>`:""}</div>`;bkWire();return}
+  const R=bkReport(),tabs=[["day",bt("डे बुक","Day Book")],["led",bt("लेजर","Ledger")],["tb",bt("ट्रायल बैलेंस","Trial Balance")],["pl",bt("लाभ-हानि","Profit & Loss")],["bs",bt("बैलेंस शीट","Balance Sheet")],["mst",bt("लेजर सूची","Ledgers")]];
+  h+=`<div class="actions" style="margin:0 0 10px">${bkCan()?`<button class="btn" id="bkNewV">＋ ${esc(bt("वाउचर","Voucher"))}</button><button class="btn ghost" id="bkNewL">＋ ${esc(bt("लेजर","Ledger"))}</button>`:""}<button class="btn ghost" id="bkXl">⬇ Excel</button></div>
+   <div class="chips" style="margin-bottom:10px">${tabs.map(x=>`<button class="chip bkTab${bk.tab===x[0]?" on":""}" data-t="${x[0]}" style="${bk.tab===x[0]?"background:var(--blue,#1a56db);color:#fff":""}">${esc(x[1])}</button>`).join("")}</div>`;
+  if(R.opDiff&&bk.tab!=="day")h+=`<div class="warn">${esc(bt("ओपनिंग बैलेंस में फ़र्क़: ","Difference in opening balances: "))}${bkDC(R.opDiff)}</div>`;
+  h+=`<div id="bkBody">${bkTab(R)}</div>`;el.innerHTML=h;bkWire()}
+function bkTbl(rows,head){return `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px;background:var(--card);border-radius:10px">${head?`<tr>${head.map((x,i)=>`<th style="text-align:${i?"right":"left"};padding:6px;border-bottom:1px solid var(--line)">${esc(x)}</th>`).join("")}</tr>`:""}${rows.join("")}</table></div>`}
+const bkTd=(s,r,b)=>`<td style="padding:5px 6px;border-bottom:1px solid var(--line);${r?"text-align:right;white-space:nowrap;":""}${b?"font-weight:600;":""}">${s}</td>`;
+function bkTab(R){const tb=bk.tab;
+  if(tb==="day"){let V=R.V.slice().reverse();if(bk.f.t)V=V.filter(v=>v.t===bk.f.t);const q=(bk.f.q||"").toLowerCase();if(q)V=V.filter(v=>((v.nar||"")+" "+(v.no||"")+" "+(v.ln||[]).map(x=>bkLN(x.l)).join(" ")).toLowerCase().includes(q));
+    const top=`<div class="filters"><select id="bkFt"><option value="">${esc(bt("सभी वाउचर","All vouchers"))}</option>${BK_T.map(x=>`<option value="${x[0]}"${bk.f.t===x[0]?" selected":""}>${esc(bkTN(x[0]))}</option>`).join("")}</select><input id="bkFq" type="search" placeholder="${esc(bt("खोजें…","Search…"))}" value="${esc(bk.f.q)}"></div>`;
+    if(!V.length)return top+`<div class="empty">${esc(bt("इस साल अभी कोई वाउचर नहीं।","No vouchers in this year yet."))}</div>`;
+    return top+V.slice(0,500).map(v=>{const amt=r2((v.ln||[]).reduce((s,x)=>s+(x.a>0?x.a:0),0));const pty=v.gst&&v.gst.party;const first=pty?{l:pty}:(v.ln||[]).find(x=>!/^(cash|round|ocgst|osgst|oigst|icgst|isgst|iigst)$/.test(x.l))||(v.ln||[])[0]||{};const amt2=pty?Math.abs(((v.ln||[]).find(x=>x.l===pty)||{}).a||amt):amt;
+      return `<div class="item bkV" data-id="${esc(v.id)}"><div class="main"><div class="t">${esc(bkLN(first.l))}</div><div class="m">${esc(v.d.split("-").reverse().join("/"))} · ${esc(bkTN(v.t))} #${esc(v.no||"")}${v.nar?" · "+esc(v.nar):""}</div></div><div style="font-weight:600;white-space:nowrap">₹${bkN(amt2)}</div></div>`}).join("")+(V.length>500?`<div class="m">${esc(bt("पहले 500 दिखाए — खोज से छाँटें","First 500 shown — use search"))}</div>`:"")}
+  if(tb==="led"){const L=R.L.slice().sort((a,b)=>a.n.localeCompare(b.n));if(!bk.led&&L.length)bk.led=(L.find(l=>l.id==="cash")||L[0]).id;
+    const sel=`<div class="filters"><select id="bkLs">${L.map(l=>`<option value="${esc(l.id)}"${l.id===bk.led?" selected":""}>${esc(l.n)}</option>`).join("")}</select></div>`;
+    if(!bk.led)return sel;let bal=bkOp(bk.led);const rows=[`<tr>${bkTd(esc(bt("ओपनिंग","Opening")),0,1)}${bkTd("")}${bkTd("")}${bkTd(bkDC(bal),1,1)}</tr>`];let dr=0,cr=0;
+    R.V.forEach(v=>{const mine=(v.ln||[]).filter(x=>x.l===bk.led);if(!mine.length)return;const a=r2(mine.reduce((s,x)=>s+(+x.a||0),0));bal=r2(bal+a);if(a>0)dr+=a;else cr-=a;
+      const oth=(v.ln||[]).filter(x=>x.l!==bk.led).map(x=>bkLN(x.l));rows.push(`<tr class="bkV" data-id="${esc(v.id)}" style="cursor:pointer">${bkTd(esc(v.d.split("-").reverse().join("/"))+"<br><span class='m'>"+esc(bkTN(v.t))+" #"+esc(v.no||"")+" · "+esc([...new Set(oth)].join(", ")).slice(0,60)+"</span>")}${bkTd(a>0?bkN(a):"",1)}${bkTd(a<0?bkN(-a):"",1)}${bkTd(bkDC(bal),1)}</tr>`)});
+    rows.push(`<tr>${bkTd(esc(bt("कुल / क्लोज़िंग","Total / Closing")),0,1)}${bkTd(bkN(dr),1,1)}${bkTd(bkN(cr),1,1)}${bkTd(bkDC(bal),1,1)}</tr>`);
+    return sel+bkTbl(rows,[bt("तारीख़ / विवरण","Date / Particulars"),"Dr","Cr",bt("बैलेंस","Balance")])}
+  if(tb==="tb"||tb==="mst"){let dT=0,cT=0;const rows=[];BK_G.forEach(g=>{const ls=R.G(g[0]);if(!ls.length)return;const tot=r2(ls.reduce((s,l)=>s+(R.B[l.id]||0),0));
+      if(tb==="tb"&&!ls.some(l=>Math.abs(R.B[l.id]||0)>=0.005))return;
+      rows.push(`<tr style="background:var(--grey-soft)">${bkTd(esc(bkGN(g[0])),0,1)}${bkTd(tot>0?bkN(tot):"",1,1)}${bkTd(tot<0?bkN(-tot):"",1,1)}</tr>`);
+      ls.sort((a,b)=>a.n.localeCompare(b.n)).forEach(l=>{const b=R.B[l.id]||0;if(tb==="tb"&&Math.abs(b)<0.005)return;if(b>0)dT+=b;else cT-=b;
+        rows.push(`<tr class="${tb==="mst"?"bkLe":"bkLg"}" data-id="${esc(l.id)}" style="cursor:pointer">${bkTd("&nbsp;&nbsp;"+esc(l.n)+(l.gstin?" <span class='m'>"+esc(l.gstin)+"</span>":""))}${bkTd(b>0?bkN(b):"",1)}${bkTd(b<0?bkN(-b):"",1)}</tr>`)})});
+    if(tb==="tb")rows.push(`<tr>${bkTd(esc(bt("कुल","Total")),0,1)}${bkTd(bkN(dT),1,1)}${bkTd(bkN(cT),1,1)}</tr>`);
+    return (tb==="mst"?`<div class="m" style="margin-bottom:6px">${esc(bt("लेजर बदलने के लिए उस पर दबाएँ।","Tap a ledger to edit it."))}</div>`:"")+bkTbl(rows,[bt("लेजर","Ledger"),"Dr","Cr"])+(tb==="tb"&&Math.abs(r2(dT-cT))>=0.01?`<div class="warn">${esc(bt("Dr और Cr बराबर नहीं: फ़र्क़ ","Dr and Cr do not match: difference "))}${bkN(dT-cT)}</div>`:"")}
+  if(tb==="pl"){const line=(a,b,bo)=>`<tr>${bkTd(esc(a),0,bo)}${bkTd(bkN(b),1,bo)}</tr>`;const grp=(g,sign)=>R.G(g).filter(l=>Math.abs(R.B[l.id]||0)>=0.005).map(l=>`<tr class="bkLg" data-id="${esc(l.id)}" style="cursor:pointer">${bkTd("&nbsp;&nbsp;"+esc(l.n))}${bkTd(bkN(sign*(R.B[l.id]||0)),1)}</tr>`).join("");
+    const csIn=bkCan()?`<div class="filters" style="margin-top:8px"><label style="flex:1 1 100%;font-size:13px">${esc(bt("साल के अंत का स्टॉक (क्लोज़िंग स्टॉक) ₹","Closing stock at year end ₹"))}</label><input id="bkCs" type="number" step="0.01" value="${R.cs||""}"><button class="btn ghost" id="bkCsS">${esc(bt("सेव","Save"))}</button></div>`:"";
+    return bkTbl([`<tr><td colspan="2" style="padding:6px;font-weight:700">${esc(bt("ट्रेडिंग खाता","Trading Account"))}</td></tr>`,line(bt("बिक्री","Sales"),R.sales,1),grp("sales",-1),line(bt("प्रत्यक्ष आय","Direct incomes"),R.dinc),line(bt("क्लोज़िंग स्टॉक","Closing stock"),R.cs),line(bt("घटाएँ: ओपनिंग स्टॉक","Less: Opening stock"),R.os),line(bt("घटाएँ: ख़रीद","Less: Purchases"),R.purch,1),grp("purch",1),line(bt("घटाएँ: प्रत्यक्ष ख़र्च","Less: Direct expenses"),R.dexp),grp("dexp",1),
+      line(R.gp>=0?bt("सकल लाभ","Gross profit"):bt("सकल हानि","Gross loss"),R.gp,1),`<tr><td colspan="2" style="padding:6px;font-weight:700">${esc(bt("लाभ-हानि खाता","Profit & Loss Account"))}</td></tr>`,line(bt("अप्रत्यक्ष आय","Indirect incomes"),R.iinc,1),grp("iinc",-1),line(bt("घटाएँ: अप्रत्यक्ष ख़र्च","Less: Indirect expenses"),R.iexp,1),grp("iexp",1),
+      `<tr style="background:${R.np>=0?"#eaf7ee":"#fdecec"}">${bkTd(esc(R.np>=0?bt("शुद्ध लाभ","Net profit"):bt("शुद्ध हानि","Net loss")),0,1)}${bkTd(bkN(R.np),1,1)}</tr>`],[bt("विवरण","Particulars"),"₹"])+csIn}
+  if(tb==="bs"){const side=nat=>{const rows=[];let tot=0;BK_G.filter(g=>g[3]===nat).forEach(g=>{let ls=R.G(g[0]);if(g[0]==="stock")ls=[];const sum=r2(ls.reduce((s,l)=>s+(R.B[l.id]||0),0))*(nat==="L"?-1:1);if(!ls.some(l=>Math.abs(R.B[l.id]||0)>=0.005))return;tot+=sum;
+        rows.push(`<tr style="background:var(--grey-soft)">${bkTd(esc(bkGN(g[0])),0,1)}${bkTd(bkN(sum),1,1)}</tr>`);ls.filter(l=>Math.abs(R.B[l.id]||0)>=0.005).forEach(l=>rows.push(`<tr class="bkLg" data-id="${esc(l.id)}" style="cursor:pointer">${bkTd("&nbsp;&nbsp;"+esc(l.n))}${bkTd(bkN((R.B[l.id]||0)*(nat==="L"?-1:1)),1)}</tr>`))});return{rows,tot:r2(tot)}};
+    const Li=side("L"),As=side("A");Li.rows.push(`<tr>${bkTd(esc(R.np>=0?bt("लाभ-हानि खाता (लाभ)","Profit & Loss A/c (profit)"):bt("लाभ-हानि खाता (हानि)","Profit & Loss A/c (loss)")),0,1)}${bkTd(bkN(R.np),1,1)}</tr>`);
+    if(R.cs)As.rows.push(`<tr>${bkTd(esc(bt("क्लोज़िंग स्टॉक","Closing stock")),0,1)}${bkTd(bkN(R.cs),1,1)}</tr>`);
+    const lt=r2(Li.tot+R.np),at=r2(As.tot+R.cs);if(Math.abs(r2(lt-at))>=0.01){(lt<at?Li:As).rows.push(`<tr>${bkTd(esc(bt("ओपनिंग बैलेंस का फ़र्क़","Difference in opening balance")),0,1)}${bkTd(bkN(Math.abs(lt-at)),1,1)}</tr>`)}
+    const mx=Math.max(lt,at);
+    return `<h3 style="margin:6px 0">${esc(bt("देनदारियाँ","Liabilities"))}</h3>`+bkTbl(Li.rows.concat([`<tr>${bkTd(esc(bt("कुल","Total")),0,1)}${bkTd(bkN(mx),1,1)}</tr>`]),[bt("विवरण","Particulars"),"₹"])+`<h3 style="margin:12px 0 6px">${esc(bt("संपत्तियाँ","Assets"))}</h3>`+bkTbl(As.rows.concat([`<tr>${bkTd(esc(bt("कुल","Total")),0,1)}${bkTd(bkN(mx),1,1)}</tr>`]),[bt("विवरण","Particulars"),"₹"])+
+      (bkCan()?`<div class="note">${esc(bt("साल पूरा होने पर: सभी एसेट / देनदारी के क्लोज़िंग बैलेंस अगले साल की ओपनिंग बनेंगे, और लाभ / हानि पूँजी खाते में जुड़ेगा।","At year end: closing balances of assets / liabilities become next year's opening, and the profit / loss goes to the capital account."))}<br><button class="btn ghost" id="bkCf" style="margin-top:6px">➡ ${esc(bt("FY "+(bk.fy+1)+"-"+String(bk.fy+2).slice(2)+" में बैलेंस ले जाएँ","Carry balances to FY "+(bk.fy+1)+"-"+String(bk.fy+2).slice(2)))}</button></div>`:"")}
+  return""}
+function bkWire(){const el=$("#bk");const p=$("#bkP");if(p)p.onchange=()=>bkOpen(p.value,bk.fy);const f=$("#bkFy");if(f)f.onchange=()=>bkOpen(bk.pid,+f.value);
+  const st=$("#bkStart");if(st)st.onclick=()=>bkStartForm();
+  const nv=$("#bkNewV");if(nv)nv.onclick=()=>bkVForm(null);const nl=$("#bkNewL");if(nl)nl.onclick=()=>bkLForm(null);const xl=$("#bkXl");if(xl)xl.onclick=()=>bkExcel();
+  el.querySelectorAll(".bkTab").forEach(b=>b.onclick=()=>{bk.tab=b.dataset.t;renderBk()});
+  el.querySelectorAll(".bkV").forEach(b=>b.onclick=()=>bkVForm(b.dataset.id));
+  el.querySelectorAll(".bkLg").forEach(b=>b.onclick=()=>{bk.led=b.dataset.id;bk.tab="led";renderBk()});
+  el.querySelectorAll(".bkLe").forEach(b=>b.onclick=()=>bkLForm(b.dataset.id));
+  const ft=$("#bkFt");if(ft)ft.onchange=()=>{bk.f.t=ft.value;renderBk()};const fq=$("#bkFq");if(fq)fq.oninput=()=>{bk.f.q=fq.value;clearTimeout(bkWire.t);bkWire.t=setTimeout(()=>{renderBk();const q=$("#bkFq");if(q){q.focus();q.setSelectionRange(q.value.length,q.value.length)}},350)};
+  const ls=$("#bkLs");if(ls)ls.onchange=()=>{bk.led=ls.value;renderBk()};
+  const cs=$("#bkCsS");if(cs)cs.onclick=async()=>{cs.disabled=true;try{await bkMerge("bk_books",bk.pid,{cs:{[bk.fy]:r2($("#bkCs").value)}},true);toast(bt("सेव हो गया","Saved"))}catch(e){toast(t("saveFail"))}cs.disabled=false};
+  const cf=$("#bkCf");if(cf)cf.onclick=()=>bkCarry()}
+/* ---- start books ---- */
+function bkStartForm(){const p=(parties||[]).find(x=>x.id===bk.pid)||{};const gs=(p.gsts||[]).map(g=>g.gstin).filter(Boolean);
+  openSheet(`<h3>📒 ${esc(bt("किताबें शुरू करें","Start books"))}</h3><div class="m">${esc(p.name||"")}</div>
+   <label>${esc(bt("GSTIN (राज्य तय करने के लिए)","GSTIN (sets the state)"))}</label>${gs.length>1?`<select id="bsG">${gs.map(g=>`<option>${esc(g)}</option>`).join("")}</select>`:`<input id="bsG" value="${esc(gs[0]||"")}" maxlength="15" style="text-transform:uppercase">`}
+   <label>${esc(bt("राज्य","State"))}</label><select id="bsS">${Object.keys(STATES).map(k=>`<option value="${k}">${k} ${esc(STATES[k])}</option>`).join("")}</select>
+   <label>${esc(bt("पहला साल","First year"))}</label><select id="bsF">${bkFyOpts()}</select>
+   <div class="note">${esc(bt("Cash, Capital, Sales, Purchase, GST (Input / Output) और Round Off लेजर अपने-आप बन जाएँगे।","Cash, Capital, Sales, Purchase, GST (Input / Output) and Round Off ledgers are created for you."))}</div>
+   <div class="actions"><button class="btn" id="bsGo">${esc(bt("शुरू करें","Start"))}</button><button class="btn ghost" id="bsX">${esc(t("cancel")||"Cancel")}</button></div><div class="err" id="bsE"></div>`);
+  const syncS=()=>{const g=($("#bsG").value||"").trim().toUpperCase();if(/^\d{2}/.test(g)&&STATES[g.slice(0,2)])$("#bsS").value=g.slice(0,2)};$("#bsG").oninput=$("#bsG").onchange=syncS;syncS();
+  $("#bsX").onclick=closeSheet;$("#bsGo").onclick=async()=>{const fy=+$("#bsF").value,L={};for(const id in BK_DEF)L[id]={n:BK_DEF[id][0],g:BK_DEF[id][1],op:{}};
+    $("#bsGo").disabled=true;try{await bkMerge("bk_books",bk.pid,{pid:bk.pid,name:p.name||"",gstin:($("#bsG").value||"").trim().toUpperCase(),st:$("#bsS").value,fy0:fy,cs:{},L,at:new Date().toISOString(),by:me.id||"local"},false);closeSheet();if(fy!==bk.fy)bkOpen(bk.pid,fy)}catch(e){$("#bsGo").disabled=false;$("#bsE").textContent=t("saveFail")}}}
+/* ---- ledger master ---- */
+function bkLForm(id,after){const L=id?bk.book.L[id]:null,op=id?bkOp(id):0;
+  openSheet(`<h3>${esc(id?bt("लेजर बदलें","Edit ledger"):bt("नया लेजर","New ledger"))}</h3>
+   <label>${esc(bt("नाम","Name"))}</label><input id="blN" maxlength="80" value="${esc(L?L.n:"")}">
+   <label>${esc(bt("ग्रुप","Group"))}</label><select id="blG">${BK_G.map(g=>`<option value="${g[0]}"${L&&L.g===g[0]?" selected":""}>${esc(bkGN(g[0]))}</option>`).join("")}</select>
+   <label>${esc(bt("ओपनिंग बैलेंस (FY "+bk.fy+"-"+String(bk.fy+1).slice(2)+")","Opening balance (FY "+bk.fy+"-"+String(bk.fy+1).slice(2)+")"))}</label><div class="row2"><input id="blO" type="number" step="0.01" value="${op?Math.abs(op):""}"><select id="blD"><option value="1">Dr</option><option value="-1"${op<0?" selected":""}>Cr</option></select></div>
+   <div id="blGst"><label>GSTIN</label><input id="blGi" maxlength="15" style="text-transform:uppercase" value="${esc(L&&L.gstin||"")}"><label>${esc(bt("राज्य","State"))}</label><select id="blS"><option value="">—</option>${Object.keys(STATES).map(k=>`<option value="${k}"${L&&L.st===k?" selected":""}>${k} ${esc(STATES[k])}</option>`).join("")}</select></div>
+   <div class="actions"><button class="btn" id="blGo">${esc(bt("सेव","Save"))}</button>${id&&!BK_DEF[id]?`<button class="btn ghost red" id="blDel">🗑 ${esc(bt("हटाएँ","Delete"))}</button>`:""}<button class="btn ghost" id="blX">${esc(t("cancel")||"Cancel")}</button></div><div class="err" id="blE"></div>`);
+  const gsync=()=>{$("#blGst").style.display=["sdr","scr","cash","bank","dt"].includes($("#blG").value)?"":"none";const g=($("#blGi").value||"").trim().toUpperCase();if(/^\d{2}/.test(g)&&STATES[g.slice(0,2)])$("#blS").value=g.slice(0,2)};$("#blG").onchange=gsync;$("#blGi").oninput=gsync;gsync();
+  $("#blX").onclick=()=>{closeSheet();if(after)after(null)};
+  const dl=$("#blDel");if(dl)dl.onclick=async()=>{if(bkV().some(v=>(v.ln||[]).some(x=>x.l===id))){$("#blE").textContent=bt("इस लेजर में वाउचर हैं — पहले उन्हें बदलें।","This ledger has vouchers — change them first.");return}
+    if(!dl.dataset.sure){dl.dataset.sure=1;dl.textContent=bt("पक्का हटाएँ?","Delete for sure?");return}try{await bkMerge("bk_books",bk.pid,{L:{[id]:{del:true}}},true);closeSheet()}catch(e){$("#blE").textContent=t("saveFail")}};
+  $("#blGo").onclick=async()=>{const n=$("#blN").value.trim();if(n.length<2){$("#blE").textContent=bt("नाम लिखें","Enter the name");return}
+    if(bkL().some(l=>l.id!==id&&l.n.toLowerCase()===n.toLowerCase())){$("#blE").textContent=bt("इस नाम का लेजर पहले से है","A ledger with this name exists");return}
+    const gi=($("#blGi").value||"").trim().toUpperCase();if(gi&&!/^\d{2}[A-Z]{5}\d{4}[A-Z][A-Z0-9]Z[A-Z0-9]$/.test(gi)){$("#blE").textContent=bt("GSTIN सही नहीं लगता","GSTIN does not look right");return}
+    const nid=id||("l"+Date.now().toString(36)+Math.random().toString(36).slice(2,5));const o=r2((+$("#blO").value||0)*(+$("#blD").value));
+    const rec={n,g:$("#blG").value,gstin:gi,st:$("#blS").value||"",op:{[bk.fy]:o}};$("#blGo").disabled=true;
+    try{await bkMerge("bk_books",bk.pid,{L:{[nid]:rec}},true);closeSheet();toast(bt("लेजर सेव हुआ","Ledger saved"));if(after)after(nid)}catch(e){$("#blGo").disabled=false;$("#blE").textContent=t("saveFail")}}}
+/* ---- voucher entry ---- */
+const BK_TAXL=/^(ocgst|osgst|oigst|icgst|isgst|iigst|round)$/;
+function bkNextNo(t0){const n=bkV().filter(v=>v.t===t0).map(v=>parseInt(v.no,10)).filter(x=>!isNaN(x));return String((n.length?Math.max(...n):0)+1)}
+function bkVForm(id,draft){if(!bkCan()&&!id)return;const V=id?bkV().find(v=>v.id===id):null;if(id&&!V)return;
+  const d0=draft||(V?JSON.parse(JSON.stringify(V)):{t:"pay",d:(bkFyOfD(todayStr())===bk.fy?todayStr():(bk.fy+1)+"-03-31"),nar:"",ln:[]});
+  if(!d0.no)d0.no=bkNextNo(d0.t);const isInv=["sales","purch","cn","dn"].includes(d0.t);
+  const L=bkL().sort((a,b)=>a.n.localeCompare(b.n));const dl=`<datalist id="bkDl">${L.map(l=>`<option value="${esc(l.n)}">${esc(bkGN(l.g))}</option>`).join("")}</datalist>`;
+  const ro=!bkCan();
+  let body;
+  if(isInv){const g=d0.gst||{party:"",items:[{l:d0.t==="purch"||d0.t==="dn"?"purch":"sales",v:"",r:18}],inv:"",ro:true};
+    const pl=g.party?bkLN(g.party):"";
+    body=`<label>${esc(d0.t==="sales"||d0.t==="cn"?bt("ग्राहक / पार्टी (या Cash)","Customer / party (or Cash)"):bt("सप्लायर / पार्टी (या Cash)","Supplier / party (or Cash)"))}</label><input id="bvParty" list="bkDl" value="${esc(pl)}" autocomplete="off">
+     <label>${esc(bt("बिल नंबर","Invoice no."))}</label><input id="bvInv" maxlength="16" value="${esc(g.inv||"")}">
+     <div id="bvItems">${g.items.map((it,i)=>bkItemRow(it,i)).join("")}</div><button class="btn ghost" id="bvAddI" type="button">＋ ${esc(bt("और लाइन","Another line"))}</button>
+     <label class="chk" style="margin-top:8px"><input type="checkbox" id="bvRo"${g.ro!==false?" checked":""}> ${esc(bt("रुपये तक राउंड करें","Round to rupee"))}</label><div id="bvSum" class="note"></div>`}
+  else{const ln=(d0.ln&&d0.ln.length)?d0.ln:(d0.t==="rcpt"?[{l:"cash",a:0.0001},{l:"",a:-0.0001}]:d0.t==="pay"?[{l:"",a:0.0001},{l:"cash",a:-0.0001}]:[{l:"",a:0.0001},{l:"",a:-0.0001}]);
+    body=`<div id="bvLines">${ln.map((x,i)=>bkLineRow(x,i)).join("")}</div><button class="btn ghost" id="bvAddL" type="button">＋ ${esc(bt("और लाइन","Another line"))}</button><div id="bvSum" class="note"></div>`}
+  openSheet(`<h3>${esc(id?bt("वाउचर","Voucher"):bt("नया वाउचर","New voucher"))}</h3>${dl}
+   <div class="chips" style="margin-bottom:8px">${BK_T.map(x=>`<button type="button" class="chip bvT" data-t="${x[0]}" style="${d0.t===x[0]?"background:var(--blue,#1a56db);color:#fff":""}"${ro?" disabled":""}>${esc(bkTN(x[0]))}</button>`).join("")}</div>
+   <div class="row2"><div><label>${esc(bt("तारीख़","Date"))}</label><input id="bvD" type="date" value="${esc(d0.d)}" min="${bk.fy}-04-01" max="${bk.fy+1}-03-31"></div><div><label>${esc(bt("नंबर","No."))}</label><input id="bvNo" value="${esc(d0.no)}" maxlength="16"></div></div>
+   ${body}<label>${esc(bt("विवरण (नैरेशन)","Narration"))}</label><textarea id="bvNar" rows="2" maxlength="300">${esc(d0.nar||"")}</textarea>
+   ${V&&V.by?`<div class="m">${esc(bt("बनाया/बदला: ","Made/changed: "))}${esc(names&&names[V.by]||"")} ${esc((V.at||"").slice(0,10))}</div>`:""}
+   <div class="actions">${ro?"":`<button class="btn" id="bvGo">${esc(bt("सेव","Save"))}</button><button class="btn ghost" id="bvNewL" type="button">＋ ${esc(bt("नया लेजर","New ledger"))}</button>`}${id&&!ro?`<button class="btn ghost red" id="bvDel">🗑 ${esc(bt("हटाएँ","Delete"))}</button>`:""}<button class="btn ghost" id="bvX">${esc(t("cancel")||"Close")}</button></div><div class="err" id="bvE"></div>`,{k:"bkv",id});
+  const grab=()=>{const d={t:d0.t,d:$("#bvD").value,no:$("#bvNo").value.trim(),nar:$("#bvNar").value.trim()};
+    if(isInv){d.gst={party:bkIdOf($("#bvParty").value),inv:$("#bvInv").value.trim(),ro:$("#bvRo").checked,items:[...document.querySelectorAll(".bvI")].map(r=>({l:bkIdOf(r.querySelector(".biL").value)||r.querySelector(".biL").value,v:r.querySelector(".biV").value,r:+r.querySelector(".biR").value}))}}
+    else d.ln=[...document.querySelectorAll(".bvL")].map(r=>({l:bkIdOf(r.querySelector(".blL").value)||r.querySelector(".blL").value,a:r2(r.querySelector(".blA").value)*(+r.querySelector(".blDC").value)}));return d};
+  const sum=()=>{const d=grab(),p=bkPost(d);const s=$("#bvSum");if(!s)return;if(p.err){s.innerHTML=esc(p.err);return}
+    const dr=r2(p.ln.reduce((a,x)=>a+(x.a>0?x.a:0),0)),cr=r2(p.ln.reduce((a,x)=>a+(x.a<0?-x.a:0),0));
+    s.innerHTML=(isInv?p.ln.map(x=>`${esc(bkLN(x.l))}: ${bkDC(x.a)}`).join("<br>")+"<br>":"")+`<b>Dr ${bkN(dr)} · Cr ${bkN(cr)}</b>${Math.abs(dr-cr)>=0.005?` <span style="color:var(--red)">${esc(bt("फ़र्क़ ","Difference "))}${bkN(dr-cr)}</span>`:" ✔"}`};
+  document.querySelectorAll(".bvT").forEach(b=>b.onclick=()=>{const d=grab();d.t=b.dataset.t;if(!id||d.t!==d0.t)d.no=bkNextNo(d.t);if(["sales","purch","cn","dn"].includes(d.t)!==isInv){delete d.ln;delete d.gst}else if(d.gst){const want=d.t==="purch"||d.t==="dn"?"purch":"sales";d.gst.items.forEach(it=>{if(!it.l||it.l==="sales"||it.l==="purch"||!bk.book.L[it.l])it.l=want})}bkVForm(id,d)});
+  const sheet=$("#sheet");sheet.oninput=sheet.onchange=e=>{if(!$("#bvD")){sheet.oninput=sheet.onchange=null;return}if(e.target&&e.target.id!=="bvNar")sum()};sum();
+  const ai=$("#bvAddI");if(ai)ai.onclick=()=>{$("#bvItems").insertAdjacentHTML("beforeend",bkItemRow({l:d0.t==="purch"||d0.t==="dn"?"purch":"sales",v:"",r:18},document.querySelectorAll(".bvI").length));sum()};
+  const al=$("#bvAddL");if(al)al.onclick=()=>{const d=grab(),bal=r2(d.ln.reduce((a,x)=>a+(+x.a||0),0));$("#bvLines").insertAdjacentHTML("beforeend",bkLineRow({l:"",a:-bal||0.0001},document.querySelectorAll(".bvL").length));sum()};
+  $("#bvX").onclick=closeSheet;
+  const nl=$("#bvNewL");if(nl)nl.onclick=()=>{const keep=grab();bkLForm(null,()=>bkVForm(id,keep))};
+  const del=$("#bvDel");if(del)del.onclick=async()=>{if(!del.dataset.sure){del.dataset.sure=1;del.textContent=bt("पक्का हटाएँ?","Delete for sure?");return}
+    try{await bkMerge("bk_vm",V.doc,{v:{[id]:{del:true,at:new Date().toISOString(),by:me.id||"local"}}},true);closeSheet();toast(bt("वाउचर हटाया","Voucher deleted"))}catch(e){$("#bvE").textContent=t("saveFail")}};
+  const go=$("#bvGo");if(go)go.onclick=async()=>{const d=grab(),p=bkPost(d);if(p.err){$("#bvE").textContent=p.err;return}
+    if(!d.d||bkFyOfD(d.d)!==bk.fy){$("#bvE").textContent=bt("तारीख़ इसी साल (FY) की होनी चाहिए","The date must be in this financial year");return}
+    const dr=r2(p.ln.reduce((a,x)=>a+(x.a>0?x.a:0),0)),cr=r2(p.ln.reduce((a,x)=>a+(x.a<0?-x.a:0),0));if(!dr||Math.abs(dr-cr)>=0.005){$("#bvE").textContent=bt("Dr और Cr बराबर होने चाहिए","Dr and Cr must be equal");return}
+    const rec={d:d.d,t:d.t,no:d.no||bkNextNo(d.t),nar:d.nar,ln:p.ln,by:me.id||"local",at:new Date().toISOString()};if(d.gst)rec.gst=Object.assign({},d.gst,{items:p.items,pg:bk.book.L[d.gst.party]&&bk.book.L[d.gst.party].gstin||"",ps:p.ps,inter:p.inter});
+    const vid=id||("v"+Date.now().toString(36)+Math.random().toString(36).slice(2,6));go.disabled=true;
+    try{const doc=bkDocFor(d.d,JSON.stringify(rec).length);if(V&&V.doc!==doc.id)await bkMerge("bk_vm",V.doc,{v:{[vid]:{del:true,at:rec.at,by:rec.by}}},true);
+      await bkMerge("bk_vm",doc.id,Object.assign(doc.exists?{}:{pid:bk.pid,fy:bk.fy,ym:d.d.slice(0,7)},{v:{[vid]:rec}}),doc.exists);
+      toast(bt("वाउचर सेव हुआ","Voucher saved"));if(id)closeSheet();else bkVForm(null,{t:d.t,d:d.d,nar:"",ln:[]})}catch(e){go.disabled=false;$("#bvE").textContent=t("saveFail")}}}
+function bkIdOf(name){name=(name||"").trim().toLowerCase();if(!name)return"";const l=bkL().find(x=>x.n.toLowerCase()===name);return l?l.id:""}
+function bkLineRow(x,i){return `<div class="bvL row2" style="grid-template-columns:2fr 1fr 70px;gap:6px;margin-bottom:6px"><input class="blL" list="bkDl" placeholder="${esc(bt("लेजर","Ledger"))}" value="${esc(x.l?bkLN(x.l):"")}" autocomplete="off"><input class="blA" type="number" step="0.01" inputmode="decimal" placeholder="₹" value="${Math.abs(x.a)>=0.01?Math.abs(x.a):""}"><select class="blDC"><option value="1">Dr</option><option value="-1"${x.a<0?" selected":""}>Cr</option></select></div>`}
+function bkItemRow(it,i){return `<div class="bvI row2" style="grid-template-columns:2fr 1fr 70px;gap:6px;margin-bottom:6px"><input class="biL" list="bkDl" value="${esc(it.l?bkLN(it.l):"")}" placeholder="${esc(bt("बिक्री / ख़रीद लेजर","Sales / purchase ledger"))}" autocomplete="off"><input class="biV" type="number" step="0.01" inputmode="decimal" placeholder="${esc(bt("टैक्सेबल ₹","Taxable ₹"))}" value="${esc(it.v)}"><select class="biR">${[0,0.25,3,5,12,18,28,40].map(r=>`<option value="${r}"${+it.r===r?" selected":""}>${r}%</option>`).join("")}</select></div>`}
+/* turn a voucher draft into Dr/Cr lines; for invoices work out GST */
+function bkPost(d){if(!["sales","purch","cn","dn"].includes(d.t)){const ln=(d.ln||[]).filter(x=>x.l||Math.abs(x.a)>=0.01);
+    for(const x of ln){if(!x.l||!bk.book.L[x.l])return{err:bt("लेजर नहीं मिला: ","Ledger not found: ")+(x.l||"—")+bt(" — '＋ नया लेजर' से बनाएँ"," — create it with '＋ New ledger'")};if(Math.abs(x.a)<0.01)return{err:bt("रकम लिखें: ","Enter the amount: ")+bkLN(x.l)}}
+    if(ln.length<2)return{err:bt("कम से कम दो लाइन चाहिए","At least two lines are needed")};return{ln:ln.map(x=>({l:x.l,a:r2(x.a)}))}}
+  const g=d.gst||{};if(!g.party||!bk.book.L[g.party])return{err:bt("पार्टी का लेजर चुनें / बनाएँ","Choose / create the party ledger")};
+  const items=(g.items||[]).filter(it=>it.l||+it.v);if(!items.length)return{err:bt("रकम लिखें","Enter the amount")};
+  for(const it of items){if(!bk.book.L[it.l])return{err:bt("लेजर नहीं मिला: ","Ledger not found: ")+(it.l||"—")};if(!(+it.v>0))return{err:bt("टैक्सेबल रकम लिखें","Enter the taxable amount")}}
+  const P=bk.book.L[g.party],ps=P.st||(P.gstin||"").slice(0,2)||bk.book.st,inter=!!ps&&ps!==bk.book.st;
+  const isOut=d.t==="sales"||d.t==="cn";const pre=isOut?"o":"i";
+  const realSgn=d.t==="sales"?1:d.t==="cn"?-1:d.t==="purch"?-1:1; /* party side: sales Dr, credit note Cr, purchase Cr, debit note Dr */
+  const m={};const add=(l,a)=>{m[l]=r2((m[l]||0)+a)};let tot=0,taxT=0;
+  items.forEach(it=>{const v=r2(it.v),tx=r2(v*(+it.r||0)/100);add(it.l,-realSgn*v);tot+=v;
+    if(tx){if(inter){add(pre+"igst",-realSgn*tx)}else{const h=r2(tx/2);add(pre+"cgst",-realSgn*h);add(pre+"sgst",-realSgn*r2(tx-h))}taxT+=tx}});
+  let gross=r2(tot+taxT);if(g.ro!==false){const rr=Math.round(gross);const diff=r2(rr-gross);if(diff){add("round",-realSgn*diff);gross=rr}}
+  add(g.party,realSgn*gross);
+  for(const k of Object.keys(m))if(!bk.book.L[k]&&BK_DEF[k])return{err:bt("GST / Round Off लेजर नहीं मिला — लेजर सूची देखें","GST / Round Off ledger missing — check the ledger list")};
+  return{ln:Object.keys(m).filter(k=>Math.abs(m[k])>=0.005).map(k=>({l:k,a:m[k]})),items:items.map(it=>({l:it.l,v:r2(it.v),r:+it.r||0})),ps,inter}}
+/* which month document gets this voucher (a new part when one grows past ~700 KB) */
+function bkDocFor(d,sz){const base=bk.pid+"_"+bk.fy+"_"+d.slice(5,7);for(let k=1;k<50;k++){const id=k===1?base:base+"_"+k,doc=bk.vm[id];if(!doc)return{id,exists:false};if(JSON.stringify(doc).length+sz<700000)return{id,exists:true}}return{id:base+"_x"+Date.now(),exists:false}}
+/* carry closing balances to next year */
+async function bkCarry(){const b=$("#bkCf");if(!b.dataset.sure){b.dataset.sure=1;b.textContent=bt("पक्का? अगले साल के ओपनिंग बैलेंस बदल जाएँगे","Sure? Next year's opening balances will be replaced");return}
+  const R=bkReport(),ny=bk.fy+1,L={};R.L.forEach(l=>{const nat=BK_GM[l.g]&&BK_GM[l.g].nat;let v=(nat==="A"||nat==="L")?(R.B[l.id]||0):0;if(l.g==="stock")v=0;L[l.id]={op:{[ny]:r2(v)}}});
+  const capId=bk.book.L.capital&&!bk.book.L.capital.del?"capital":(R.L.find(l=>l.g==="cap")||{}).id;if(capId)L[capId].op[ny]=r2((L[capId].op[ny]||0)-R.np);
+  const stk=R.L.find(l=>l.g==="stock");if(R.cs){if(stk)L[stk.id].op[ny]=R.cs;else L["stock"]={n:"Opening Stock",g:"stock",op:{[ny]:R.cs}}}
+  b.disabled=true;try{await bkMerge("bk_books",bk.pid,{L},true);toast(bt("अगले साल में बैलेंस पहुँच गए","Balances carried to next year"));bkOpen(bk.pid,ny)}catch(e){b.disabled=false;toast(t("saveFail"))}}
+/* Excel: day book, trial balance, P&L, balance sheet */
+async function bkExcel(){if(!window.XLSX)await loadScript(XLSX_SRC);const R=bkReport(),wb=XLSX.utils.book_new(),nm=(bk.book.name||"Books").replace(/[^\w]+/g,"_").slice(0,30);
+  const day=[["Date","Type","No","Ledger","Dr","Cr","Narration"]];R.V.forEach(v=>(v.ln||[]).forEach((x,i)=>day.push([i?"":v.d,i?"":bkTN(v.t),i?"":v.no,bkLN(x.l),x.a>0?x.a:"",x.a<0?-x.a:"",i?"":v.nar||""])));
+  const tb=[["Group","Ledger","Dr","Cr"]];BK_G.forEach(g=>R.G(g[0]).forEach(l=>{const b=R.B[l.id]||0;if(Math.abs(b)>=0.005)tb.push([bkGN(g[0]),l.n,b>0?b:"",b<0?-b:""])}));
+  const pl=[["Particulars","Amount"],["Sales",R.sales],["Direct incomes",R.dinc],["Closing stock",R.cs],["Less: Opening stock",R.os],["Less: Purchases",R.purch],["Less: Direct expenses",R.dexp],["Gross profit",R.gp],["Indirect incomes",R.iinc],["Less: Indirect expenses",R.iexp],["Net profit",R.np]];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(day),"Day Book");XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(tb),"Trial Balance");XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(pl),"Profit & Loss");
+  const blob=new Blob([XLSX.write(wb,{type:"array",bookType:"xlsx"})],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),fname="Books-"+nm+"-FY"+bk.fy+".xlsx";
+  if(dlCap===undefined)dlCap=(window.claude&&claude.use)?await claude.use("downloads").catch(()=>null):null;
+  if(dlCap){await dlCap.save({filename:fname,data:blob});toast(t("fSaved"))}else{const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();a.remove()}}
+/* ---- plug into the app: nav button, section, view switching, language ---- */
+(function(){const nav=$("nav"),addB=$("#addBtn");if(nav&&!$("#nBk")){const b=document.createElement("button");b.dataset.view="bk";b.id="nBk";nav.insertBefore(b,$("#nTeam")||addB);b.onclick=()=>show("bk")}
+  const main=$("main"),tm=$("#team");if(main&&!$("#bk")){const s=document.createElement("section");s.id="bk";s.hidden=true;(tm?tm.parentNode:main).insertBefore(s,tm||null)}})();
+{const _bkShow=show;show=function(v){_bkShow(v);const s=$("#bk"),b=$("#nBk");if(s)s.hidden=v!=="bk";if(b)b.classList.toggle("on",v==="bk");if(v==="bk")renderBk()}}
+{const _bkPaint=paintStatic;paintStatic=function(){_bkPaint.apply(this,arguments);const b=$("#nBk");if(b)b.textContent=t("navBk");if($("#bk")&&!$("#bk").hidden)renderBk()}}
 
 paintStatic();render();init();
 </script>
