@@ -4886,7 +4886,8 @@ const _fpRow=row;row=function(i){const h=_fpRow(i);if(i.code!=="FS")return h;con
   return h.replace('<div style="margin-top:6px">','<div style="margin-top:6px"><span class="badge '+(d===L?"b-filed":"b-up")+'" style="margin-right:4px">📑 '+d+"/"+L+"</span>")};
 
 /* ===== what's new: shown once per person; add a new entry at the top for each change ===== */
-const WHATS_NEW=[{id:"2026-11-23d",items:[
+const WHATS_NEW=[{id:"2026-11-23e",items:[
+ ["🖥 📒 हिसाब-किताब में Tally जैसा मेनू: कंप्यूटर पर बाईं ओर वाउचर (बिक्री, ख़रीद, क्रेडिट / डेबिट नोट, रसीद, पेमेंट, कॉन्ट्रा, जर्नल), रिपोर्ट और मास्टर, चौड़ी स्क्रीन और Tally वाली कुंजियाँ (F4–F9, Ctrl+F8 / F9)। मोबाइल पर वही सब ऊपर बड़े बटनों में।","🖥 Tally-style menu in 📒 Accounts: on a computer a left column with vouchers (sales, purchase, credit / debit note, receipt, payment, contra, journal), reports and masters, a wide screen and Tally keys (F4–F9, Ctrl+F8 / F9). On a phone the same as big buttons on top."]]},{id:"2026-11-23d",items:[
  ["🗂 / 📒 ऐप अब दो हिस्सों में: ऊपर \"🗂 कंप्लायंस\" और \"📒 हिसाब-किताब\" का बटन। हिसाब-किताब में सिर्फ़ किताबें दिखती हैं, कंप्लायंस में सिर्फ़ कंप्लायंस। जिस फ़र्म को एक ही हिस्सा मिला है, उसे सिर्फ़ वही दिखता है।","🗂 / 📒 The app now has two parts: \"🗂 Compliance\" and \"📒 Accounts\" at the top. Accounts shows only the books, Compliance only compliance. A firm given one part sees only that part."]]},{id:"2026-11-23c",items:[
  ["📦 📒 हिसाब में स्टॉक और बिल: आइटम (HSN, यूनिट, GST %, ओपनिंग स्टॉक), बिल में मात्रा × रेट, स्टॉक समरी, क्लोज़िंग स्टॉक अपने-आप, GSTR-1 HSN समरी, \"🏢 बिल की जानकारी\" (पता, बैंक, बिल नंबर), और 🖨 GST बिल प्रिंट / PDF। \"🏢 अपनी फ़र्म की किताबें\" भी चुन सकते हैं।","📦 Stock and bills in 📒 Accounts: items (HSN, unit, GST %, opening stock), qty × rate in bills, stock summary, automatic closing stock, GSTR-1 HSN summary, \"🏢 Bill details\" (address, bank, invoice number) and 🖨 GST invoice print / PDF. You can also pick \"🏢 My own firm's books\"."]]},{id:"2026-11-23b",items:[
  ["🧾 📒 हिसाब में \"GST रिपोर्ट\": किताबों के बिलों से GSTR-3B (3.1, 4, कैश में भरना) और GSTR-1 (B2B, B2CL, B2CS, क्रेडिट नोट, दर के हिसाब से) — महीना / तिमाही / साल, Excel के साथ। साथ में \"लेना-देना\": किससे कितना लेना / देना है।","🧾 \"GST returns\" in 📒 Accounts: GSTR-3B (3.1, 4, cash payable) and GSTR-1 (B2B, B2CL, B2CS, credit notes, rate-wise) from the books — month / quarter / year, with Excel. Also \"Outstanding\": who owes what."]]},{id:"2026-11-23",items:[
@@ -5424,10 +5425,38 @@ function renderBk(){const el=$("#bk");if(!el||el.hidden)return;
   if(bk.loading){el.innerHTML=h+`<div class="empty">${esc(t("loading"))}</div>`;bkWire();return}
   if(!bk.book){el.innerHTML=h+`<div class="empty">${esc(bt("इस ग्राहक की किताबें अभी शुरू नहीं हुईं।","Books for this client have not been started yet."))}<br><br>${bkCan()?`<button class="btn" id="bkStart">📒 ${esc(bt("किताबें शुरू करें","Start books"))}</button>`:""}</div>`;bkWire();return}
   const R=bkReport(),tabs=[["day",bt("डे बुक","Day Book")],["led",bt("लेजर","Ledger")],["tb",bt("ट्रायल बैलेंस","Trial Balance")],["pl",bt("लाभ-हानि","Profit & Loss")],["bs",bt("बैलेंस शीट","Balance Sheet")],["gst",bt("GST रिपोर्ट","GST returns")],["out",bt("लेना-देना","Outstanding")],["stk",bt("📦 स्टॉक","📦 Stock")],["mst",bt("लेजर सूची","Ledgers")]];
-  h+=`<div class="actions" style="margin:0 0 10px">${bkCan()?`<button class="btn" id="bkNewV">＋ ${esc(bt("वाउचर","Voucher"))}</button><button class="btn ghost" id="bkNewL">＋ ${esc(bt("लेजर","Ledger"))}</button>`:""}<button class="btn ghost" id="bkXl">⬇ Excel</button>${bkCan()?`<button class="btn ghost" id="bkInfo">🏢 ${esc(bt("बिल की जानकारी","Bill details"))}</button>`:""}</div>
-   <div class="chips" style="margin-bottom:10px">${tabs.map(x=>`<button class="chip bkTab${bk.tab===x[0]?" on":""}" data-t="${x[0]}" style="${bk.tab===x[0]?"background:var(--blue,#1a56db);color:#fff":""}">${esc(x[1])}</button>`).join("")}</div>`;
+  h+=`<div class="bkWrap">${bkMenu(tabs)}<div class="bkMain">`;
   if(R.opDiff&&bk.tab!=="day")h+=`<div class="warn">${esc(bt("ओपनिंग बैलेंस में फ़र्क़: ","Difference in opening balances: "))}${bkDC(R.opDiff)}</div>`;
-  h+=`<div id="bkBody">${bkTab(R)}</div>`;el.innerHTML=h;bkWire()}
+  h+=`<div id="bkBody">${bkTab(R)}</div></div></div>`;el.innerHTML=h;bkWire()}
+/* the Tally-style menu: vouchers, reports, masters. Desktop: a sticky column on the left; phone: compact rows on top */
+const BK_VK=[["sales","🧾","F8"],["purch","🛒","F9"],["cn","↩️","Ctrl+F8"],["dn","↪️","Ctrl+F9"],["rcpt","💰","F6"],["pay","💸","F5"],["contra","🔁","F4"],["jrnl","📝","F7"]];
+function bkMenu(tabs){const ic={day:"📅",led:"📒",tb:"⚖️",pl:"📈",bs:"🏦",gst:"🧾",out:"🤝",stk:"📦",mst:"🗂"};
+  return `<aside class="bkSide">${bkCan()?`<div class="bkSec">${esc(bt("वाउचर","Vouchers"))}</div><div class="bkVg">${BK_VK.map(x=>`<button class="bkVt" data-t="${x[0]}" title="${x[2]}"><span class="bkIc">${x[1]}</span><span class="bkLb">${esc(bkTN(x[0]))}</span><span class="bkKy">${x[2]}</span></button>`).join("")}</div>`:""}
+   <div class="bkSec">${esc(bt("रिपोर्ट","Reports"))}</div><div class="bkRg">${tabs.filter(x=>x[0]!=="mst").map(x=>`<button class="bkTab${bk.tab===x[0]?" on":""}" data-t="${x[0]}"><span class="bkIc">${ic[x[0]]||""}</span><span class="bkLb">${esc(x[1].replace(/^📦\s*/,""))}</span></button>`).join("")}</div>
+   <div class="bkSec">${esc(bt("मास्टर","Masters"))}</div><div class="bkRg">${bkCan()?`<button class="bkMk" data-k="led"><span class="bkIc">➕</span><span class="bkLb">${esc(bt("नया लेजर","New ledger"))}</span></button><button class="bkMk" data-k="item"><span class="bkIc">➕</span><span class="bkLb">${esc(bt("नया आइटम","New item"))}</span></button>`:""}<button class="bkTab${bk.tab==="mst"?" on":""}" data-t="mst"><span class="bkIc">🗂</span><span class="bkLb">${esc(bt("लेजर सूची","Ledger list"))}</span></button>${bkCan()?`<button class="bkMk" data-k="info"><span class="bkIc">🏢</span><span class="bkLb">${esc(bt("बिल की जानकारी","Bill details"))}</span></button>`:""}<button class="bkMk" data-k="xl"><span class="bkIc">⬇</span><span class="bkLb">Excel</span></button></div></aside>`}
+(function(){if(document.getElementById("bkCss"))return;const st=document.createElement("style");st.id="bkCss";st.textContent=`
+.bkSide .bkSec{font-size:11px;color:var(--mute);margin:10px 0 5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.bkSide button{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);cursor:pointer;display:flex;align-items:center;gap:6px}
+.bkSide button.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.bkVg{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.bkVg button{flex-direction:column;justify-content:center;border-radius:12px;padding:8px 2px;font-size:12px;gap:2px;min-height:58px}
+.bkVg .bkIc{font-size:20px}.bkKy{display:none}
+.bkRg{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.bkRg button{border-radius:999px;padding:6px 12px;font-size:13px;white-space:nowrap;flex:none}
+.bkMain{min-width:0;margin-top:10px}
+@media(min-width:900px){
+ body.partBk main{max-width:1320px}
+ .bkWrap{display:grid;grid-template-columns:250px 1fr;gap:18px;align-items:start}
+ .bkMain{margin-top:0}
+ .bkSide{position:sticky;top:10px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px 10px 12px;max-height:calc(100vh - 20px);overflow:auto}
+ .bkVg{grid-template-columns:1fr;gap:2px}
+ .bkVg button,.bkRg button{flex-direction:row;justify-content:flex-start;min-height:0;border:0;border-radius:8px;padding:7px 8px;font-size:14px;width:100%;background:transparent}
+ .bkVg button:hover,.bkRg button:hover{background:var(--grey-soft)}
+ .bkSide button.on{background:var(--brand);color:#fff}
+ .bkVg .bkIc{font-size:16px;width:22px;text-align:center}.bkRg .bkIc{width:22px;text-align:center}
+ .bkKy{display:inline;margin-left:auto;font-size:11px;color:var(--mute)}
+ .bkRg{flex-direction:column;gap:2px;overflow:visible}
+}`;document.head.appendChild(st)})();
 function bkTbl(rows,head){return `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px;background:var(--card);border-radius:10px">${head?`<tr>${head.map((x,i)=>`<th style="text-align:${i?"right":"left"};padding:6px;border-bottom:1px solid var(--line)">${esc(x)}</th>`).join("")}</tr>`:""}${rows.join("")}</table></div>`}
 const bkTd=(s,r,b)=>`<td style="padding:5px 6px;border-bottom:1px solid var(--line);${r?"text-align:right;white-space:nowrap;":""}${b?"font-weight:600;":""}">${s}</td>`;
 function bkTab(R){const tb=bk.tab;
@@ -5468,6 +5497,8 @@ function bkWire(){const el=$("#bk");const p=$("#bkP");if(p)p.onchange=()=>bkOpen
   const st=$("#bkStart");if(st)st.onclick=()=>bkStartForm();
   const nv=$("#bkNewV");if(nv)nv.onclick=()=>bkVForm(null);const nl=$("#bkNewL");if(nl)nl.onclick=()=>bkLForm(null);const xl=$("#bkXl");if(xl)xl.onclick=()=>bkExcel();
   el.querySelectorAll(".bkTab").forEach(b=>b.onclick=()=>{bk.tab=b.dataset.t;renderBk()});
+  el.querySelectorAll(".bkVt").forEach(b=>b.onclick=()=>bkNewOf(b.dataset.t));
+  el.querySelectorAll(".bkMk").forEach(b=>b.onclick=()=>{const k=b.dataset.k;if(k==="led")bkLForm(null);else if(k==="item")bkIForm(null);else if(k==="info")bkInfoForm();else if(k==="xl")bkExcel()});
   el.querySelectorAll(".bkV").forEach(b=>b.onclick=()=>bkVForm(b.dataset.id));
   el.querySelectorAll(".bkLg").forEach(b=>b.onclick=()=>{bk.led=b.dataset.id;bk.tab="led";renderBk()});
   el.querySelectorAll(".bkLe").forEach(b=>b.onclick=()=>bkLForm(b.dataset.id));
@@ -5549,6 +5580,10 @@ function bkVForm(id,draft){if(!bkCan()&&!id)return;const V=id?bkV().find(v=>v.id
     try{const doc=bkDocFor(d.d,JSON.stringify(rec).length);if(V&&V.doc!==doc.id)await bkMerge("bk_vm",V.doc,{v:{[vid]:{del:true,at:rec.at,by:rec.by}}},true);
       await bkMerge("bk_vm",doc.id,Object.assign(doc.exists?{}:{pid:bk.pid,fy:bk.fy,ym:d.d.slice(0,7)},{v:{[vid]:rec}}),doc.exists);
       toast(bt("वाउचर सेव हुआ","Voucher saved"));bk.lastV={id:vid,t:d.t};if(id)closeSheet();else bkVForm(null,{t:d.t,d:d.d,nar:"",ln:[]})}catch(e){go.disabled=false;$("#bvE").textContent=t("saveFail")}}}
+function bkNewOf(t0){if(!bkCan()||!bk.book)return;bkVForm(null,{t:t0,d:(bkFyOfD(todayStr())===bk.fy?todayStr():(bk.fy+1)+"-03-31"),nar:"",ln:[]})}
+/* Tally keys on a computer: F4 contra, F5 payment, F6 receipt, F7 journal, F8 sales, F9 purchase, Ctrl+F8 credit note, Ctrl+F9 debit note */
+document.addEventListener("keydown",e=>{const s0=$("#bk");if(!s0||s0.hidden||!bk.book||($("#ov")&&$("#ov").classList.contains("on"))||$("#bkPrint"))return;
+  const m={F4:"contra",F5:"pay",F6:"rcpt",F7:"jrnl",F8:e.ctrlKey?"cn":"sales",F9:e.ctrlKey?"dn":"purch"}[e.key];if(m){e.preventDefault();bkNewOf(m)}});
 function bkIdOf(name){name=(name||"").trim().toLowerCase();if(!name)return"";const l=bkL().find(x=>x.n.toLowerCase()===name);return l?l.id:""}
 function bkLineRow(x,i){return `<div class="bvL row2" style="grid-template-columns:2fr 1fr 70px;gap:6px;margin-bottom:6px"><input class="blL" list="bkDl" placeholder="${esc(bt("लेजर","Ledger"))}" value="${esc(x.l?bkLN(x.l):"")}" autocomplete="off"><input class="blA" type="number" step="0.01" inputmode="decimal" placeholder="₹" value="${Math.abs(x.a)>=0.01?Math.abs(x.a):""}"><select class="blDC"><option value="1">Dr</option><option value="-1"${x.a<0?" selected":""}>Cr</option></select></div>`}
 function bkItemRow(it,i){const I=it.it&&bk.book.I&&bk.book.I[it.it];return `<div class="bvI" style="border:1px solid var(--line);border-radius:10px;padding:6px;margin-bottom:6px"><div class="row2" style="grid-template-columns:2fr 1fr 1fr;gap:6px"><input class="biIt" list="bkDlI" placeholder="${esc(bt("आइटम (ज़रूरी नहीं)","Item (optional)"))}" value="${esc(I?I.n:"")}" autocomplete="off"><input class="biQ" type="number" step="0.001" inputmode="decimal" placeholder="${esc(bt("मात्रा","Qty"))}${I&&I.u?" "+esc(I.u):""}" value="${esc(it.q||"")}"><input class="biP" type="number" step="0.01" inputmode="decimal" placeholder="${esc(bt("रेट ₹","Rate ₹"))}" value="${esc(it.p||"")}"></div><div class="row2" style="grid-template-columns:2fr 1fr 70px;gap:6px;margin-top:6px"><input class="biL" list="bkDl" value="${esc(it.l?bkLN(it.l):"")}" placeholder="${esc(bt("बिक्री / ख़रीद लेजर","Sales / purchase ledger"))}" autocomplete="off"><input class="biV" type="number" step="0.01" inputmode="decimal" placeholder="${esc(bt("टैक्सेबल ₹","Taxable ₹"))}" value="${esc(it.v)}"><select class="biR">${[0,0.1,0.25,1.5,3,5,6,12,18,28,40].map(r=>`<option value="${r}"${+it.r===r?" selected":""}>${r}%</option>`).join("")}</select></div></div>`}
@@ -5771,7 +5806,7 @@ function partApply(){const p=partNow(),bk=p==="bk";const sb=$("#bk"),tm=$("#team
   if(!$("#partCss")){const st=document.createElement("style");st.id="partCss";st.textContent=".partHide{display:none!important}";document.head.appendChild(st)}
   document.querySelectorAll("header nav [data-view]").forEach(b=>{const v=b.dataset.view;b.classList.toggle("partHide",bk?(v!=="team"):(v==="bk"))});
   const ad=$("#addBtn");if(ad)ad.classList.toggle("partHide",bk);const gs=$(".gsw");if(gs)gs.classList.toggle("partHide",bk);
-  const tt=$("#ttl");if(tt)tt.textContent=bk?bt("हिसाब-किताब","Accounts"):t("title");partBar()}
+  document.body.classList.toggle("partBk",bk);const tt=$("#ttl");if(tt)tt.textContent=bk?bt("हिसाब-किताब","Accounts"):t("title");partBar()}
 {const _sh=show;show=function(v){if(v==="bk"&&!bk.pid&&!partOk("cmp"))setTimeout(()=>{if(!bk.pid)bkOpen("_self",bk.fy)},0);if(v==="bk")part="bk";else if(v!=="team")part="cmp";if(!partOk(part)){part=partNow();if(part==="bk"&&v!=="bk"&&v!=="team")v="bk";if(part==="cmp"&&v==="bk")v="dash"}try{localStorage.setItem(PART_LK,part)}catch(e){}_sh(v);partApply()}}
 {const _r=render;render=function(){_r();try{partApply()}catch(e){}}}
 {const _ps=paintStatic;paintStatic=function(){_ps.apply(this,arguments);try{partApply()}catch(e){}}}

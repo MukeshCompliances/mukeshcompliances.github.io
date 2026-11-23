@@ -219,3 +219,8 @@ Approach that worked for GST: ask him for REAL sample files of one client, read 
 - Provider controls per firm in 🧩 services: new mods `m_cmp`, `m_bk` (first two in FTM). They default to ON when a firm's features map lacks them (old firms keep both) and never come as "🆕 updates". shim panel `isOn` also defaults them to ticked.
 - Accounts-only firm: opens straight into "🏢 अपनी फ़र्म की किताबें" (`_self`).
 - For a free client: provider → 🧩 services → untick "🗂 Compliance (whole part)" → they get only Accounts.
+
+### Update 23 Nov 2026 — Accounts menu (artifact v79 + site)
+- `bkMenu()` replaces the old action buttons / tab chips: Vouchers (8 types, `.bkVt` → `bkNewOf(t)`), Reports (`.bkTab`), Masters (`.bkMk` led/item/info/xl). CSS `#bkCss`: phone = 4-column voucher grid + horizontally scrolling chips; ≥900px = sticky left column 250px, `body.partBk main{max-width:1320px}`.
+- Tally keys when the books are open and no sheet is open: F4 contra, F5 payment, F6 receipt, F7 journal, F8 sales, F9 purchase, Ctrl+F8 credit note, Ctrl+F9 debit note.
+- Old ids `#bkNewV/#bkNewL/#bkXl/#bkInfo` no longer exist (tests updated to the menu classes).
