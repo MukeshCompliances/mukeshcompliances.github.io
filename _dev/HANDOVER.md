@@ -229,3 +229,9 @@ Approach that worked for GST: ask him for REAL sample files of one client, read 
 - Accounts open on tab `home` (`bkHomeHtml`): 8 cards (sales, purchases, net profit, cash+bank, to receive, to pay, GST cash this month via `bkGst("m"+mm)`, stock) → click opens the report; monthly sales vs purchases bars (CSS); recent 8 vouchers; top 5 receivables.
 - Compliance dashboard: `#mineT` ("Only my work") and the "records incomplete → Complete" warning are moved into `#dashTools` right under the date line (render wrapper moves the DOM nodes).
 - Desktop width: `main` max 1200px from 1100px wide; accounts part 1320px.
+
+### Update 23 Nov 2026 — client portals (artifact v81 + site) — RULES CHANGE handed to him (brands)
+- `/<slug>` (e.g. /addenda): GitHub Pages serves root `404.html` → redirects to `/?f=<slug>`; shim reads `f`, `history.replaceState` back to `/<slug>`, loads `brands/{slug}` {fid,name,tag,color} **before login** (rules: read true, write super only) and paints the login box (name, tagline, colour), `--brand`, page title; app title = brand name · part.
+- Branded portal admits only members of `brand.fid` (super-admin passes). Others get "not on this portal's team" (+ link to main site if they have another firm). New people need an invite from that firm.
+- Provider panel per firm: **🎨 पोर्टल** — slug (2–30 a-z0-9-, reserved: index/404/admin/login/www/api), name, tagline, colour; copy link; turn off. Firm doc gets `portal: slug`.
+- Rules now = previous + `match /brands/{slug} { allow read: if true; allow write: if isSuper(); }`. Ask whether he published them.

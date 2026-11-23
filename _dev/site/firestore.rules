@@ -23,6 +23,11 @@ service cloud.firestore {
       allow update: if isSuper() && request.resource.data.owner == resource.data.owner;
       allow delete: if false;
     }
+    // Client portals (name, colour, which firm) — readable before login so the login page can show the firm's look
+    match /brands/{slug} {
+      allow read: if true;
+      allow write: if isSuper();
+    }
     // Payment notes: only the provider sees them (moved out of the firm's own record)
     match /billing/{fid} {
       allow read, write: if isSuper();
