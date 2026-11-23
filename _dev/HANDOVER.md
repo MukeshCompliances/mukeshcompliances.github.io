@@ -213,3 +213,9 @@ Approach that worked for GST: ask him for REAL sample files of one client, read 
 - 📦 स्टॉक tab (summary + item form with movements), HSN summary in GST tab and GST Excel `hsn` sheet.
 - `bk_books.info` {name,addr,ph,em,bank,ac,ifsc,pre,terms} via "🏢 बिल की जानकारी"; invoice no default = (CN/)+prefix+voucher no; ledger `addr`.
 - 🖨 Print: overlay `#bkPrint` + @media print CSS (window.print) and "download file" (standalone HTML that prints itself). Amount in words Indian (`bkWords`). Note: build.py asserts one literal `<body>` — the downloaded-HTML template builds the tag with `"bo"+"dy"`.
+
+### Update 23 Nov 2026 — two parts: 🗂 Compliance / 📒 Accounts (artifact v78 + site)
+- Module `part` at the end. Switch `#partBar` above the nav (only when the firm has both parts). Accounts part: nav shows only 👥 टीम, `#bk` is the screen, title "हिसाब-किताब", search and "+ new client" hidden (CSS class `.partHide`). Last part remembered in localStorage `__part`.
+- Provider controls per firm in 🧩 services: new mods `m_cmp`, `m_bk` (first two in FTM). They default to ON when a firm's features map lacks them (old firms keep both) and never come as "🆕 updates". shim panel `isOn` also defaults them to ticked.
+- Accounts-only firm: opens straight into "🏢 अपनी फ़र्म की किताबें" (`_self`).
+- For a free client: provider → 🧩 services → untick "🗂 Compliance (whole part)" → they get only Accounts.

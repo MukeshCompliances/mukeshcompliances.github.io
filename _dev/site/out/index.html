@@ -388,7 +388,7 @@ async function superPanel(){let o=$g("sitePanel");if(!o){o=document.createElemen
   o.querySelectorAll(".spA").forEach(b=>b.onclick=async()=>{const id=b.dataset.id,a=b.dataset.a,f=L.find(x=>x.id===id);let up;
     if(a==="name"){const box=document.createElement("span");box.innerHTML=" <input value=\""+esc(f.name)+"\" style='padding:4px'> <button>सेव</button>";b.after(box);box.querySelector("button").onclick=async()=>{try{await fs.doc("firms/"+id).set({name:box.querySelector("input").value.trim().slice(0,80)},{merge:true});superPanel()}catch(e){}};return}
     if(a==="ft"){const old=b.parentNode.querySelector(".spFt");if(old){old.remove();return}const C=window.__FT||{groups:[],mods:[],all:[]},cur=f.features,box=document.createElement("div");box.className="spFt";box.style.cssText="flex-basis:100%;background:#f4f6fb;border-radius:8px;padding:10px;font-size:13px";
-      const gOf=k=>{const x=C.all.find(y=>y.k===k);return x&&x.g||""},isOn=k=>!cur||(cur[k]!==undefined?cur[k]===true:(gOf(k)?cur[gOf(k)]===true:false));
+      const gOf=k=>{const x=C.all.find(y=>y.k===k);return x&&x.g||""},isOn=k=>!cur||(cur[k]!==undefined?cur[k]===true:(k==="m_cmp"||k==="m_bk")?true:(gOf(k)?cur[gOf(k)]===true:false));
       const cb=(k,label,sub)=>"<label style='display:flex;gap:8px;align-items:flex-start;margin:5px 0 5px 16px;text-align:left'><input type='checkbox' class='fk' data-k='"+k+"' "+(isOn(k)?"checked":"")+" style='width:auto;flex:none;margin:3px 0 0'><span>"+esc(label)+(sub?"<br><span style='color:#777;font-size:11px'>"+esc(sub)+"</span>":"")+"</span></label>";
       box.innerHTML="<div style='margin-bottom:6px'><b>इस फ़र्म को क्या-क्या देना है?</b> सौदे के हिसाब से टिक लगाएँ।</div>"+
        C.groups.map(G=>"<div style='background:#fff;border-radius:8px;padding:6px 8px;margin-bottom:6px'><label style='display:flex;gap:8px;font-weight:600;text-align:left'><input type='checkbox' class='fgAll' data-g='"+G.g+"' style='width:auto;flex:none;margin:3px 0 0'>"+esc(G.n[0])+" — पूरा समूह</label><div data-g='"+G.g+"'>"+G.items.map(it=>cb("p_"+it[0],it[1])).join("")+"</div></div>").join("")+
@@ -5201,7 +5201,8 @@ const _fpRow=row;row=function(i){const h=_fpRow(i);if(i.code!=="FS")return h;con
   return h.replace('<div style="margin-top:6px">','<div style="margin-top:6px"><span class="badge '+(d===L?"b-filed":"b-up")+'" style="margin-right:4px">📑 '+d+"/"+L+"</span>")};
 
 /* ===== what's new: shown once per person; add a new entry at the top for each change ===== */
-const WHATS_NEW=[{id:"2026-11-23c",items:[
+const WHATS_NEW=[{id:"2026-11-23d",items:[
+ ["🗂 / 📒 ऐप अब दो हिस्सों में: ऊपर \"🗂 कंप्लायंस\" और \"📒 हिसाब-किताब\" का बटन। हिसाब-किताब में सिर्फ़ किताबें दिखती हैं, कंप्लायंस में सिर्फ़ कंप्लायंस। जिस फ़र्म को एक ही हिस्सा मिला है, उसे सिर्फ़ वही दिखता है।","🗂 / 📒 The app now has two parts: \"🗂 Compliance\" and \"📒 Accounts\" at the top. Accounts shows only the books, Compliance only compliance. A firm given one part sees only that part."]]},{id:"2026-11-23c",items:[
  ["📦 📒 हिसाब में स्टॉक और बिल: आइटम (HSN, यूनिट, GST %, ओपनिंग स्टॉक), बिल में मात्रा × रेट, स्टॉक समरी, क्लोज़िंग स्टॉक अपने-आप, GSTR-1 HSN समरी, \"🏢 बिल की जानकारी\" (पता, बैंक, बिल नंबर), और 🖨 GST बिल प्रिंट / PDF। \"🏢 अपनी फ़र्म की किताबें\" भी चुन सकते हैं।","📦 Stock and bills in 📒 Accounts: items (HSN, unit, GST %, opening stock), qty × rate in bills, stock summary, automatic closing stock, GSTR-1 HSN summary, \"🏢 Bill details\" (address, bank, invoice number) and 🖨 GST invoice print / PDF. You can also pick \"🏢 My own firm's books\"."]]},{id:"2026-11-23b",items:[
  ["🧾 📒 हिसाब में \"GST रिपोर्ट\": किताबों के बिलों से GSTR-3B (3.1, 4, कैश में भरना) और GSTR-1 (B2B, B2CL, B2CS, क्रेडिट नोट, दर के हिसाब से) — महीना / तिमाही / साल, Excel के साथ। साथ में \"लेना-देना\": किससे कितना लेना / देना है।","🧾 \"GST returns\" in 📒 Accounts: GSTR-3B (3.1, 4, cash payable) and GSTR-1 (B2B, B2CL, B2CS, credit notes, rate-wise) from the books — month / quarter / year, with Excel. Also \"Outstanding\": who owes what."]]},{id:"2026-11-23",items:[
  ["📒 नया \"हिसाब\" टैब (पहला हिस्सा): हर ग्राहक की Tally जैसी किताबें — लेजर, पेमेंट / रसीद / कॉन्ट्रा / जर्नल / बिक्री / ख़रीद / क्रेडिट-डेबिट नोट (GST अपने-आप), डे बुक, लेजर, ट्रायल बैलेंस, लाभ-हानि, बैलेंस शीट, Excel और अगले साल में बैलेंस ले जाना।","📒 New \"Accounts\" tab (first part): Tally-style books for each client — ledgers, payment / receipt / contra / journal / sales / purchase / credit-debit notes (GST worked out), day book, ledger, trial balance, P&L, balance sheet, Excel and carry-forward to next year."]]},{id:"2026-11-19c",items:[
@@ -6063,6 +6064,34 @@ function bkPrint(id){const v=bkV().find(x=>x.id===id);if(!v||!v.gst)return;const
 {const _h=bkGstHtml;bkGstHtml=function(){let h=_h();const R=bkGst(bk.gp);if(R.n&&R.hsn)h+=`<h3 style="margin:14px 0 6px">GSTR-1 · HSN</h3>`+bkTbl(Object.values(R.hsn).map(x=>`<tr>${bkTd(esc(x.hsn)+"<br><span class='m'>"+esc(x.u)+"</span>")}${bkTd(x.r+"%",1)}${bkTd(bkQ(x.q),1)}${bkTd(bkN(x.tv),1)}${bkTd(bkN(x.i),1)}${bkTd(bkN(x.c),1)}${bkTd(bkN(x.s),1)}</tr>`),["HSN",bt("दर","Rate"),bt("मात्रा","Qty"),bt("टैक्सेबल","Taxable"),"IGST","CGST","SGST"]);return h}}
 {const _t=bkTab;bkTab=function(R){if(bk.tab==="stk")return bkStkHtml(R);return _t(R)}}
 {const _w=bkWire;bkWire=function(){_w();const el=$("#bk");if(!el)return;const ni=$("#bkNewI");if(ni)ni.onclick=()=>bkIForm(null);el.querySelectorAll(".bkIe").forEach(b=>b.onclick=()=>bkIForm(b.dataset.id));const inf=$("#bkInfo");if(inf)inf.onclick=()=>bkInfoForm()}}
+
+/* ===== two parts: 🗂 Compliance and 📒 Accounts. A firm may get one or both (provider: 🧩 services m_cmp / m_bk) ===== */
+FTM.unshift({k:"m_cmp",n:["🗂 कंप्लायंस (पूरा हिस्सा)","🗂 Compliance (whole part)"],d:["रिटर्न, तारीख़ें, प्रूफ, नोटिस…","Returns, due dates, proofs, notices…"]},{k:"m_bk",n:["📒 हिसाब / अकाउंटिंग (पूरा हिस्सा)","📒 Accounts (whole part)"],d:["लेजर, वाउचर, स्टॉक, GST बिल, रिपोर्टें","Ledgers, vouchers, stock, GST bills, reports"]});
+FT.push(Object.assign({t:"mod"},FTM[0]),Object.assign({t:"mod"},FTM[1]));
+const PART_K=["m_cmp","m_bk"];
+/* parts are on unless the provider has turned them off (firms from before this change keep both) */
+{const _al=ftAllowed;ftAllowed=function(k){if(PART_K.includes(k)){const f=ftSite();const m=f&&f.features;return !m||m[k]!==false}return _al(k)}}
+{const _on=ftOn;ftOn=function(k){if(PART_K.includes(k))return ftAllowed(k);return _on(k)}}
+{const _nw=ftNew;ftNew=function(){return _nw().filter(x=>!PART_K.includes(x.k))}}
+Object.assign(I18N.hi,{pCmp:"🗂 कंप्लायंस",pBk:"📒 हिसाब-किताब"});Object.assign(I18N.en,{pCmp:"🗂 Compliance",pBk:"📒 Accounts"});Object.assign(I18N.zh,{pCmp:"🗂 合规",pBk:"📒 账簿"});
+const PART_LK="__part";let part=(()=>{try{return localStorage.getItem(PART_LK)||"cmp"}catch(e){return"cmp"}})();
+const partOk=p=>ftOn(p==="bk"?"m_bk":"m_cmp");
+function partNow(){if(!partOk("cmp"))return"bk";if(!partOk("bk"))return"cmp";return part}
+function partBar(){let b=$("#partBar");const both=partOk("cmp")&&partOk("bk");if(!both){if(b)b.remove();return}
+  if(!b){b=document.createElement("div");b.id="partBar";b.className="lang seg";b.style.cssText="display:flex;gap:0;margin:8px 0 4px;width:100%";const nav=$("header nav");nav.parentNode.insertBefore(b,nav)}
+  const p=partNow();b.innerHTML=["cmp","bk"].map(x=>`<button data-p="${x}" class="${p===x?"on":""}" style="flex:1;padding:9px 6px;font-size:15px;font-weight:600">${esc(t(x==="bk"?"pBk":"pCmp"))}</button>`).join("");
+  b.querySelectorAll("button").forEach(x=>x.onclick=()=>setPart(x.dataset.p))}
+function setPart(p){part=p;try{localStorage.setItem(PART_LK,p)}catch(e){}show(p==="bk"?"bk":"dash")}
+function partApply(){const p=partNow(),bk=p==="bk";const sb=$("#bk"),tm=$("#team");if(sb&&!partApply.busy){const inBk=!sb.hidden,inTeam=tm&&!tm.hidden;if(bk&&!inBk&&!inTeam){partApply.busy=1;try{show("bk")}finally{partApply.busy=0}return}if(!bk&&inBk){partApply.busy=1;try{show("dash")}finally{partApply.busy=0}return}}
+  if(!$("#partCss")){const st=document.createElement("style");st.id="partCss";st.textContent=".partHide{display:none!important}";document.head.appendChild(st)}
+  document.querySelectorAll("header nav [data-view]").forEach(b=>{const v=b.dataset.view;b.classList.toggle("partHide",bk?(v!=="team"):(v==="bk"))});
+  const ad=$("#addBtn");if(ad)ad.classList.toggle("partHide",bk);const gs=$(".gsw");if(gs)gs.classList.toggle("partHide",bk);
+  const tt=$("#ttl");if(tt)tt.textContent=bk?bt("हिसाब-किताब","Accounts"):t("title");partBar()}
+{const _sh=show;show=function(v){if(v==="bk"&&!bk.pid&&!partOk("cmp"))setTimeout(()=>{if(!bk.pid)bkOpen("_self",bk.fy)},0);if(v==="bk")part="bk";else if(v!=="team")part="cmp";if(!partOk(part)){part=partNow();if(part==="bk"&&v!=="bk"&&v!=="team")v="bk";if(part==="cmp"&&v==="bk")v="dash"}try{localStorage.setItem(PART_LK,part)}catch(e){}_sh(v);partApply()}}
+{const _r=render;render=function(){_r();try{partApply()}catch(e){}}}
+{const _ps=paintStatic;paintStatic=function(){_ps.apply(this,arguments);try{partApply()}catch(e){}}}
+/* open where the person left off */
+setTimeout(()=>{if(partNow()==="bk")show("bk");else partApply()},0);
 
 paintStatic();render();init();
 </script>
