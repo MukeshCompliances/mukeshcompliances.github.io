@@ -5201,7 +5201,8 @@ const _fpRow=row;row=function(i){const h=_fpRow(i);if(i.code!=="FS")return h;con
   return h.replace('<div style="margin-top:6px">','<div style="margin-top:6px"><span class="badge '+(d===L?"b-filed":"b-up")+'" style="margin-right:4px">📑 '+d+"/"+L+"</span>")};
 
 /* ===== what's new: shown once per person; add a new entry at the top for each change ===== */
-const WHATS_NEW=[{id:"2026-11-23",items:[
+const WHATS_NEW=[{id:"2026-11-23b",items:[
+ ["🧾 📒 हिसाब में \"GST रिपोर्ट\": किताबों के बिलों से GSTR-3B (3.1, 4, कैश में भरना) और GSTR-1 (B2B, B2CL, B2CS, क्रेडिट नोट, दर के हिसाब से) — महीना / तिमाही / साल, Excel के साथ। साथ में \"लेना-देना\": किससे कितना लेना / देना है।","🧾 \"GST returns\" in 📒 Accounts: GSTR-3B (3.1, 4, cash payable) and GSTR-1 (B2B, B2CL, B2CS, credit notes, rate-wise) from the books — month / quarter / year, with Excel. Also \"Outstanding\": who owes what."]]},{id:"2026-11-23",items:[
  ["📒 नया \"हिसाब\" टैब (पहला हिस्सा): हर ग्राहक की Tally जैसी किताबें — लेजर, पेमेंट / रसीद / कॉन्ट्रा / जर्नल / बिक्री / ख़रीद / क्रेडिट-डेबिट नोट (GST अपने-आप), डे बुक, लेजर, ट्रायल बैलेंस, लाभ-हानि, बैलेंस शीट, Excel और अगले साल में बैलेंस ले जाना।","📒 New \"Accounts\" tab (first part): Tally-style books for each client — ledgers, payment / receipt / contra / journal / sales / purchase / credit-debit notes (GST worked out), day book, ledger, trial balance, P&L, balance sheet, Excel and carry-forward to next year."]]},{id:"2026-11-19c",items:[
  ["🔢 GSTR-1 / GSTR-3B का PDF प्रूफ लगाते ही अंदर के आँकड़े भी जाँचे जाते हैं: बिक्री का टैक्सेबल मूल्य और टैक्स दूसरी रिटर्न (और 🧮 GST जाँच की वर्किंग) से मिलाए जाते हैं, फ़र्क़ हो तो ✖ के साथ दिखता है। 3B का नेट ITC 4(C) और कैश भुगतान भी दिखता है।","🔢 Attaching a GSTR-1 / GSTR-3B PDF proof now checks the figures inside: taxable value and tax of sales are matched with the other return (and the 🧮 GST check working); any difference shows with ✖. 3B net ITC 4(C) and cash paid are shown too."]]},{id:"2026-11-19b",items:[
  ["✕ गलत प्रूफ फ़ाइल अब अलग से हटाई जा सकती है — प्रूफ के आगे \"✕ फ़ाइल हटाएँ\"। प्रविष्टि, ARN और इतिहास सुरक्षित रहते हैं।","✕ A wrong proof file can now be removed on its own — \"✕ Remove file\" next to the proof. The entry, ARN and history stay intact."],
@@ -5735,7 +5736,7 @@ function renderBk(){const el=$("#bk");if(!el||el.hidden)return;
   if(!bk.pid){el.innerHTML=h+`<div class="empty">${esc(bt("जिस ग्राहक का हिसाब रखना है, उसे ऊपर से चुनें।","Choose the client whose books you want to keep."))}</div>`;bkWire();return}
   if(bk.loading){el.innerHTML=h+`<div class="empty">${esc(t("loading"))}</div>`;bkWire();return}
   if(!bk.book){el.innerHTML=h+`<div class="empty">${esc(bt("इस ग्राहक की किताबें अभी शुरू नहीं हुईं।","Books for this client have not been started yet."))}<br><br>${bkCan()?`<button class="btn" id="bkStart">📒 ${esc(bt("किताबें शुरू करें","Start books"))}</button>`:""}</div>`;bkWire();return}
-  const R=bkReport(),tabs=[["day",bt("डे बुक","Day Book")],["led",bt("लेजर","Ledger")],["tb",bt("ट्रायल बैलेंस","Trial Balance")],["pl",bt("लाभ-हानि","Profit & Loss")],["bs",bt("बैलेंस शीट","Balance Sheet")],["mst",bt("लेजर सूची","Ledgers")]];
+  const R=bkReport(),tabs=[["day",bt("डे बुक","Day Book")],["led",bt("लेजर","Ledger")],["tb",bt("ट्रायल बैलेंस","Trial Balance")],["pl",bt("लाभ-हानि","Profit & Loss")],["bs",bt("बैलेंस शीट","Balance Sheet")],["gst",bt("GST रिपोर्ट","GST returns")],["out",bt("लेना-देना","Outstanding")],["mst",bt("लेजर सूची","Ledgers")]];
   h+=`<div class="actions" style="margin:0 0 10px">${bkCan()?`<button class="btn" id="bkNewV">＋ ${esc(bt("वाउचर","Voucher"))}</button><button class="btn ghost" id="bkNewL">＋ ${esc(bt("लेजर","Ledger"))}</button>`:""}<button class="btn ghost" id="bkXl">⬇ Excel</button></div>
    <div class="chips" style="margin-bottom:10px">${tabs.map(x=>`<button class="chip bkTab${bk.tab===x[0]?" on":""}" data-t="${x[0]}" style="${bk.tab===x[0]?"background:var(--blue,#1a56db);color:#fff":""}">${esc(x[1])}</button>`).join("")}</div>`;
   if(R.opDiff&&bk.tab!=="day")h+=`<div class="warn">${esc(bt("ओपनिंग बैलेंस में फ़र्क़: ","Difference in opening balances: "))}${bkDC(R.opDiff)}</div>`;
@@ -5903,6 +5904,68 @@ async function bkExcel(){if(!window.XLSX)await loadScript(XLSX_SRC);const R=bkRe
   const main=$("main"),tm=$("#team");if(main&&!$("#bk")){const s=document.createElement("section");s.id="bk";s.hidden=true;(tm?tm.parentNode:main).insertBefore(s,tm||null)}})();
 {const _bkShow=show;show=function(v){_bkShow(v);const s=$("#bk"),b=$("#nBk");if(s)s.hidden=v!=="bk";if(b)b.classList.toggle("on",v==="bk");if(v==="bk")renderBk()}}
 {const _bkPaint=paintStatic;paintStatic=function(){_bkPaint.apply(this,arguments);const b=$("#nBk");if(b)b.textContent=t("navBk");if($("#bk")&&!$("#bk").hidden)renderBk()}}
+
+/* ===== 📒 Accounts part 2: GST returns from the books + outstanding ===== */
+const BK_MON=["04","05","06","07","08","09","10","11","12","01","02","03"];
+const bkPerOpts=()=>{const o=[["y",bt("पूरा साल","Whole year")]];["Q1 Apr-Jun","Q2 Jul-Sep","Q3 Oct-Dec","Q4 Jan-Mar"].forEach((q,i)=>o.push(["q"+(i+1),q]));BK_MON.forEach(m=>{const y=+m<4?bk.fy+1:bk.fy;o.push(["m"+m,new Date(y,+m-1,1).toLocaleString(lang==="hi"?"hi-IN":"en-IN",{month:"long"})+" "+y])});return o};
+function bkInPer(d,per){if(!per||per==="y")return true;const m=d.slice(5,7);if(per[0]==="m")return m===per.slice(1);const q=+per.slice(1);return BK_MON.slice((q-1)*3,q*3).includes(m)}
+function bkDefPer(){const n=new Date(),p=new Date(n.getFullYear(),n.getMonth(),0);const d=p.getFullYear()+"-"+String(p.getMonth()+1).padStart(2,"0")+"-01";return bkFyOfD(d)===bk.fy?"m"+d.slice(5,7):"y"}
+/* GST figures from invoice vouchers */
+function bkGst(per){const V=bkV().filter(v=>v.gst&&bkInPer(v.d,per)),L=(bk.book&&bk.book.L)||{},st=bk.book.st;
+  const tax=(v,it)=>{const tx=r2(it.v*it.r/100);return v.gst.inter?{i:tx,c:0,s:0}:{i:0,c:r2(tx/2),s:r2(tx-r2(tx/2))}};
+  const R={b2b:[],b2cl:[],b2cs:{},cdnr:[],cdnur:[],rate:{},t31a:{tv:0,i:0,c:0,s:0},t31c:{tv:0},itc:{i:0,c:0,s:0},itcRev:{i:0,c:0,s:0},purT:0,nil:0};
+  const addT=(o,tv,x,sg)=>{o.tv=r2((o.tv||0)+sg*tv);if(x){o.i=r2((o.i||0)+sg*x.i);o.c=r2((o.c||0)+sg*x.c);o.s=r2((o.s||0)+sg*x.s)}};
+  V.forEach(v=>{const g=v.gst,P=L[g.party]||{},gin=(g.pg||P.gstin||"").toUpperCase(),pos=g.ps||st,party=P.n||"",total=Math.abs(((v.ln||[]).find(x=>x.l===g.party)||{}).a||0);
+    (g.items||[]).forEach(it=>{const x=tax(v,it),zero=!(+it.r);
+      if(v.t==="sales"||v.t==="cn"){const sg=v.t==="sales"?1:-1;
+        if(zero){R.t31c.tv=r2(R.t31c.tv+sg*it.v);R.nil=r2(R.nil+sg*it.v)}else addT(R.t31a,it.v,x,sg);
+        const rk=String(it.r);R.rate[rk]=R.rate[rk]||{tv:0,i:0,c:0,s:0};addT(R.rate[rk],it.v,x,sg);
+        const row={no:g.inv||v.no,d:v.d,gstin:gin,party,pos,val:total,r:+it.r,tv:it.v,i:x.i,c:x.c,s:x.s,typ:v.t};
+        if(v.t==="sales"){if(gin)R.b2b.push(row);else if(v.gst.inter&&total>100000)R.b2cl.push(row);else{const k=pos+"|"+it.r;R.b2cs[k]=R.b2cs[k]||{pos,r:+it.r,tv:0,i:0,c:0,s:0};addT(R.b2cs[k],it.v,x,1)}}
+        else{if(gin)R.cdnr.push(row);else if(v.gst.inter&&total>100000)R.cdnur.push(row);else{const k=pos+"|"+it.r;R.b2cs[k]=R.b2cs[k]||{pos,r:+it.r,tv:0,i:0,c:0,s:0};addT(R.b2cs[k],it.v,x,-1)}}}
+      else{const sg=v.t==="purch"?1:-1;R.purT=r2(R.purT+sg*it.v);if(sg>0)addT(R.itc,0,x,1);else addT(R.itcRev,0,x,1)}})});
+  R.itcNet={i:r2(R.itc.i-R.itcRev.i),c:r2(R.itc.c-R.itcRev.c),s:r2(R.itc.s-R.itcRev.s)};
+  /* rough cash payable: IGST credit first against IGST then CGST, SGST; CGST/SGST credit against own head (then IGST) */
+  const o={i:R.t31a.i,c:R.t31a.c,s:R.t31a.s},cr=Object.assign({},R.itcNet);const use=(h,from)=>{const u=Math.min(o[h],Math.max(cr[from],0));o[h]=r2(o[h]-u);cr[from]=r2(cr[from]-u)};
+  use("i","i");use("c","i");use("s","i");use("c","c");use("i","c");use("s","s");use("i","s");R.cash=o;R.carry=cr;
+  R.n=V.length;return R}
+function bkGstHtml(){if(!bk.gp)bk.gp=bkDefPer();const R=bkGst(bk.gp),pos=c=>c?c+" "+(STATES[c]||""):"";
+  const sel=`<div class="filters"><select id="bkGp">${bkPerOpts().map(o=>`<option value="${o[0]}"${o[0]===bk.gp?" selected":""}>${esc(o[1])}</option>`).join("")}</select><button class="btn ghost" id="bkGx">⬇ ${esc(bt("GST Excel","GST Excel"))}</button></div>`;
+  if(!R.n)return sel+`<div class="empty">${esc(bt("इस अवधि में बिक्री / ख़रीद का कोई बिल नहीं।","No sales / purchase invoices in this period."))}</div>`;
+  const H=(a)=>`<h3 style="margin:14px 0 6px">${esc(a)}</h3>`,amt=o=>[bkTd(bkN(o.tv),1),bkTd(bkN(o.i),1),bkTd(bkN(o.c),1),bkTd(bkN(o.s),1)].join("");
+  const invRows=a=>a.map(r=>`<tr>${bkTd(esc(r.no)+"<br><span class='m'>"+esc(r.d.split("-").reverse().join("/"))+"</span>")}${bkTd(esc(r.gstin||r.party)+"<br><span class='m'>"+esc(r.party)+" · "+esc(pos(r.pos))+"</span>")}${bkTd(r.r+"%",1)}${amt(r)}</tr>`);
+  const iHead=[bt("बिल","Invoice"),bt("पार्टी","Party"),bt("दर","Rate"),bt("टैक्सेबल","Taxable"),"IGST","CGST","SGST"];
+  let h=sel+`<div class="note">${esc(bt("ये आँकड़े इन किताबों के बिक्री / ख़रीद / क्रेडिट-डेबिट नोट से बने हैं। रिटर्न भरने से पहले पोर्टल से मिलाएँ।","These figures come from the sales / purchase / credit-debit notes in these books. Match with the portal before filing."))}</div>`;
+  h+=H("GSTR-3B")+bkTbl([`<tr>${bkTd("3.1(a) "+esc(bt("टैक्सेबल बिक्री","Outward taxable supplies")))}${amt(R.t31a)}</tr>`,`<tr>${bkTd("3.1(c) "+esc(bt("निल / छूट (0%)","Nil / exempt (0%)")))}${bkTd(bkN(R.t31c.tv),1)}${bkTd("",1)}${bkTd("",1)}${bkTd("",1)}</tr>`,
+    `<tr>${bkTd("4(A)(5) "+esc(bt("ख़रीद पर ITC","ITC on purchases")))}${bkTd("",1)}${bkTd(bkN(R.itc.i),1)}${bkTd(bkN(R.itc.c),1)}${bkTd(bkN(R.itc.s),1)}</tr>`,`<tr>${bkTd("4(B) "+esc(bt("ITC वापस (डेबिट नोट)","ITC reversed (debit notes)")))}${bkTd("",1)}${bkTd(bkN(R.itcRev.i),1)}${bkTd(bkN(R.itcRev.c),1)}${bkTd(bkN(R.itcRev.s),1)}</tr>`,
+    `<tr>${bkTd("4(C) "+esc(bt("नेट ITC","Net ITC")),0,1)}${bkTd("",1)}${bkTd(bkN(R.itcNet.i),1,1)}${bkTd(bkN(R.itcNet.c),1,1)}${bkTd(bkN(R.itcNet.s),1,1)}</tr>`,
+    `<tr style="background:#fff7e6">${bkTd("6.1 "+esc(bt("कैश में भरना (अनुमान)","Payable in cash (estimate)")),0,1)}${bkTd("",1)}${bkTd(bkN(R.cash.i),1,1)}${bkTd(bkN(R.cash.c),1,1)}${bkTd(bkN(R.cash.s),1,1)}</tr>`],["",bt("टैक्सेबल","Taxable"),"IGST","CGST","SGST"])+
+    (R.carry.i+R.carry.c+R.carry.s>0.5?`<div class="m">${esc(bt("अगले महीने के लिए बचा ITC: ","ITC left for next month: "))}IGST ${bkN(R.carry.i)} · CGST ${bkN(R.carry.c)} · SGST ${bkN(R.carry.s)}</div>`:"");
+  h+=H("GSTR-1 · B2B ("+R.b2b.length+")")+(R.b2b.length?bkTbl(invRows(R.b2b),iHead):`<div class="m">—</div>`);
+  if(R.b2cl.length)h+=H("GSTR-1 · B2CL ("+R.b2cl.length+")")+bkTbl(invRows(R.b2cl),iHead);
+  const cs=Object.values(R.b2cs);if(cs.length)h+=H("GSTR-1 · B2CS")+bkTbl(cs.map(r=>`<tr>${bkTd(esc(pos(r.pos)))}${bkTd(r.r+"%",1)}${amt(r)}</tr>`),[bt("राज्य","Place of supply"),bt("दर","Rate"),bt("टैक्सेबल","Taxable"),"IGST","CGST","SGST"]);
+  if(R.cdnr.length)h+=H("GSTR-1 · "+bt("क्रेडिट नोट (रजिस्टर्ड)","Credit notes (registered)")+" ("+R.cdnr.length+")")+bkTbl(invRows(R.cdnr),iHead);
+  if(R.cdnur.length)h+=H("GSTR-1 · "+bt("क्रेडिट नोट (अनरजिस्टर्ड)","Credit notes (unregistered)"))+bkTbl(invRows(R.cdnur),iHead);
+  h+=H(bt("दर के हिसाब से बिक्री","Sales by rate"))+bkTbl(Object.keys(R.rate).sort((a,b)=>a-b).map(k=>`<tr>${bkTd(k+"%")}${amt(R.rate[k])}</tr>`),[bt("दर","Rate"),bt("टैक्सेबल","Taxable"),"IGST","CGST","SGST"]);
+  return h}
+async function bkGstExcel(){if(!window.XLSX)await loadScript(XLSX_SRC);const R=bkGst(bk.gp),wb=XLSX.utils.book_new(),per=(bkPerOpts().find(o=>o[0]===bk.gp)||["",""])[1];
+  const inv=a=>[["Invoice no","Date","GSTIN","Party","Place of supply","Invoice value","Rate","Taxable","IGST","CGST","SGST"]].concat(a.map(r=>[r.no,r.d.split("-").reverse().join("-"),r.gstin,r.party,r.pos+"-"+(STATES[r.pos]||""),r.val,r.r,r.tv,r.i,r.c,r.s]));
+  const s3=[["GSTR-3B",bk.book.name,per],[],["Table","Taxable","IGST","CGST","SGST"],["3.1(a) Outward taxable",R.t31a.tv,R.t31a.i,R.t31a.c,R.t31a.s],["3.1(c) Nil / exempt",R.t31c.tv],["4(A)(5) All other ITC","",R.itc.i,R.itc.c,R.itc.s],["4(B) ITC reversed","",R.itcRev.i,R.itcRev.c,R.itcRev.s],["4(C) Net ITC","",R.itcNet.i,R.itcNet.c,R.itcNet.s],["6.1 Cash payable (estimate)","",R.cash.i,R.cash.c,R.cash.s]];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(s3),"GSTR-3B");XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(inv(R.b2b)),"b2b");XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(inv(R.b2cl)),"b2cl");
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["Place of supply","Rate","Taxable","IGST","CGST","SGST"]].concat(Object.values(R.b2cs).map(r=>[r.pos+"-"+(STATES[r.pos]||""),r.r,r.tv,r.i,r.c,r.s]))),"b2cs");
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(inv(R.cdnr.concat(R.cdnur))),"cdn");
+  const blob=new Blob([XLSX.write(wb,{type:"array",bookType:"xlsx"})],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),fname="GST-"+(bk.book.name||"").replace(/[^\w]+/g,"_").slice(0,30)+"-"+per.replace(/[^\w]+/g,"_")+".xlsx";
+  if(dlCap===undefined)dlCap=(window.claude&&claude.use)?await claude.use("downloads").catch(()=>null):null;
+  if(dlCap){await dlCap.save({filename:fname,data:blob});toast(t("fSaved"))}else{const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();a.remove()}}
+/* who owes what: debtors and creditors with the last bill date */
+function bkOutHtml(R){const last={};R.V.forEach(v=>(v.ln||[]).forEach(x=>{if(v.t==="sales"||v.t==="purch")last[x.l]=v.d}));const today=todayStr();
+  const part=(g,sign,title)=>{const ls=R.G(g).map(l=>({l,b:r2(sign*(R.B[l.id]||0))})).filter(x=>Math.abs(x.b)>=0.005).sort((a,b)=>b.b-a.b);const tot=r2(ls.reduce((s,x)=>s+x.b,0));
+    return `<h3 style="margin:12px 0 6px">${esc(title)} · ₹${bkN(tot)}</h3>`+(ls.length?bkTbl(ls.map(x=>{const d=last[x.l.id],days=d?Math.round((new Date(today)-new Date(d))/864e5):null;
+      return `<tr class="bkLg" data-id="${esc(x.l.id)}" style="cursor:pointer">${bkTd(esc(x.l.n)+(x.l.gstin?"<br><span class='m'>"+esc(x.l.gstin)+"</span>":""))}${bkTd(d?esc(d.split("-").reverse().join("/"))+"<br><span class='m'>"+days+" "+esc(bt("दिन","days"))+"</span>":"—",1)}${bkTd((x.b<0?"<span style='color:var(--red)'>":"")+bkN(x.b)+(x.b<0?" "+esc(bt("(उल्टा)","(reverse)"))+"</span>":""),1,1)}</tr>`}),[bt("पार्टी","Party"),bt("आख़िरी बिल","Last bill"),"₹"]):`<div class="m">—</div>`)};
+  return part("sdr",1,bt("लेना है (देनदार)","To receive (debtors)"))+part("scr",-1,bt("देना है (लेनदार)","To pay (creditors)"))}
+{const _bkTab=bkTab;bkTab=function(R){if(bk.tab==="gst")return bkGstHtml();if(bk.tab==="out")return bkOutHtml(R);return _bkTab(R)}}
+{const _bkWire=bkWire;bkWire=function(){_bkWire();const gp=$("#bkGp");if(gp)gp.onchange=()=>{bk.gp=gp.value;renderBk()};const gx=$("#bkGx");if(gx)gx.onclick=()=>bkGstExcel()}}
+{const _bkOpen=bkOpen;bkOpen=function(pid,fy){if(fy!==bk.fy)bk.gp="";return _bkOpen(pid,fy)}}
 
 paintStatic();render();init();
 </script>

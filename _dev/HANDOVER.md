@@ -201,3 +201,8 @@ Approach that worked for GST: ask him for REAL sample files of one client, read 
 - No rules change needed (firm sub-collections). Not in 🧩 services catalog yet (always visible).
 - Next asked: client's own login (role limited to own books), GSTR-1/3B from vouchers, invoice print, outstanding, cash/bank book.
 - fakefb.js: `where('==')` now filters, `set merge` deep-merges like Firestore.
+
+### Update 23 Nov 2026 — 📒 Accounts part 2: GST returns + outstanding (artifact v75 + site)
+- Tabs `gst` and `out` added (module after bk part 1; wraps bkTab/bkWire/bkOpen). `bkGst(per)` per = y / q1..q4 / mMM: GSTR-3B 3.1(a), 3.1(c) (0% items), 4(A)(5) from purchases, 4(B) from debit notes (= purchase returns in these books), 4(C), 6.1 cash estimate with set-off order IGST→I,C,S; CGST→C,I; SGST→S,I. GSTR-1: B2B (party GSTIN), B2CL (inter-state, unregistered, invoice value > ₹1 lakh), B2CS by POS+rate, CDNR / CDNUR (credit notes = sales returns), rate summary. GST Excel (sheets GSTR-3B, b2b, b2cl, b2cs, cdn).
+- Outstanding: debtors / creditors balances with last bill date.
+- Agreed weekly plan with him: week 2 client's own login (role limited to own books; rules change), week 3 invoice print + HSN + Tally/Excel import, week 4 bank reconciliation + books ↔ 🧮 GST check. Later on his decision: OTP (Blaze), privacy/terms, online payment.
