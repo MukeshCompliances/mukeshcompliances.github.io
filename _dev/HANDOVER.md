@@ -224,3 +224,8 @@ Approach that worked for GST: ask him for REAL sample files of one client, read 
 - `bkMenu()` replaces the old action buttons / tab chips: Vouchers (8 types, `.bkVt` → `bkNewOf(t)`), Reports (`.bkTab`), Masters (`.bkMk` led/item/info/xl). CSS `#bkCss`: phone = 4-column voucher grid + horizontally scrolling chips; ≥900px = sticky left column 250px, `body.partBk main{max-width:1320px}`.
 - Tally keys when the books are open and no sheet is open: F4 contra, F5 payment, F6 receipt, F7 journal, F8 sales, F9 purchase, Ctrl+F8 credit note, Ctrl+F9 debit note.
 - Old ids `#bkNewV/#bkNewL/#bkXl/#bkInfo` no longer exist (tests updated to the menu classes).
+
+### Update 23 Nov 2026 — accounts dashboard, compliance toolbar (artifact v80 + site)
+- Accounts open on tab `home` (`bkHomeHtml`): 8 cards (sales, purchases, net profit, cash+bank, to receive, to pay, GST cash this month via `bkGst("m"+mm)`, stock) → click opens the report; monthly sales vs purchases bars (CSS); recent 8 vouchers; top 5 receivables.
+- Compliance dashboard: `#mineT` ("Only my work") and the "records incomplete → Complete" warning are moved into `#dashTools` right under the date line (render wrapper moves the DOM nodes).
+- Desktop width: `main` max 1200px from 1100px wide; accounts part 1320px.
