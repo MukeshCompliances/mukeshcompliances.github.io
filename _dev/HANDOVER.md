@@ -247,3 +247,9 @@ Approach that worked for GST: ask him for REAL sample files of one client, read 
 - Not verified on the real site from here (sandbox can't reach Firestore). Ask him to retry.
 - Portal login page has a small link "🛠 एडमिन लॉगिन (मुख्य साइट)" → `/`.
 - On a portal, if the signed-in ID is a member of `brand.fid` (members doc exists) that firm opens, even when the ID's main firm (`users.firm`) is another; `users.firm` is NOT overwritten in that case. So Mukesh, once added to Addenda's 👥 Team, opens Addenda from /addenda and his own firm from `/`. A super-admin who is not on that team opens his own firm (with the portal look).
+
+### Update 24 Nov 2026 — provider adds clients ahead (RULES CHANGE handed over: firmInvites + invited firm create)
+- 🛠 फ़र्में → "👥 नए क्लाइंट" box → **＋ नया क्लाइंट जोड़ें**: firm name, client email (login ID), phone, plan (demo 30 days / paid until date / ♾ free forever), parts (🗂 / 📒 → `features.m_cmp/m_bk`), optional portal name. Saved to `firmInvites/{email}`; list of not-yet-signed-up invites with "📋 संदेश" (copies a WhatsApp/email text with link + steps) and ✖.
+- Portal chosen at invite: `brands/{slug}` created at once with `fid:""` (look works, no team restriction yet); when the provider next opens 🛠 फ़र्में, firms with `portalWanted` get `portal` and the brand's `fid` filled.
+- Client side (admit): no firm + `firmInvites/{email}` exists → creates `firms/{uid}` with the invite's status / dates / plan / features (`fromInvite:true`, `portalWanted`), owner member admin, `users.firm`, deletes the invite → opens straight in (no approval).
+- Rules: new `match /firmInvites/{email}` (read: super or that email; create/update: super; delete: super or that email) and firm create also allowed when `invitedFirm()` (keys limited; status, trialEndsMs, plan, features, name, portalWanted must equal the invite).
