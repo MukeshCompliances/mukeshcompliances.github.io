@@ -240,3 +240,8 @@ Approach that worked for GST: ask him for REAL sample files of one client, read 
 - Menu vouchers now open a **register** (tab `reg`, `bk.rt` type, `bk.rp` period, `bk.rq` search) with list + totals and a big "＋ New …" button (`#bkRegNew`); F-keys still open a new voucher directly.
 - Bill form: party input uses its own list (`#bkDlP`: debtors/creditors/cash/bank) + "＋ नया ग्राहक/सप्लायर" (`bkLForm(null,after,{n,g})`, returns to the bill with the party set) + info line (GSTIN, state, IGST or CGST+SGST). Item row: "＋" new item (`bkIForm(null,after,{n})`), info line `bkItemInfo` (HSN, GST %, unit, stock; ⚠ HSN missing / GST % differs). Line ledger list `#bkDlS` (sales/purchase/income/expense/fixed assets).
 - Invoice number format in `bk_books.info.fmt` ({FY}, {YYYY}, {N}, {N3}…) + `info.start` (first sales number); "⚙ नंबर का फ़ॉर्मेट" in the bill. `bkInvNo` reassigned in part 4. `bkGrab` exposes the bill form's reader.
+
+### Fix 24 Nov 2026 — portal stuck on "लॉगिन हो रहा है…"
+- He reported /addenda stuck at "Signing in…" (real site; not reproducible on the fake). Suspected: the brand was read through the Firestore SDK **before** sign-in (with multi-tab persistence), so the SDK had to switch user mid-flight. Now the brand is read with a plain REST `fetch` (`firestore.googleapis.com/v1/projects/<id>/databases/(default)/documents/brands/<slug>?key=<apiKey>`, public read rule), 6 s timeout.
+- Watchdog: if still "Signing in…" after 25 s → message (close other tabs of the site, button to sign out and retry). admit() errors now show on the gate instead of hanging.
+- Not verified on the real site from here (sandbox can't reach Firestore). Ask him to retry.
