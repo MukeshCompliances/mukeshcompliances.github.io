@@ -235,3 +235,8 @@ Approach that worked for GST: ask him for REAL sample files of one client, read 
 - Branded portal admits only members of `brand.fid` (super-admin passes). Others get "not on this portal's team" (+ link to main site if they have another firm). New people need an invite from that firm.
 - Provider panel per firm: **🎨 पोर्टल** — slug (2–30 a-z0-9-, reserved: index/404/admin/login/www/api), name, tagline, colour; copy link; turn off. Firm doc gets `portal: slug`.
 - Rules now = previous + `match /brands/{slug} { allow read: if true; allow write: if isSuper(); }`. **He published them on 23 Nov 2026 17:26 IST** (this text = `_dev/site/firestore.rules`).
+
+### Update 24 Nov 2026 — registers, invoice format, quick add (artifact v82 + site)
+- Menu vouchers now open a **register** (tab `reg`, `bk.rt` type, `bk.rp` period, `bk.rq` search) with list + totals and a big "＋ New …" button (`#bkRegNew`); F-keys still open a new voucher directly.
+- Bill form: party input uses its own list (`#bkDlP`: debtors/creditors/cash/bank) + "＋ नया ग्राहक/सप्लायर" (`bkLForm(null,after,{n,g})`, returns to the bill with the party set) + info line (GSTIN, state, IGST or CGST+SGST). Item row: "＋" new item (`bkIForm(null,after,{n})`), info line `bkItemInfo` (HSN, GST %, unit, stock; ⚠ HSN missing / GST % differs). Line ledger list `#bkDlS` (sales/purchase/income/expense/fixed assets).
+- Invoice number format in `bk_books.info.fmt` ({FY}, {YYYY}, {N}, {N3}…) + `info.start` (first sales number); "⚙ नंबर का फ़ॉर्मेट" in the bill. `bkInvNo` reassigned in part 4. `bkGrab` exposes the bill form's reader.
