@@ -168,9 +168,14 @@ const MAXB=10*1024*1024,CH=700000;
 firebase.initializeApp(CFG);
 const auth=firebase.auth(),fs=firebase.firestore();
 try{auth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(()=>{})}catch(e){}
-try{fs.settings({ignoreUndefinedProperties:true,merge:true})}catch(e){}
+try{fs.settings({ignoreUndefinedProperties:true,experimentalAutoDetectLongPolling:true,merge:true})}catch(e){}
 fs.enablePersistence({synchronizeTabs:true}).catch(()=>{});
-let ready,readyRes;ready=new Promise(r=>readyRes=r);
+let ready,readyRes;let step="";
+/* a write the sign-in does not depend on: wait at most a few seconds (a write waits for the server and can sit forever when the link is poor) */
+const W=(p,ms)=>Promise.race([Promise.resolve(p).catch(()=>{}),new Promise(r=>setTimeout(r,ms||5000))]);
+/* a read: give up after a while instead of waiting forever */
+const R=(p,ms)=>Promise.race([p,new Promise((_,j)=>setTimeout(()=>j({code:"timeout"}),ms||15000))]);
+ready=new Promise(r=>readyRes=r);
 let uid=null,ownerUid=null,profile={};
 const $g=id=>document.getElementById(id);
 /* client portal: mukeshcompliances.github.io/<slug> (404.html sends it here as ?f=<slug>) shows that firm's name and colour */
@@ -251,33 +256,33 @@ async function admit(user){
     if(!auth.currentUser||!auth.currentUser.emailVerified){gate.out=true;gate("📧 <b>"+email+"</b><br>इस ईमेल पर एक लिंक भेजा गया है। उसे एक बार खोलें (Spam भी देखें), फिर यह पेज दोबारा खोलें।<br><span style='font-size:12px'>A link was sent to this email. Open it once (check Spam too), then reload this page.</span><br><a href='#' id='sgRs'>लिंक दोबारा भेजें / Resend</a> · <a href='#' onclick='location.reload();return false'>🔄 Reload</a>","",false);
       const rs=$g("sgRs");if(rs)rs.onclick=async ev=>{ev.preventDefault();try{await user.sendEmailVerification();$g("sgErr").textContent="✅ भेज दिया / Sent"}catch(e){$g("sgErr").textContent=emsg(e)}};return}}
   gate("लॉगिन हो रहा है…<br><span style='font-size:12px'>Signing in…</span>","",false);
-  try{const tk=await user.getIdTokenResult();if(!tk.claims||tk.claims.email_verified!==true){await user.getIdToken(true);await new Promise(r=>setTimeout(r,400))}}catch(e){}
+  step="token";try{const tk=await R(user.getIdTokenResult(),10000);if(!tk.claims||tk.claims.email_verified!==true){await user.getIdToken(true);await new Promise(r=>setTimeout(r,400))}}catch(e){}
   const uname=user.displayName||email;let me0={};
-  try{const u=await fs.collection("users").doc(uid).get();me0=u.exists?u.data():{}}catch(e){}
-  try{await fs.collection("users").doc(uid).set({name:uname,email,at:iso()},{merge:true})}catch(e){}
-  let cfg=null,cerr="";const rd=async()=>{try{const c=await fs.doc("config/app").get();cfg=c.exists?c.data():null;cerr=c.exists?"":"no-config"}catch(e){cerr=(e&&e.code)||"error"}};
+  step="user";try{const u=await R(fs.collection("users").doc(uid).get());me0=u.exists?u.data():{}}catch(e){if(e&&e.code)step="user:"+e.code}
+  W(fs.collection("users").doc(uid).set({name:uname,email,at:iso()},{merge:true}),1);
+  let cfg=null,cerr="";const rd=async()=>{step="config";try{const c=await R(fs.doc("config/app").get());cfg=c.exists?c.data():null;cerr=c.exists?"":"no-config"}catch(e){cerr=(e&&e.code)||"error"}};
   await rd();
   if(!cfg&&cerr!=="no-config"){try{await user.getIdToken(true);await new Promise(r=>setTimeout(r,800))}catch(e){}await rd()}
   if(!cfg&&cerr==="no-config"){try{await fs.doc("config/app").set({owner:uid,at:iso()});cfg={owner:uid}}catch(e){cerr="first-setup"}}
   if(!cfg){gate.out=true;gate(cerr==="first-setup"?"⚙ साइट अभी चालू नहीं हुई है — पहले इसके मालिक को अपने ईमेल से एक बार लॉगिन करना होगा।<br><span style='font-size:12px'>The site is not set up yet — its owner must sign in once first.</span>"
      :"⚠ अभी अंदर नहीं जा पाए।<br>एक बार <b>लॉग आउट करके दोबारा लॉगिन</b> करें (ईमेल का लिंक खोलने के बाद ऐसा कभी-कभी ज़रूरी होता है)। फिर भी न खुले तो इंटरनेट देखें।<br><span style='font-size:12px'>Could not get in. Sign out and sign in again (sometimes needed right after confirming your email).</span><br><span style='font-size:11px;color:#999'>"+cerr+"</span><br><a href='#' onclick='location.reload();return false'>🔄 दोबारा कोशिश / Retry</a>","",false);return}
   isSuper=site.isSuper=cfg.owner===uid;site.support=cfg.support||"";await brandP;site.brand=brand;
-  if(isSuper&&cfg.ownerEmail){try{await fs.doc("config/app").set({ownerEmail:""},{merge:true})}catch(e){}} /* email is not kept where every signed-in user can read it */
+  if(isSuper&&cfg.ownerEmail){W(fs.doc("config/app").set({ownerEmail:""},{merge:true}),1)} /* email is not kept where every signed-in user can read it */
   /* which firm does this ID belong to? */
-  fid=me0.firm||null;
+  step="firm";fid=me0.firm||null;
   if(!fid&&isSuper)fid=uid;
-  if(!fid){try{const ix=await fs.collection("invidx").doc(email).get();if(ix.exists)fid=ix.data().fid}catch(e){}}
-  if(!fid){try{if((await fs.doc("firms/"+uid).get()).exists)fid=uid}catch(e){}}
-  if(brand&&brand.fid&&fid!==brand.fid){try{if((await fs.doc("firms/"+brand.fid+"/members/"+uid).get()).exists)fid=brand.fid}catch(e){}}
+  if(!fid){try{const ix=await R(fs.collection("invidx").doc(email).get());if(ix.exists)fid=ix.data().fid}catch(e){}}
+  if(!fid){try{if((await R(fs.doc("firms/"+uid).get())).exists)fid=uid}catch(e){}}
+  if(brand&&brand.fid&&fid!==brand.fid){step="portal";try{if((await R(fs.doc("firms/"+brand.fid+"/members/"+uid).get())).exists)fid=brand.fid}catch(e){}}
   if(brand&&brand.fid&&!isSuper&&fid!==brand.fid){gate.out=true;gate("🏢 <b>"+escB(brand.name)+"</b><br>"+escB(email)+" — यह ID इस पोर्टल की टीम में नहीं है। अपने एडमिन से कहें कि 👥 टीम में यह ईमेल जोड़ें, फिर दोबारा लॉगिन करें।<br><span style='font-size:12px'>This ID is not on this portal's team. Ask your admin to add this email in 👥 Team, then sign in again.</span>"+(fid?"<br><a href='/'>मुख्य साइट खोलें / Open the main site</a>":""),"",false);return}
-  if(!fid){try{const fi=await fs.collection("firmInvites").doc(email).get();if(fi.exists){const x=fi.data();const rec={name:x.name,owner:uid,ownerEmail:email,ownerName:(user.displayName||"").slice(0,60),phone:x.phone||"",note:"",status:x.status,createdAt:iso(),consentAt:iso(),fromInvite:true};
+  if(!fid){step="invite";try{const fi=await R(fs.collection("firmInvites").doc(email).get());if(fi.exists){const x=fi.data();const rec={name:x.name,owner:uid,ownerEmail:email,ownerName:(user.displayName||"").slice(0,60),phone:x.phone||"",note:"",status:x.status,createdAt:iso(),consentAt:iso(),fromInvite:true};
       if(x.trialEndsMs){rec.trialEndsMs=x.trialEndsMs;rec.trialEnds=x.trialEnds;rec.plan=x.plan}if(x.features)rec.features=x.features;if(x.portal)rec.portalWanted=x.portal;
       await fs.doc("firms/"+uid).set(rec);fid=uid;try{await fs.doc("firms/"+uid+"/members/"+uid).set({role:"admin",email,name:uname})}catch(e){}
       try{await fs.collection("users").doc(uid).set({firm:uid},{merge:true});me0.firm=uid}catch(e){}
       try{await fs.collection("firmInvites").doc(email).delete()}catch(e){}}}catch(e){}}
   if(!fid)fid=await signupScreen(user,email);
   gate("खुल रहा है…<br><span style='font-size:12px'>Opening…</span>","",false);
-  try{const f=await fs.doc("firms/"+fid).get();firm=f.exists?f.data():null}catch(e){firm=null}
+  step="open";try{const f=await R(fs.doc("firms/"+fid).get());firm=f.exists?f.data():null}catch(e){firm=null;step="open:"+((e&&e.code)||"")}
   if(!firm&&isSuper&&fid===uid){ /* the first owner: their existing data becomes firm no. 1 */
     gate("आपका मौजूदा डेटा आपकी फ़र्म में रखा जा रहा है… (एक बार)<br><span style='font-size:12px'>Moving your existing data into your firm… (one time)</span>","",false);
     firm={name:cfg.firmName||"ADDENDA",owner:uid,ownerEmail:email,status:"active",createdAt:iso(),first:true};
@@ -288,12 +293,12 @@ async function admit(user){
       :"❌ <b>"+escH(firm.name||"")+"</b><br>यह अनुरोध मंज़ूर नहीं हुआ।"+(site.support?"<br>संपर्क: "+site.support:"")+"<br><span style='font-size:12px'>This request was not approved.</span>","",false);return}
   ownerUid=firm.owner;
   if(ownerUid!==uid){let ok=false,mref=fs.doc(F("members/"+uid));
-    try{ok=(await mref.get()).exists}catch(e){}
+    step="member";try{ok=(await R(mref.get())).exists}catch(e){}
     if(!ok){try{const iv=await fs.doc(F("invites/"+email)).get();if(iv.exists){await mref.set({role:iv.data().role||"junior",email,name:uname,joinedAt:iso()});ok=true}}catch(e){}}
     if(!ok){gate.out=true;gate("❌ "+email+"<br>आपको अभी टीम में नहीं जोड़ा गया है। एडमिन से कहें कि टीम टैब में आपका ईमेल जोड़ें।<br><span style='font-size:12px'>You are not on the team yet — ask the admin to add your email.</span>","",false);return}
-    try{await mref.set({name:uname,email},{merge:true})}catch(e){}}
-  else{try{await fs.doc(F("members/"+uid)).set({role:"admin",email,name:uname},{merge:true})}catch(e){}}
-  if(me0.firm!==fid&&!(brand&&fid===brand.fid&&me0.firm)){try{await fs.collection("users").doc(uid).set({firm:fid},{merge:true})}catch(e){}}
+    W(mref.set({name:uname,email},{merge:true}),1)}
+  else{W(fs.doc(F("members/"+uid)).set({role:"admin",email,name:uname},{merge:true}),1)}
+  if(me0.firm!==fid&&!(brand&&fid===brand.fid&&me0.firm)){await W(fs.collection("users").doc(uid).set({firm:fid},{merge:true}),3000)}
   if(firm.status==="stopped"&&!isSuper){gate.out=true;gate("⏸ <b>"+escH(firm.name||"")+"</b><br>यह फ़र्म अभी रोकी गई है। चालू कराने के लिए ऐप चलाने वाले से संपर्क करें।"+(site.support?"<br>"+site.support:"")+"<br><span style='font-size:12px'>This firm is paused. Contact the app provider to resume.</span>","",false);return}
   const dl=daysLeft(firm);expired=firm.status==="stopped"||(dl!=null&&dl<=0);site.firm=Object.assign({id:fid,daysLeft:dl,expired},firm);
   fs.collection(F("invites")).onSnapshot(s=>{site.invites=s.docs.map(d=>Object.assign({email:d.id},d.data()));if(typeof renderTeam==="function")try{renderTeam()}catch(e){}},()=>{});
@@ -480,7 +485,7 @@ const RL="__site_rl";let rapid=false;try{if(sessionStorage.getItem("__site_okrl"
 auth.onAuthStateChanged(u=>{if(u&&rapid){rapid=false;try{localStorage.removeItem(IK);sessionStorage.setItem("__site_idleout","rl")}catch(e){}auth.signOut();return}
   let stale=false;try{const t=+localStorage.getItem(IK)||0;stale=!!u&&t>0&&Date.now()-t>IDLE_MS}catch(e){}
   if(u&&stale){try{localStorage.removeItem(IK);sessionStorage.setItem("__site_idleout","1")}catch(e){}auth.signOut();return}
-  if(u){clearTimeout(admit.wd);admit.wd=setTimeout(()=>{if($g("siteGate").style.display!=="none"&&/Signing in/.test($g("sgMsg").textContent)){gate.out=true;gate("⏳ लॉगिन में बहुत देर लग रही है।<br>इस साइट के <b>बाक़ी खुले टैब बंद</b> करें, फिर नीचे वाला बटन दबाकर दोबारा लॉगिन करें।<br><span style='font-size:12px'>Signing in is taking too long. Close the site's other open tabs, then use the button below and sign in again.</span>","",false)}},25000);
+  if(u){clearTimeout(admit.wd);admit.wd=setTimeout(()=>{if($g("siteGate").style.display!=="none"&&/Signing in/.test($g("sgMsg").textContent)){gate.out=true;gate("⏳ लॉगिन में बहुत देर लग रही है।<br>इस साइट के <b>बाक़ी खुले टैब बंद</b> करें, फिर नीचे वाला बटन दबाकर दोबारा लॉगिन करें।<br><span style='font-size:12px'>Signing in is taking too long. Close the site's other open tabs, then use the button below and sign in again.</span><br><span style='font-size:11px;color:#999'>["+step+(navigator.onLine?"":" · offline")+"]</span>","",false)}},25000);
     admit(u).catch(e=>{gate.out=true;gate("⚠ अंदर नहीं जा पाए / Could not open<br><span style='font-size:12px'>"+escB((e&&(e.code||e.message))||"error")+"</span>","",false)})}else{let io=false;try{io=sessionStorage.getItem("__site_idleout");if(io!=="1"&&io!=="rl")io=false}catch(e){}view("In");gate(LOGIN_MSG,io==="rl"?"🔒 पेज बार-बार रिफ्रेश हुआ, इसलिए सुरक्षा के लिए लॉग आउट कर दिया गया। दोबारा लॉगिन करें। / Logged out for safety after repeated page reloads.":io?"⏳ 20 मिनट कोई हलचल नहीं थी, इसलिए लॉग आउट कर दिया गया। दोबारा लॉगिन करें। / Logged out after 20 minutes of no activity.":"",true)}});
 auth.getRedirectResult().catch(e=>{$g("sgErr").textContent=(e&&e.message)||""});
 /* file store: files are split into parts inside Firestore (no paid storage needed) */
