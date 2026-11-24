@@ -49,6 +49,7 @@ function applyBrand(){if(!brand)return;const c=/^#[0-9a-f]{6}$/i.test(brand.colo
   const h=document.querySelector("#siteGate h1");if(h)h.innerHTML="🏢 "+escB(brand.name)+(brand.tag?"<div style='font-size:13px;font-weight:400;color:#666;margin-top:4px'>"+escB(brand.tag)+"</div>":"");
   document.title=(brand.name||"")+" — Portal";setTimeout(()=>{if(!site||!site.firm)document.title=(brand.name||"")+" — Portal"},1500);document.documentElement.style.setProperty("--brand",c);
   let st=$g("brandCss");if(!st){st=document.createElement("style");st.id="brandCss";document.head.appendChild(st)}
+  if(!$g("sgAdm")){const a=document.createElement("div");a.id="sgAdm";a.className="small";a.innerHTML="<a href='/' style='color:#888;text-decoration:none'>🛠 एडमिन लॉगिन (मुख्य साइट) / Admin sign-in</a>";$g("siteGate").querySelector(".box").appendChild(a)}
   st.textContent="#siteGate button{background:"+c+"}#siteGate button.alt{background:#fff;color:"+c+";border-color:"+c+"}#siteGate .tabs a.on{color:"+c+";border-bottom-color:"+c+"}#siteGate .lnk a{color:"+c+"}#siteGate .box{border-top:5px solid "+c+"}"}
 const brandP=!SLUG?Promise.resolve():Promise.race([
   fetch("https://firestore.googleapis.com/v1/projects/"+CFG.projectId+"/databases/(default)/documents/brands/"+encodeURIComponent(SLUG)+"?key="+CFG.apiKey).then(r=>r.ok?r.json():null).then(j=>{const f=j&&j.fields;if(f){const v=k=>f[k]&&(f[k].stringValue!=null?f[k].stringValue:"");brand={fid:v("fid"),name:v("name"),tag:v("tag"),color:v("color")};applyBrand()}}).catch(()=>{}),
@@ -135,6 +136,7 @@ async function admit(user){
   if(!fid&&isSuper)fid=uid;
   if(!fid){try{const ix=await fs.collection("invidx").doc(email).get();if(ix.exists)fid=ix.data().fid}catch(e){}}
   if(!fid){try{if((await fs.doc("firms/"+uid).get()).exists)fid=uid}catch(e){}}
+  if(brand&&brand.fid&&fid!==brand.fid){try{if((await fs.doc("firms/"+brand.fid+"/members/"+uid).get()).exists)fid=brand.fid}catch(e){}}
   if(brand&&brand.fid&&!isSuper&&fid!==brand.fid){gate.out=true;gate("🏢 <b>"+escB(brand.name)+"</b><br>"+escB(email)+" — यह ID इस पोर्टल की टीम में नहीं है। अपने एडमिन से कहें कि 👥 टीम में यह ईमेल जोड़ें, फिर दोबारा लॉगिन करें।<br><span style='font-size:12px'>This ID is not on this portal's team. Ask your admin to add this email in 👥 Team, then sign in again.</span>"+(fid?"<br><a href='/'>मुख्य साइट खोलें / Open the main site</a>":""),"",false);return}
   if(!fid)fid=await signupScreen(user,email);
   gate("खुल रहा है…<br><span style='font-size:12px'>Opening…</span>","",false);
@@ -144,7 +146,7 @@ async function admit(user){
     firm={name:cfg.firmName||"ADDENDA",owner:uid,ownerEmail:email,status:"active",createdAt:iso(),first:true};
     try{await fs.doc("firms/"+fid).set(firm);await fs.doc(F("members/"+uid)).set({role:"admin",email,name:uname});const n=await migrateLegacy();await fs.doc("config/app").set({migratedAt:iso(),migrated:n},{merge:true})}catch(e){firm=null}}
   if(!firm){gate.out=true;gate("❌ "+email+"<br>आपकी फ़र्म नहीं खुल पाई। एडमिन से कहें कि टीम टैब में आपका ईमेल दोबारा जोड़ें।<br><span style='font-size:12px'>Could not open your firm — ask your admin to add your email again.</span>","",false);try{await fs.collection("users").doc(uid).set({firm:null},{merge:true})}catch(e){}return}
-  if((firm.status==="pending"||firm.status==="rejected")&&!isSuper){gate.out=true;if(me0.firm!==fid){try{await fs.collection("users").doc(uid).set({firm:fid},{merge:true})}catch(e){}}
+  if((firm.status==="pending"||firm.status==="rejected")&&!isSuper){gate.out=true;if(me0.firm!==fid&&!(brand&&fid===brand.fid&&me0.firm)){try{await fs.collection("users").doc(uid).set({firm:fid},{merge:true})}catch(e){}}
     gate(firm.status==="pending"?"⏳ <b>"+escH(firm.name||"")+"</b><br>आपका अनुरोध भेज दिया गया है। ऐप चलाने वाले की मंज़ूरी मिलते ही यह खुल जाएगा — फिर इसी ID से लॉगिन करें।"+(site.support?"<br>जल्दी हो तो संपर्क करें: <b>"+site.support+"</b>":"")+"<br><span style='font-size:12px'>Your request has been sent. The app opens once the provider approves it — then sign in with this same ID.</span><br><a href='#' onclick='location.reload();return false'>🔄 दोबारा देखें / Check again</a>"
       :"❌ <b>"+escH(firm.name||"")+"</b><br>यह अनुरोध मंज़ूर नहीं हुआ।"+(site.support?"<br>संपर्क: "+site.support:"")+"<br><span style='font-size:12px'>This request was not approved.</span>","",false);return}
   ownerUid=firm.owner;
@@ -154,7 +156,7 @@ async function admit(user){
     if(!ok){gate.out=true;gate("❌ "+email+"<br>आपको अभी टीम में नहीं जोड़ा गया है। एडमिन से कहें कि टीम टैब में आपका ईमेल जोड़ें।<br><span style='font-size:12px'>You are not on the team yet — ask the admin to add your email.</span>","",false);return}
     try{await mref.set({name:uname,email},{merge:true})}catch(e){}}
   else{try{await fs.doc(F("members/"+uid)).set({role:"admin",email,name:uname},{merge:true})}catch(e){}}
-  if(me0.firm!==fid){try{await fs.collection("users").doc(uid).set({firm:fid},{merge:true})}catch(e){}}
+  if(me0.firm!==fid&&!(brand&&fid===brand.fid&&me0.firm)){try{await fs.collection("users").doc(uid).set({firm:fid},{merge:true})}catch(e){}}
   if(firm.status==="stopped"&&!isSuper){gate.out=true;gate("⏸ <b>"+escH(firm.name||"")+"</b><br>यह फ़र्म अभी रोकी गई है। चालू कराने के लिए ऐप चलाने वाले से संपर्क करें।"+(site.support?"<br>"+site.support:"")+"<br><span style='font-size:12px'>This firm is paused. Contact the app provider to resume.</span>","",false);return}
   const dl=daysLeft(firm);expired=firm.status==="stopped"||(dl!=null&&dl<=0);site.firm=Object.assign({id:fid,daysLeft:dl,expired},firm);
   fs.collection(F("invites")).onSnapshot(s=>{site.invites=s.docs.map(d=>Object.assign({email:d.id},d.data()));if(typeof renderTeam==="function")try{renderTeam()}catch(e){}},()=>{});
