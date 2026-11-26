@@ -6845,6 +6845,105 @@ let tlSoon=null;function tlKick(){const S=bk.book&&bk.pid?tlGet():{};if(!S.auto|
 {const _bm=bkMerge;bkMerge=async function(col,id,patch,ex){const r=await _bm.apply(this,arguments);try{if((col==="bk_vm"||col==="bk_books")&&!tlState.busy&&bk.book&&!bk.cons&&((col==="bk_vm"&&patch&&patch.v&&Object.values(patch.v).some(x=>x&&x.at))||(col==="bk_books"&&patch&&(patch.L||patch.I)&&!JSON.stringify(patch).includes('"tp":true'))))tlKick()}catch(e){}return r}}
 document.addEventListener("visibilitychange",()=>{try{if(document.visibilityState==="visible"&&bk.book&&bk.pid&&tlGet().auto&&!tlState.busy)setTimeout(()=>tlSync(false),800)}catch(e){}});
 
+/* ===== Party behaviour (customer / supplier nature) and Freight analysis ===== */
+["party","frt"].forEach(t=>{BK_PER_TABS.push(t);BK_OUT_TABS.push(t)});
+{const _m=bkMenu;bkMenu=function(tabs){const i=tabs.findIndex(x=>x[0]==="dup"),t=tabs.slice();t.splice(i<0?t.length:i,0,["party",bt("पार्टी का व्यवहार","Party behaviour")],["frt",bt("फ़्रेट एनालिसिस","Freight analysis")]);
+  return _m(t).replace('data-t="party"><span class="bkIc"></span>','data-t="party"><span class="bkIc">👥</span>').replace('data-t="frt"><span class="bkIc"></span>','data-t="frt"><span class="bkIc">🚚</span>')}}
+const BK_FRT=/freight|cartage|carriage|transport|loading|unloading|courier|lorry|truck|tempo|forwarding|delivery\s*charge|octroi|hamali|bhada|भाड़ा|ढुलाई/i;
+function bkFrSet(){const L=bk.book.L||{},fr=bk.book.fr||{},s=new Set();Object.keys(L).forEach(id=>{const l=L[id];if(l.del)return;if(fr[id]===1||fr[id]===true)s.add(id);else if(fr[id]===0||fr[id]===false)return;else if(BK_FRT.test(l.n)&&!["sdr","scr","cash","bank","bod","dt"].includes(l.g))s.add(id)});return s}
+const bkTransp=l=>/transport|logistic|roadways|road\s*lines|carrier|cargo|movers|freight|courier|express|shipping|tempo|truck/i.test((bk.book.L[l]||{}).n||"");
+const bkVPartyOf=v=>{if(v.gst&&v.gst.party&&bk.book.L[v.gst.party])return v.gst.party;const p=(v.ln||[]).find(x=>bkIsPartyAny(x.l));return p?p.l:""};
+const bkIsPartyAny=l=>{const x=bk.book.L[l];return !!x&&["sdr","scr"].includes(x.g)};
+const bkBase=v=>{const FR=bkFrSet();return r2(Math.abs((v.ln||[]).filter(x=>{const g=(bk.book.L[x.l]||{}).g;return (g==="sales"||g==="purch")&&!FR.has(x.l)}).reduce((s,x)=>s+(+x.a||0),0)))};
+/* how a party behaves: bills, how fast they pay (or we pay), returns, freight, trend */
+function bkPartyStats(R,lid){const L=bk.book.L[lid]||{},sign=L.g==="scr"?-1:1,cd=L.cd!=null?+L.cd:((bk.oo&&bk.oo.cd)||30),P=R.per||bkPer(),fs=bkFyS();
+  const V=R.V.filter(v=>(v.ln||[]).some(x=>x.l===lid)).sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:0);const bills=[];let pool=[],nB=0,vB=0,ret=0,paidW=0,paidA=0,onT=0,lastBill="",lastPay="",adv=0;const mon={};
+  const op=r2(sign*bkOp(lid));if(op>0)bills.push({d:fs,left:op,amt:op,cd,op:1});else if(op<0)pool.push({d:fs,a:-op});
+  const apply=(c,date,ref)=>{let a=c;const use=b=>{const u=Math.min(b.left,a);if(u<=0)return;b.left=r2(b.left-u);a=r2(a-u);if(!b.op){const dd=Math.max(0,Math.round((new Date(date)-new Date(b.d))/864e5));paidW+=dd*u;paidA+=u;if(dd<=b.cd)onT+=u}};
+    if(ref){const b=bills.find(x=>x.ref===ref&&x.left>0.004);if(b)use(b)}bills.forEach(b=>{if(a>0.004)use(b)});return a};
+  V.forEach(v=>{const a=r2(sign*(v.ln||[]).filter(x=>x.l===lid).reduce((s,x)=>s+(+x.a||0),0));if(!a)return;const isRet=(sign>0&&v.t==="cn")||(sign<0&&v.t==="dn");
+    if(a>0){const b={d:v.d,amt:a,left:a,cd,ref:String((v.gst&&v.gst.inv)||v.no||"").toLowerCase()};const nb=(v.bw||[]).find(x=>x.l===lid&&x.tp==="new");if(nb){if(nb.cd!=null)b.cd=+nb.cd;if(nb.ref)b.ref=nb.ref.toLowerCase()}
+      bills.push(b);if(["sales","purch"].includes(v.t)||!v.t){nB++;vB=r2(vB+a);lastBill=v.d;const m=v.d.slice(0,7);mon[m]=r2((mon[m]||0)+a)}
+      if(pool.length){pool.forEach(p=>{if(p.a>0.004)p.a=apply(p.a,v.d,"")});pool=pool.filter(p=>p.a>0.004)}}
+    else{const c=-a;if(isRet)ret=r2(ret+c);else lastPay=v.d;const ag=(v.bw||[]).find(x=>x.l===lid&&x.tp==="agst");const left=apply(c,v.d,ag&&ag.ref?ag.ref.toLowerCase():"");if(left>0.004){pool.push({d:v.d,a:left});adv=r2(adv+left)}}});
+  const asOn=P.t<todayStr()?P.t:todayStr(),pend=bills.filter(b=>b.left>0.004).map(b=>{const due=new Date(b.d);due.setDate(due.getDate()+b.cd);const od=Math.round((new Date(asOn)-due)/864e5);return Object.assign(b,{od})});
+  const odAmt=r2(pend.filter(b=>b.od>0).reduce((s,b)=>s+b.left,0)),od90=r2(pend.filter(b=>b.od>90).reduce((s,b)=>s+b.left,0)),bal=r2(pend.reduce((s,b)=>s+b.left,0)-pool.reduce((s,p)=>s+p.a,0));
+  const avgD=paidA?Math.round(paidW/paidA):null,onPct=paidA?Math.round(onT/paidA*100):null;
+  /* freight in this party's vouchers */
+  const FR=bkFrSet();let fr=0,frBase=0,frN=0;V.forEach(v=>{const f=r2((v.ln||[]).filter(x=>FR.has(x.l)).reduce((s,x)=>s+(+x.a||0),0));if(!f)return;fr=r2(fr+f);frN++;frBase=r2(frBase+bkBase(v))});
+  let rate,clr;if(avgD==null){rate=bt("अभी कम डेटा","Not enough data yet");clr="var(--mute)"}else if(od90>0&&od90>=bal*0.5){rate=bt("🔴 जोखिम — 90 दिन से ऊपर बकाया","🔴 Risky — dues over 90 days");clr="#d93025"}
+  else if(avgD<=cd){rate=bt("🟢 समय पर","🟢 On time");clr="#1e8e3e"}else if(avgD<=cd+15){rate=bt("🟡 थोड़ी देर","🟡 A little late");clr="#b06000"}else if(avgD<=cd+45){rate=bt("🟠 देर से","🟠 Late");clr="#e37400"}else{rate=bt("🔴 बहुत देर से","🔴 Very late");clr="#d93025"}
+  return{lid,L,sign,cd,nB,vB,avgBill:nB?r2(vB/nB):0,ret,retPct:vB?Math.round(ret/vB*1000)/10:0,avgD,onPct,odAmt,od90,bal,adv,lastBill,lastPay,pend:pend.length,fr,frN,frPct:frBase?Math.round(Math.abs(fr)/frBase*1000)/10:null,mon,rate,clr}}
+function bkSpark(mon){const P=bkPer();const ms=[];let d=new Date(bkFyS()+"T00:00:00");for(let i=0;i<12;i++){const ym=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");if(ym>P.t.slice(0,7))break;ms.push([ym,mon[ym]||0]);d.setMonth(d.getMonth()+1)}
+  const mx=Math.max(1,...ms.map(x=>x[1]));return `<span title="${esc(ms.map(x=>x[0]+": ₹"+bkN(x[1])).join("\n"))}" style="display:inline-flex;align-items:flex-end;gap:2px;height:28px">${ms.map(x=>`<span style="width:7px;height:${Math.max(2,Math.round(x[1]/mx*26))}px;background:${x[1]?"var(--brand)":"var(--line)"};border-radius:2px"></span>`).join("")}</span>`}
+function bkPartyCard(s){const cust=s.sign>0,dd=x=>x?bkDt(x):"—";const it=(k,v,sub)=>`<div style="background:var(--grey-soft);border-radius:10px;padding:6px 9px"><div class="m" style="font-size:11px">${esc(k)}</div><b>${v}</b>${sub?`<div class="m" style="font-size:11px">${sub}</div>`:""}</div>`;
+  return `<div style="border:1px solid var(--line);border-left:5px solid ${s.clr};border-radius:12px;padding:10px;margin:0 0 10px;background:var(--card)"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><b>${esc(cust?bt("ग्राहक का व्यवहार","Customer behaviour"):bt("सप्लायर के साथ व्यवहार","Supplier behaviour"))}</b><span style="color:${s.clr};font-weight:700">${s.rate}</span></div>
+   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:6px;margin-top:8px">
+   ${it(cust?bt("बिक्री (बिल)","Sales (bills)"):bt("ख़रीद (बिल)","Purchases (bills)"),"₹"+bkN(s.vB),s.nB+" "+bt("बिल · औसत ₹","bills · avg ₹")+bkN(s.avgBill))}
+   ${it(cust?bt("पैसा देने में औसत दिन","Avg days to pay us"):bt("हम औसत कितने दिन में देते हैं","Avg days we take to pay"),s.avgD==null?"—":s.avgD+" "+bt("दिन","days"),bt("क्रेडिट ","Credit ")+s.cd+bt(" दिन"," days"))}
+   ${it(bt("समय पर भुगतान","Paid on time"),s.onPct==null?"—":s.onPct+"%",bt("रकम के हिसाब से","by amount"))}
+   ${it(bt("बकाया","Pending"),"₹"+bkN(s.bal),s.pend+" "+bt("बिल","bills")+(s.adv>0.004?" · "+bt("एडवांस ₹","advance ₹")+bkN(s.adv):""))}
+   ${it(bt("ड्यू निकल चुका","Overdue"),`<span style="color:${s.odAmt?"var(--red)":"inherit"}">₹${bkN(s.odAmt)}</span>`,s.od90?bt("90+ दिन: ₹","90+ days: ₹")+bkN(s.od90):"")}
+   ${it(cust?bt("माल वापसी (Credit Note)","Returns (credit notes)"):bt("माल वापसी (Debit Note)","Returns (debit notes)"),s.retPct+"%","₹"+bkN(s.ret))}
+   ${it(bt("फ़्रेट","Freight"),s.frN?"₹"+bkN(Math.abs(s.fr)):"—",s.frN?(s.frPct!=null?s.frPct+"% "+bt("बिल रकम का","of bill value"):"")+" · "+s.frN+bt(" एंट्री"," entries"):"")}
+   ${it(bt("आख़िरी बिल / भुगतान","Last bill / payment"),dd(s.lastBill),dd(s.lastPay))}
+   ${it(bt("महीने-वार","Month-wise"),bkSpark(s.mon),"")}</div></div>`}
+/* the card on top of a customer / supplier ledger */
+{const _t=bkTab;bkTab=function(R){const h=_t(R);if(bk.tab!=="led"||!bk.led||bk.cons||!bkIsPartyAny(bk.led)||bk.ledM)return h;const i=h.indexOf('<div style="overflow-x:auto">');const c=bkPartyCard(bkPartyStats(R,bk.led));return i>=0?h.slice(0,i)+c+h.slice(i):c+h}}
+/* report: all parties' behaviour */
+function bkPartyHtml(R){const side=bk.pa||"sdr";const ls=R.G(side);const S=ls.map(l=>bkPartyStats(R,l.id)).filter(s=>s.vB||s.bal||s.ret);const sort=bk.paS||"val";
+  S.sort(sort==="late"?(a,b)=>(b.avgD||0)-(a.avgD||0):sort==="od"?(a,b)=>b.odAmt-a.odAmt:sort==="ret"?(a,b)=>b.retPct-a.retPct:(a,b)=>b.vB-a.vB);
+  const tab=(k,l)=>`<button class="bkOc${side===k?" on":""}" data-pa="${k}" style="border-color:${k==="sdr"?"#1e8e3e":"#d93025"}"><span>${esc(l)}</span><b>${ls.length&&side===k?S.length:R.G(k).length}</b></button>`;
+  const cnt=f=>S.filter(f).length;
+  return `<div class="bkOcs" style="grid-template-columns:1fr 1fr">${tab("sdr",bt("ग्राहक (Debtors)","Customers (Debtors)"))}${tab("scr",bt("सप्लायर (Creditors)","Suppliers (Creditors)"))}</div>
+   <div class="filters"><select id="paS">${[["val",bt("कारोबार से","By business")],["late",bt("सबसे देर वाले पहले","Slowest payers first")],["od",bt("ड्यू निकला ज़्यादा","Most overdue")],["ret",bt("माल वापसी ज़्यादा","Most returns")]].map(x=>`<option value="${x[0]}"${sort===x[0]?" selected":""}>${esc(x[1])}</option>`).join("")}</select>
+   <span class="m">🟢 ${cnt(s=>/🟢/.test(s.rate))} · 🟡 ${cnt(s=>/🟡/.test(s.rate))} · 🟠 ${cnt(s=>/🟠/.test(s.rate))} · 🔴 ${cnt(s=>/🔴/.test(s.rate))}</span></div>`+
+   (S.length?bkTbl(S.map(s=>`<tr class="bkLg" data-id="${esc(s.lid)}" style="cursor:pointer">${bkTd(esc(s.L.n)+`<br><span style="color:${s.clr};font-size:12px">${s.rate}</span>`)}${bkTd("₹"+bkN(s.vB)+"<br><span class='m'>"+s.nB+" "+esc(bt("बिल","bills"))+"</span>",1)}${bkTd(s.avgD==null?"—":s.avgD+" / "+s.cd,1)}${bkTd(s.onPct==null?"—":s.onPct+"%",1)}${bkTd(s.retPct?s.retPct+"%":"—",1)}${bkTd(s.odAmt?`<span style="color:var(--red)">${bkN(s.odAmt)}</span>`:"—",1)}${bkTd(s.frPct!=null?s.frPct+"%":"—",1)}${bkTd(bkSpark(s.mon))}</tr>`),
+     [bt("पार्टी","Party"),bt("कारोबार","Business"),bt("औसत दिन / क्रेडिट","Avg days / credit"),bt("समय पर","On time"),bt("वापसी","Returns"),bt("ड्यू निकला","Overdue"),bt("फ़्रेट %","Freight %"),bt("महीने-वार","Trend")]):`<div class="empty">—</div>`)}
+/* Freight analysis */
+function bkFrtHtml(R){const FR=bkFrSet(),L=bk.book.L,V=bkPerV(R),P=R.per||bkPer();if(bk.frSet)return bkFrSettings();
+  const rows=[];V.forEach(v=>{const fl=(v.ln||[]).filter(x=>FR.has(x.l));if(!fl.length)return;const f=r2(fl.reduce((s,x)=>s+(+x.a||0),0));const p=bkVPartyOf(v);const base=bkBase(v);
+    const cr=(v.ln||[]).filter(x=>!FR.has(x.l)&&Math.sign(x.a)===-Math.sign(f)).sort((a,b)=>Math.abs(b.a)-Math.abs(a.a))[0];rows.push({v,f,p,base,to:cr?cr.l:"",fl})});
+  const paid=r2(rows.filter(r=>r.f>0).reduce((s,r)=>s+r.f,0)),rec=r2(-rows.filter(r=>r.f<0).reduce((s,r)=>s+r.f,0)),net=r2(paid-rec);
+  const sales=r2(Math.abs(V.reduce((s,v)=>s+(v.ln||[]).filter(x=>(L[x.l]||{}).g==="sales").reduce((a,x)=>a+(+x.a||0),0),0))),purch=r2(V.reduce((s,v)=>s+(v.ln||[]).filter(x=>(L[x.l]||{}).g==="purch").reduce((a,x)=>a+(+x.a||0),0),0));
+  const pc=(a,b)=>b?(Math.round(a/b*1000)/10)+"%":"—";
+  const card=(k,v,sub)=>`<div class="bkOc" style="cursor:default"><span>${esc(k)}</span><b>${v}</b>${sub?`<small style="color:var(--mute)">${esc(sub)}</small>`:""}</div>`;
+  let h=`<div class="filters"><button class="btn ghost" id="frSet" style="padding:4px 10px;font-size:12px">⚙ ${esc(bt("कौन से लेजर फ़्रेट हैं","Which ledgers are freight"))} (${FR.size})</button><span class="m">${esc([...FR].map(id=>(L[id]||{}).n).join(" · ").slice(0,160))}</span></div>`;
+  if(!FR.size)return h+`<div class="empty">${esc(bt("कोई फ़्रेट लेजर नहीं मिला — ⚙ दबाकर चुनें","No freight ledger found — press ⚙ to choose"))}</div>`;
+  h+=`<div class="bkOcs" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">${card(bt("फ़्रेट ख़र्च (दिया)","Freight paid"),"₹"+bkN(paid),rows.filter(r=>r.f>0).length+bt(" एंट्री"," entries"))}${card(bt("फ़्रेट वसूला (ग्राहक से)","Freight recovered"),"₹"+bkN(rec),"")}${card(bt("शुद्ध फ़्रेट","Net freight"),"₹"+bkN(net),"")}${card(bt("बिक्री का %","% of sales"),pc(net,sales),"₹"+bkN(sales))}${card(bt("ख़रीद का %","% of purchases"),pc(net,purch),"₹"+bkN(purch))}</div>`;
+  /* month-wise */
+  const mon={};rows.forEach(r=>{const m=r.v.d.slice(0,7);mon[m]=r2((mon[m]||0)+r.f)});const ms={};V.forEach(v=>{const m=v.d.slice(0,7);(v.ln||[]).forEach(x=>{const g=(L[x.l]||{}).g;if(g==="sales")ms[m]=r2((ms[m]||0)-(+x.a||0))})});
+  const months=Object.keys(Object.assign({},mon,ms)).sort();
+  h+=`<h4 style="margin:12px 0 4px">📆 ${esc(bt("महीने-वार","Month-wise"))}</h4>`+bkTbl(months.map(m=>`<tr>${bkTd(esc(bkDt(m+"-01").replace(/^1-/,"")))}${bkTd(bkN(mon[m]||0),1)}${bkTd(bkN(ms[m]||0),1)}${bkTd(pc(mon[m]||0,ms[m]||0),1,1)}</tr>`),[bt("महीना","Month"),bt("फ़्रेट","Freight"),bt("बिक्री","Sales"),bt("बिक्री का %","% of sales")]);
+  /* ledger-wise */
+  const lw={};rows.forEach(r=>r.fl.forEach(x=>{lw[x.l]=r2((lw[x.l]||0)+(+x.a||0))}));
+  h+=`<h4 style="margin:12px 0 4px">📒 ${esc(bt("लेजर-वार","Ledger-wise"))}</h4>`+bkTbl(Object.keys(lw).map(id=>`<tr class="bkLg" data-id="${esc(id)}" style="cursor:pointer">${bkTd(esc(bkLN(id))+"<br><span class='m'>"+esc(bkGN((L[id]||{}).g))+"</span>")}${bkTd(bkDC(lw[id]),1,1)}</tr>`),[bt("लेजर","Ledger"),"₹"]);
+  /* party-wise (customers / suppliers whose bills carry freight) */
+  const pw={};rows.forEach(r=>{if(!r.p||bkTransp(r.p))return;const x=pw[r.p]=pw[r.p]||{f:0,b:0,n:0};x.f=r2(x.f+r.f);x.b=r2(x.b+r.base);x.n++});
+  const avgPct=(()=>{const t=Object.values(pw).reduce((a,x)=>[a[0]+Math.abs(x.f),a[1]+x.b],[0,0]);return t[1]?t[0]/t[1]*100:0})();
+  const pwr=(g,title)=>{const ids=Object.keys(pw).filter(id=>(L[id]||{}).g===g).sort((a,b)=>Math.abs(pw[b].f)-Math.abs(pw[a].f));if(!ids.length)return"";
+    return `<h4 style="margin:12px 0 4px">${title}</h4>`+bkTbl(ids.map(id=>{const x=pw[id],p=x.b?Math.abs(x.f)/x.b*100:null,hi=p!=null&&avgPct&&p>Math.max(avgPct*2,avgPct+3);return `<tr class="bkLg" data-id="${esc(id)}" style="cursor:pointer">${bkTd(esc(bkLN(id))+(hi?` <span style="color:var(--red);font-size:12px">⚠ ${esc(bt("औसत से बहुत ज़्यादा","far above average"))}</span>`:""))}${bkTd(String(x.n),1)}${bkTd(bkN(x.b),1)}${bkTd(bkDC(x.f),1)}${bkTd(p==null?"—":(Math.round(p*10)/10)+"%",1,1)}${bkTd(x.n?bkN(r2(Math.abs(x.f)/x.n)):"—",1)}</tr>`}),[bt("पार्टी","Party"),bt("बिल","Bills"),bt("बिल रकम","Bill value"),bt("फ़्रेट","Freight"),bt("फ़्रेट %","Freight %"),bt("प्रति बिल","Per bill")])};
+  h+=pwr("sdr","📤 "+bt("ग्राहक-वार (बाहर भेजा माल — Outward)","Customer-wise (outward)"))+pwr("scr","📥 "+bt("सप्लायर-वार (आया माल — Inward)","Supplier-wise (inward)"));
+  /* transporter-wise: who was paid */
+  const tw={};rows.filter(r=>r.f>0).forEach(r=>{const who=r.p&&bkTransp(r.p)?r.p:(r.to&&((L[r.to]||{}).g==="scr")?r.to:(r.to&&["cash","bank","bod"].includes((L[r.to]||{}).g)?"__cb":"__oth"));const x=tw[who]=tw[who]||{f:0,n:0};x.f=r2(x.f+r.f);x.n++});
+  h+=`<h4 style="margin:12px 0 4px">🚛 ${esc(bt("ट्रांसपोर्टर-वार (किसे दिया)","Transporter-wise (paid to)"))}</h4>`+bkTbl(Object.keys(tw).sort((a,b)=>tw[b].f-tw[a].f).map(k=>`<tr${k.startsWith("__")?"":` class="bkLg" data-id="${esc(k)}" style="cursor:pointer"`}>${bkTd(esc(k==="__cb"?bt("नकद / बैंक से सीधा","Paid direct by cash / bank"):k==="__oth"?bt("बिल में जोड़ा / अन्य","Added in bills / other"):bkLN(k)))}${bkTd(String(tw[k].n),1)}${bkTd(bkN(tw[k].f),1,1)}${bkTd(bkN(r2(tw[k].f/tw[k].n)),1)}</tr>`),[bt("किसे","Paid to"),bt("एंट्री","Entries"),"₹",bt("औसत","Average")]);
+  /* unusual bills */
+  const odd=rows.filter(r=>r.base&&avgPct&&Math.abs(r.f)/r.base*100>Math.max(avgPct*2,avgPct+3)).sort((a,b)=>Math.abs(b.f)/b.base-Math.abs(a.f)/a.base).slice(0,30);
+  if(odd.length)h+=`<h4 style="margin:12px 0 4px">⚠ ${esc(bt("जिन बिलों में फ़्रेट बहुत ज़्यादा","Bills with unusually high freight"))} <span class="m">(${esc(bt("औसत ","avg "))}${Math.round(avgPct*10)/10}%)</span></h4>`+odd.map(r=>`<div class="item bkV" data-id="${esc(r.v.id)}"><div class="main"><div class="t">${esc(bkDt(r.v.d))} · ${esc(bkTN(r.v.t))} #${esc((r.v.gst&&r.v.gst.inv)||r.v.no||"")}</div><div class="m">${esc(r.p?bkLN(r.p):"")} · ${esc(bt("बिल ₹","bill ₹"))}${bkN(r.base)}</div></div><div style="font-weight:600;color:var(--red);white-space:nowrap">₹${bkN(Math.abs(r.f))} · ${Math.round(Math.abs(r.f)/r.base*1000)/10}%</div></div>`).join("");
+  const unl=r2(rows.filter(r=>!r.base).reduce((s,r)=>s+r.f,0));if(unl)h+=`<div class="note" style="margin-top:8px">${esc(bt("बिल से अलग (जर्नल / पेमेंट में) बुक हुआ फ़्रेट: ₹","Freight booked apart from bills (journal / payment): ₹"))}${bkN(unl)}</div>`;
+  return h}
+function bkFrSettings(){const L=bkL().filter(l=>!["sdr","scr","cash","bank","bod","dt","cap","res"].includes(l.g)).sort((a,b)=>a.n.localeCompare(b.n)),FR=bkFrSet();
+  return `<div class="note">${esc(bt("जिन लेजर में भाड़ा / ढुलाई / ट्रांसपोर्ट बुक होता है उन पर टिक करें। नाम में Freight, Cartage, Transport वग़ैरह हो तो अपने-आप टिक होता है।","Tick the ledgers where freight / cartage / transport is booked. Names with Freight, Cartage, Transport etc. are ticked automatically."))}</div>
+   <input id="frQ" type="search" placeholder="🔍 ${esc(bt("खोजें…","Search…"))}" style="margin:6px 0"><div id="frL" style="max-height:55vh;overflow:auto">${L.map(l=>`<label class="chk frRow" style="margin:2px 0"><input type="checkbox" data-id="${esc(l.id)}"${FR.has(l.id)?" checked":""}> ${esc(l.n)} <span class="m">· ${esc(bkGN(l.g))}</span></label>`).join("")}</div>
+   <div class="actions"><button class="btn" id="frSave">${esc(bt("सेव","Save"))}</button><button class="btn ghost" id="frBack">${esc(bt("वापस","Back"))}</button></div>`}
+{const _t=bkTab;bkTab=function(R){if(bk.tab==="party")return bkPartyHtml(R);if(bk.tab==="frt")return bkFrtHtml(R);return _t(R)}}
+{const _w=bkWire;bkWire=function(){_w();
+  document.querySelectorAll("[data-pa]").forEach(b=>b.onclick=()=>{bk.pa=b.dataset.pa;renderBk()});const ps=$("#paS");if(ps)ps.onchange=()=>{bk.paS=ps.value;renderBk()};
+  const fs=$("#frSet");if(fs)fs.onclick=()=>{bk.frSet=true;renderBk()};const fb=$("#frBack");if(fb)fb.onclick=()=>{bk.frSet=false;renderBk()};
+  const fq=$("#frQ");if(fq)fq.oninput=()=>{const q=fq.value.toLowerCase();document.querySelectorAll(".frRow").forEach(r=>r.style.display=r.textContent.toLowerCase().includes(q)?"":"none")};
+  const sv=$("#frSave");if(sv)sv.onclick=async()=>{if(!bkCan()){toast(bt("बदलने की अनुमति नहीं","No permission to change"));return}const fr={};document.querySelectorAll("#frL input").forEach(c=>{const id=c.dataset.id,auto=BK_FRT.test((bk.book.L[id]||{}).n||"");if(c.checked!==auto)fr[id]=c.checked?1:0;else fr[id]=null});
+    try{await bkMerge("bk_books",bk.pid,{fr},true);bk.frSet=false;toast(bt("सेव हुआ","Saved"));renderBk()}catch(e){toast(t("saveFail"))}}}}
+
 paintStatic();render();init();
 </script>
 </body>
