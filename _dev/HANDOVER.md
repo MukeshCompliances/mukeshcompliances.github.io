@@ -269,3 +269,10 @@ Approach that worked for GST: ask him for REAL sample files of one client, read 
 - Settings per computer in localStorage `__tl_<pid>` {co, dir both/pull/push, auto}; auto every 3 min while the page is visible. Menu label shows 🟢/🔴 when auto is on.
 - File import now also goes through `bkTallyApply`. bkV/tlAllV tie-break prefers the non-deleted record.
 - Works on the website only (claude.ai artifact sandbox blocks localhost). Chrome may ask "allow local network access" once.
+
+### Update 26 Nov 2026 (3) — safe Tally linking, books per GSTIN (artifact v85 + site)
+- His worry: Tally has state-wise companies and one owner has several businesses → the app must not mix data.
+- **Books per GSTIN**: book id = `pid` for a client's first GSTIN, `pid~<GSTIN>` for its other GSTINs (dropdown shows one entry per GSTIN). Own firm: `_self` plus extra businesses `_self~<gstin or slug>` listed in `bk_meta/self` {books:[{id,name,gstin}]} via "＋ दूसरा बिज़नेस / GSTIN जोड़ें" (`__addself`). `bkPidParts()`.
+- **Tally link** stored in the book: `bk_books.tl` {co, gstins, multi, force, at, by} (no longer per computer); global map `bk_meta/tally` {map:{<company>:{pid,name,gstin}|null}} → one Tally company ↔ one book.
+- `tlCompanies()` now returns {name, state, gstins} (GSTINs found anywhere in the COMPANY element). `tlCheck`: ok (GSTIN matches) / bad (differs → link only with "I am sure" tick, stored `force`) / warn (no GSTIN in Tally → confirm by name) / block (company linked to other books). `tlGuard` re-checks before every sync (company must be open; mismatch stops unless forced).
+- Multi-GSTIN Tally company (`tl.multi`): pushed vouchers carry `<CMPGSTIN>`; pulled / file-imported vouchers with another `CMPGSTIN` are skipped (`bkCgOk`).

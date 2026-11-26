@@ -5273,7 +5273,8 @@ const _fpRow=row;row=function(i){const h=_fpRow(i);if(i.code!=="FS")return h;con
   return h.replace('<div style="margin-top:6px">','<div style="margin-top:6px"><span class="badge '+(d===L?"b-filed":"b-up")+'" style="margin-right:4px">📑 '+d+"/"+L+"</span>")};
 
 /* ===== what's new: shown once per person; add a new entry at the top for each change ===== */
-const WHATS_NEW=[{id:"2026-11-26b",items:[
+const WHATS_NEW=[{id:"2026-11-26c",items:[
+ ["🛡 Tally से जोड़ने में सुरक्षा: हर GSTIN की किताबें अलग (एक क्लाइंट के कई राज्य = अलग किताबें; अपनी फ़र्म में \"＋ दूसरा बिज़नेस / GSTIN\")। Tally कंपनी जोड़ते समय उसका GSTIN किताबों से मिलाया जाता है — अलग हो तो जोड़ना रुकता है; एक Tally कंपनी सिर्फ़ एक किताबों से जुड़ती है; हर सिंक से पहले दोबारा जाँच; कई GSTIN वाली Tally कंपनी से सिर्फ़ उसी GSTIN के वाउचर आते हैं।","🛡 Safe Tally linking: separate books for each GSTIN (a client in several states = separate books; for your own firm \"＋ Another business / GSTIN\"). Linking a Tally company checks its GSTIN against the books — a mismatch stops it; one Tally company links to one set of books; checked again before every sync; from a Tally company with several GSTINs only that GSTIN's vouchers come in."]]},{id:"2026-11-26b",items:[
  ["🟢 Tally लाइव: Tally वाले कंप्यूटर पर छोटा \"Tally-Connector\" चालू करें (कुछ install नहीं) — फिर वेबसाइट खुली रहने पर हर 3 मिनट में दोनों तरफ़ अपने-आप सिंक: यहाँ बने लेजर / वाउचर Tally में, Tally के नए / बदले वाउचर यहाँ; यहाँ बदला या हटाया वाउचर Tally में भी बदलता / हटता है। 📒 → मास्टर → 🔄 Tally।","🟢 Tally live: start the small \"Tally-Connector\" on the Tally computer (nothing to install) — then, with the website open, both sides sync every 3 minutes: ledgers / vouchers made here go to Tally, new / changed Tally vouchers come here; a voucher changed or deleted here changes / goes in Tally too. 📒 → Masters → 🔄 Tally."]]},{id:"2026-11-26",items:[
  ["🔄 📒 हिसाब-किताब → मास्टर → \"🔄 Tally\": Tally में भेजने के लिए दो XML फ़ाइलें (लेजर + GST जानकारी, आइटम, वाउचर) और Tally की Export की हुई XML से लेजर, ओपनिंग बैलेंस, आइटम और वाउचर किताबों में लाना — Tally चालू या जुड़ा होना ज़रूरी नहीं। दोबारा लाने पर वही वाउचर दो बार नहीं आते।","🔄 📒 Accounts → Masters → \"🔄 Tally\": two XML files to import into Tally (ledgers with GST details, items, vouchers), and bring ledgers, opening balances, items and vouchers from an XML exported by Tally — Tally need not be running or connected. Importing again does not duplicate vouchers."]]},{id:"2026-11-24",items:[
  ["📒 हिसाब-किताब: बाईं ओर बिक्री / ख़रीद / रसीद… दबाने पर पहले उसका रजिस्टर (सूची, कुल, महीना / तिमाही, खोज) और ऊपर \"＋ नई बिक्री\" बटन। बिल में ही \"＋ नया ग्राहक\" और \"＋\" से नया आइटम, आइटम चुनते ही HSN, GST % और स्टॉक दिखता है (GST % अलग हो तो ⚠)। \"⚙ नंबर का फ़ॉर्मेट\" से बिल नंबर अपने-आप (जैसे INV/26-27/101)।","📒 Accounts: sales / purchase / receipt… in the menu first open their register (list, totals, month / quarter, search) with a \"＋ New sale\" button on top. In the bill: \"＋ New customer\", \"＋\" for a new item, item shows HSN, GST % and stock (⚠ if GST % differs). \"⚙ Number format\" numbers bills automatically (e.g. INV/26-27/101)."]]},{id:"2026-11-23g",items:[
@@ -5899,7 +5900,7 @@ function bkWire(){const el=$("#bk");const p=$("#bkP");if(p)p.onchange=()=>bkOpen
   const cs=$("#bkCsS");if(cs)cs.onclick=async()=>{cs.disabled=true;try{await bkMerge("bk_books",bk.pid,{cs:{[bk.fy]:r2($("#bkCs").value)}},true);toast(bt("सेव हो गया","Saved"))}catch(e){toast(t("saveFail"))}cs.disabled=false};
   const cf=$("#bkCf");if(cf)cf.onclick=()=>bkCarry()}
 /* ---- start books ---- */
-function bkStartForm(){const p=(parties||[]).find(x=>x.id===bk.pid)||{name:bk.pid==="_self"?bkSelfName():"",gsts:[]};const gs=(p.gsts||[]).map(g=>g.gstin).filter(Boolean);
+function bkStartForm(){const bp=bkPidParts(bk.pid),p=(parties||[]).find(x=>x.id===bp.pid)||{name:bp.self?bkSelfName():"",gsts:[]};const gs=bp.gstin?[bp.gstin]:(p.gsts||[]).map(g=>g.gstin).filter(Boolean);
   openSheet(`<h3>📒 ${esc(bt("किताबें शुरू करें","Start books"))}</h3><div class="m">${esc(p.name||"")}</div>
    <label>${esc(bt("GSTIN (राज्य तय करने के लिए)","GSTIN (sets the state)"))}</label>${gs.length>1?`<select id="bsG">${gs.map(g=>`<option>${esc(g)}</option>`).join("")}</select>`:`<input id="bsG" value="${esc(gs[0]||"")}" maxlength="15" style="text-transform:uppercase">`}
    <label>${esc(bt("राज्य","State"))}</label><select id="bsS">${Object.keys(STATES).map(k=>`<option value="${k}">${k} ${esc(STATES[k])}</option>`).join("")}</select>
@@ -6086,7 +6087,7 @@ function bkOutHtml(R){const last={};R.V.forEach(v=>(v.ln||[]).forEach(x=>{if(v.t
    bk_books/{pid}.I : {id:{n,hsn,u,r,op:{fy:{q,v}},del}}   .info : {addr,ph,em,bank,ac,ifsc,pre,terms}
    bill item lines may carry it (item id), q (qty), p (rate); stock = weighted average cost */
 const BK_UQC=["NOS","PCS","KGS","GMS","TON","LTR","MLT","MTR","SQM","SQF","BOX","CTN","BAG","SET","DOZ","PAC","ROL","OTH"];
-const bkSelfName=()=>(window.__site&&__site.firm&&__site.firm.name)||bt("मेरी फ़र्म","My firm");
+const bkSelfName=()=>{const x=bk.pid&&bk.pid.startsWith("_self~")&&(bkMetaSelf()||[]).find(y=>y.id===bk.pid);return x?x.name:((window.__site&&__site.firm&&__site.firm.name)||bt("मेरी फ़र्म","My firm"))};
 function bkItems(){const I=(bk.book&&bk.book.I)||{};return Object.keys(I).filter(id=>!I[id].del).map(id=>Object.assign({id},I[id])).sort((a,b)=>a.n.localeCompare(b.n))}
 function bkItemOf(name){name=(name||"").trim().toLowerCase();if(!name)return"";const x=bkItems().find(i=>i.n.toLowerCase()===name);return x?x.id:""}
 function bkInvNo(t0,no){const pre=(bk.book&&bk.book.info&&bk.book.info.pre)||"";return (t0==="cn"?"CN/":"")+pre+no}
@@ -6306,7 +6307,7 @@ function bkTallyXml(opt){const B=bk.book,L=B.L||{},I=B.I||{},V=bkV().filter(v=>!
     `</STATEWISEDETAILS.LIST></GSTDETAILS.LIST>`+(op.q?`<OPENINGBALANCE>${op.q} ${xe(x.u||"NOS")}</OPENINGBALANCE><OPENINGVALUE>${(-r2(op.v)).toFixed(2)}</OPENINGVALUE><OPENINGRATE>${r2(op.v/op.q)}/${xe(x.u||"NOS")}</OPENINGRATE>`:"")+`</STOCKITEM></TALLYMESSAGE>`});
   const vch=V.map(v=>{const T=BK_TALLY_T[v.t]||"Journal",g=v.gst,useInv=opt.inv&&g&&(g.items||[]).some(it=>it.it&&I[it.it]&&+it.q);
     const no=xe(g&&g.inv||v.no),party=g&&g.party?bk.book.L[g.party]:null;
-    let body=`<DATE>${bkTD(v.d)}</DATE><VOUCHERTYPENAME>${T}</VOUCHERTYPENAME><VOUCHERNUMBER>${no}</VOUCHERNUMBER>`+(g&&(v.t==="sales"||v.t==="purch"||v.t==="cn"||v.t==="dn")?`<REFERENCE>${no}</REFERENCE>`:"")+`<NARRATION>${xe(v.nar||"")}</NARRATION>`+
+    let body=`<DATE>${bkTD(v.d)}</DATE>${opt.cmpgstin?`<CMPGSTIN>${xe(opt.cmpgstin)}</CMPGSTIN>`:""}<VOUCHERTYPENAME>${T}</VOUCHERTYPENAME><VOUCHERNUMBER>${no}</VOUCHERNUMBER>`+(g&&(v.t==="sales"||v.t==="purch"||v.t==="cn"||v.t==="dn")?`<REFERENCE>${no}</REFERENCE>`:"")+`<NARRATION>${xe(v.nar||"")}</NARRATION>`+
       (party?`<PARTYLEDGERNAME>${xe(party.n)}</PARTYLEDGERNAME>`+(party.gstin?`<PARTYGSTIN>${xe(party.gstin)}</PARTYGSTIN>`:"")+(g.ps&&STATES[g.ps]?`<PLACEOFSUPPLY>${xe(STATES[g.ps])}</PLACEOFSUPPLY>`:""):"")+`<ISINVOICE>${useInv?"Yes":"No"}</ISINVOICE><PERSISTEDVIEW>${useInv?"Invoice Voucher View":"Accounting Voucher View"}</PERSISTEDVIEW>`;
     const lines=(v.ln||[]).map(x=>({n:bkLN(x.l),a:x.a,l:x.l}));
     if(useInv){const itemLedgers=new Set(g.items.filter(it=>it.it&&I[it.it]&&+it.q).map(it=>it.l));
@@ -6341,7 +6342,7 @@ function bkTallyParse(docs){const G={},LG=[],VS=[],IT=[];
       const ln=[];[...v.children].filter(c=>/^(ALL)?LEDGERENTRIES\.LIST$/.test(c.tagName)).forEach(e=>{const n=bkTx(e,"LEDGERNAME");if(n)ln.push({n,a:-bkTNum(bkTx(e,"AMOUNT"))})});
       const inv=[];[...v.children].filter(c=>c.tagName==="ALLINVENTORYENTRIES.LIST"||c.tagName==="INVENTORYENTRIES.LIST").forEach(e=>{const it=bkTx(e,"STOCKITEMNAME"),q=Math.abs(bkTNum(bkTx(e,"BILLEDQTY")||bkTx(e,"ACTUALQTY"))),p=Math.abs(bkTNum(bkTx(e,"RATE")));
         [...e.children].filter(c=>c.tagName==="ACCOUNTINGALLOCATIONS.LIST").forEach(a=>{const n=bkTx(a,"LEDGERNAME"),amt=-bkTNum(bkTx(a,"AMOUNT"));if(n){ln.push({n,a:amt});inv.push({it,q,p,l:n,v:Math.abs(amt)})}})});
-      VS.push({guid:bkTx(v,"GUID")||"",remote:v.getAttribute("REMOTEID")||"",alt:bkTx(v,"ALTERID")||"",tn,d:d.slice(0,4)+"-"+d.slice(4,6)+"-"+d.slice(6,8),no:bkTx(v,"VOUCHERNUMBER"),ref:bkTx(v,"REFERENCE"),nar:bkTx(v,"NARRATION"),party:bkTx(v,"PARTYLEDGERNAME"),ln,inv})})});
+      VS.push({cg:(bkTx(v,"CMPGSTIN")||"").toUpperCase(),guid:bkTx(v,"GUID")||"",remote:v.getAttribute("REMOTEID")||"",alt:bkTx(v,"ALTERID")||"",tn,d:d.slice(0,4)+"-"+d.slice(4,6)+"-"+d.slice(6,8),no:bkTx(v,"VOUCHERNUMBER"),ref:bkTx(v,"REFERENCE"),nar:bkTx(v,"NARRATION"),party:bkTx(v,"PARTYLEDGERNAME"),ln,inv})})});
   const grpOf=parent=>{let p=(parent||"").toLowerCase(),k=0;while(p&&k<20){if(BK_TALLY_GR[p])return BK_TALLY_GR[p];p=(G[p]||"").toLowerCase();k++}return"sus"};
   LG.forEach(l=>l.g=grpOf(l.parent));
   const typ=tn=>{const s=tn.toLowerCase();if(/stock\s*journal|physical|memo|order|delivery\s*note|receipt\s*note|rejection|material|job\s*work|manufactur|attendance|payroll|reversing/.test(s))return"";return /credit\s*note/.test(s)?"cn":/debit\s*note/.test(s)?"dn":/purchase/.test(s)?"purch":/sales|invoice/.test(s)?"sales":/receipt/.test(s)?"rcpt":/payment/.test(s)?"pay":/contra/.test(s)?"contra":/journal/.test(s)?"jrnl":""};
@@ -6374,7 +6375,7 @@ function bkTallyForm(){const has=bk.book&&Object.keys(bk.book.L||{}).length;cons
   $("#tiF").onchange=async e=>{const P=$("#tiP");P.innerHTML=esc(t("loading")||"…");let docs=[];try{for(const f of e.target.files)docs.push(await bkReadXml(f))}catch(err){P.innerHTML=`<div class="err">${esc(bt("फ़ाइल पढ़ी नहीं गई — Tally से XML (Data Interchange) फ़ॉर्मेट में export करें।","Could not read the file — export from Tally in XML (Data Interchange) format."))}</div>`;return}
     const X=bkTallyParse(docs);bkTallyPreview(X)}}
 function bkTallyPreview(X){const P=$("#tiP"),L=(bk.book&&bk.book.L)||{},byName={};Object.keys(L).filter(id=>!L[id].del).forEach(id=>byName[L[id].n.toLowerCase()]=id);
-  const newL=X.LG.filter(l=>!byName[l.n.toLowerCase()]),inFy=X.VS.filter(v=>v.t&&bkFyOfD(v.d)===bk.fy),other=X.VS.filter(v=>v.t&&bkFyOfD(v.d)!==bk.fy);
+  const newL=X.LG.filter(l=>!byName[l.n.toLowerCase()]),inFy=X.VS.filter(v=>v.t&&bkFyOfD(v.d)===bk.fy&&bkCgOk(v)),other=X.VS.filter(v=>v.t&&bkFyOfD(v.d)!==bk.fy);
   const haveKey=new Set(bkV().map(v=>v.tk).filter(Boolean)),key=v=>v.guid||(v.tn+"|"+v.no+"|"+v.d),fresh=inFy.filter(v=>!haveKey.has(key(v)));
   const missingL=[...new Set(fresh.flatMap(v=>v.ln.map(x=>x.n)).filter(n=>!byName[n.toLowerCase()]&&!X.LG.some(l=>l.n.toLowerCase()===n.toLowerCase())))];
   const cnt={};fresh.forEach(v=>cnt[v.t]=(cnt[v.t]||0)+1);
@@ -6435,7 +6436,7 @@ async function tlPush(co){const B=bk.book,L=B.L||{},I=B.I||{},out={m:0,v:0,d:0,e
     if(r.e)out.err.push(...r.err);const patch={L:{},I:{}};lids.forEach(id=>patch.L[id]={tp:true});iids.forEach(id=>patch.I[id]={tp:true});if(!iids.length)delete patch.I;await bkMerge("bk_books",bk.pid,patch,true)}
   const all=tlAllV(),now=new Date().toISOString();
   const send=all.filter(v=>!v.del&&v.d&&(!v.tpAt||(v.at||"")>v.tpAt)),gone=all.filter(v=>v.del&&v.tpAt);
-  if(send.length){for(let i=0;i<send.length;i+=100){const part=send.slice(i,i+100);const X=bkTallyXml({company:co,inv:true,remote:true,vids:part.map(v=>v.id),lids:[],iids:[]});
+  if(send.length){for(let i=0;i<send.length;i+=100){const part=send.slice(i,i+100);const X=bkTallyXml({company:co,inv:true,remote:true,cmpgstin:bk.book.tl&&bk.book.tl.multi?bk.book.gstin:"",vids:part.map(v=>v.id),lids:[],iids:[]});
     const r=tlResult(await tlPost(X.vouchers,120000));if(r.e){out.err.push(...r.err);continue}out.v+=r.c+r.a;
     const by={};part.forEach(v=>{(by[v.doc]=by[v.doc]||{})[v.id]={tpAt:now}});for(const doc in by)await bkMerge("bk_vm",doc,{v:by[doc]},true)}}
   if(gone.length){const prev=gone.map(v=>{const full=Object.values(bk.vm).map(d=>(d.v||{})[v.id]).find(x=>x&&x.t)||{};return Object.assign({},full,v)});
@@ -6452,7 +6453,7 @@ async function tlPull(co){const docs=[];
 /* bring parsed Tally data into the books: new ledgers / items, new vouchers, and vouchers altered in Tally (ALTERID changed) */
 async function bkTallyApply(X,o){const L=(bk.book&&bk.book.L)||{},byName={};Object.keys(L).filter(id=>!L[id].del).forEach(id=>byName[L[id].n.toLowerCase()]=id);
   const key=v=>v.guid||(v.tn+"|"+v.no+"|"+v.d),have={};tlAllV().filter(v=>v.tk).forEach(v=>have[v.tk]=v);
-  const inFy=X.VS.filter(v=>v.t&&bkFyOfD(v.d)===bk.fy),fresh=inFy.filter(v=>!have[key(v)]),changed=o.live?inFy.filter(v=>{const h=have[key(v)];return h&&!h.del&&v.alt&&h.ta&&v.alt!==h.ta}):[];
+  const inFy=X.VS.filter(v=>v.t&&bkFyOfD(v.d)===bk.fy&&bkCgOk(v)),fresh=inFy.filter(v=>!have[key(v)]),changed=o.live?inFy.filter(v=>{const h=have[key(v)];return h&&!h.del&&v.alt&&h.ta&&v.alt!==h.ta}):[];
   const use=fresh.concat(changed),missingL=[...new Set(use.flatMap(v=>v.ln.map(x=>x.n)).filter(n=>!byName[n.toLowerCase()]&&!X.LG.some(l=>l.n.toLowerCase()===n.toLowerCase())))];
   const Lp={},mk=()=>"l"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
   X.LG.forEach(l=>{const id=byName[l.n.toLowerCase()];if(id){if(o.takeOp&&l.op)Lp[id]={op:{[bk.fy]:r2(l.op)}};if(l.gstin&&!L[id].gstin)Lp[id]=Object.assign(Lp[id]||{},{gstin:l.gstin,st:l.st})}
@@ -6474,13 +6475,13 @@ async function bkTallyApply(X,o){const L=(bk.book&&bk.book.L)||{},byName={};Obje
     for(let i=0;i<ids.length;i+=300){const part={};ids.slice(i,i+300).forEach(x=>part[x]=by[k][x]);const doc=bkDocFor(bk.fy+"-"+ref+"-01",JSON.stringify(part).length);
       await bkMerge("bk_vm",doc.id,Object.assign(doc.exists?{}:{pid:bk.pid,fy:bk.fy,ym:bk.fy+"-"+ref},{v:part}),doc.exists);if(!doc.exists)bk.vm[doc.id]={pid:bk.pid,fy:bk.fy,v:part}}}
   return{l:Object.keys(Lp).length,i:Object.keys(Ip).length,v:fresh.length,u:changed.length,skipped:X.VS.length-inFy.length}}
-async function tlSync(manual){if(tlState.busy||!bk.book)return;const S=tlGet();if(!S.co){if(manual)toast(bt("पहले Tally कंपनी चुनें","Choose the Tally company first"));return}
+async function tlSync(manual){if(tlState.busy||!bk.book)return;const S=Object.assign({},tlGet(),{co:(bk.book.tl&&bk.book.tl.co)||""});if(!S.co){if(manual)toast(bt("पहले Tally कंपनी चुनें","Choose the Tally company first"));return}
   tlState.busy=true;tlPaint();const dir=S.dir||"both";let msg="";
-  try{let p={m:0,v:0,d:0,err:[]},q={l:0,i:0,v:0,u:0};if(dir!=="pull")p=await tlPush(S.co);if(dir!=="push")q=await tlPull(S.co);
+  try{await tlGuard(S.co);let p={m:0,v:0,d:0,err:[]},q={l:0,i:0,v:0,u:0};if(dir!=="pull")p=await tlPush(S.co);if(dir!=="push")q=await tlPull(S.co);
     tlState.ok=true;tlState.last=new Date().toLocaleTimeString(lang==="hi"?"hi-IN":"en-IN",{hour:"2-digit",minute:"2-digit"});
     msg=bt(`⬆ Tally में: ${p.m} मास्टर, ${p.v} वाउचर${p.d?", "+p.d+" हटाए":""} · ⬇ यहाँ: ${q.l} लेजर, ${q.i} आइटम, ${q.v} नए, ${q.u} बदले वाउचर`,`⬆ To Tally: ${p.m} masters, ${p.v} vouchers${p.d?", "+p.d+" deleted":""} · ⬇ Here: ${q.l} ledgers, ${q.i} items, ${q.v} new, ${q.u} changed vouchers`);
     if(p.err.length)msg+=" · ⚠ Tally: "+p.err.join(" | ");}
-  catch(e){tlState.ok=false;msg=e.message==="tally"?bt("कनेक्टर चल रहा है पर Tally जवाब नहीं दे रहा — Tally खुला है? कंपनी खुली है? पोर्ट 9000 चालू है?","The connector is running but Tally is not answering — is Tally open with the company, and port 9000 on?"):e.message==="timeout"?bt("Tally ने समय पर जवाब नहीं दिया","Tally did not answer in time"):bt("कनेक्टर नहीं मिला — Tally वाले कंप्यूटर पर Tally-Connector चालू करें","Connector not found — start Tally-Connector on the Tally computer")}
+  catch(e){tlState.ok=false;msg=e.message==="nocompany"?bt("जुड़ी हुई Tally कंपनी अभी Tally में खुली नहीं है — Tally में वही कंपनी खोलें।","The linked Tally company is not open in Tally — open that company in Tally."):e.message==="mismatch"?bt("⛔ रोका: Tally कंपनी का GSTIN इन किताबों से मेल नहीं खाता। 🔄 Tally में कंपनी दोबारा जाँचें।","⛔ Stopped: the Tally company's GSTIN does not match these books. Check the company again under 🔄 Tally."):e.message==="tally"?bt("कनेक्टर चल रहा है पर Tally जवाब नहीं दे रहा — Tally खुला है? कंपनी खुली है? पोर्ट 9000 चालू है?","The connector is running but Tally is not answering — is Tally open with the company, and port 9000 on?"):e.message==="timeout"?bt("Tally ने समय पर जवाब नहीं दिया","Tally did not answer in time"):bt("कनेक्टर नहीं मिला — Tally वाले कंप्यूटर पर Tally-Connector चालू करें","Connector not found — start Tally-Connector on the Tally computer")}
   tlState.busy=false;tlState.msg=msg;tlPaint();if(manual)toast(tlState.ok?bt("Tally सिंक हुआ","Tally synced"):bt("Tally सिंक नहीं हुआ","Tally sync failed"))}
 function tlConnectorFile(){const origins=["https://mukeshcompliances.github.io",location.origin].filter((x,i,a)=>/^https:\/\//.test(x)&&a.indexOf(x)===i);
   return `@echo off\r\ntitle Tally Connector - Mukesh Compliances\r\npowershell -NoProfile -ExecutionPolicy Bypass -Command "iex ((Get-Content -Raw -Encoding UTF8 '%~f0') -split '#PS#')[2]"\r\npause\r\nexit /b\r\n#PS#\r\n`+
@@ -6519,6 +6520,66 @@ setInterval(()=>{try{if(bk.book&&tlGet().auto&&document.visibilityState==="visib
 bkTallyPreview=(function(_p){return function(X){_p(X);const b=$("#tiGo");if(!b)return;b.onclick=async()=>{b.disabled=true;const M=$("#tiM");M.textContent=bt("ला रहे हैं…","Bringing in…");
   try{const r=await bkTallyApply(X,{takeOp:$("#tiOp").checked,live:false});M.innerHTML="✅ "+esc(bt(`आ गए: ${r.l} लेजर, ${r.i} आइटम, ${r.v} वाउचर।`,`Brought in: ${r.l} ledgers, ${r.i} items, ${r.v} vouchers.`));toast(bt("Tally से डेटा आ गया","Data brought from Tally"))}
   catch(e){b.disabled=false;M.innerHTML=`<span class="err">${esc(t("saveFail"))}</span>`}}}})(bkTallyPreview);
+
+/* ===== 📒 Accounts part 7: one set of books per GSTIN, and safe linking of a Tally company ===== */
+const GSTIN_RE=/\b\d{2}[A-Z]{5}\d{4}[A-Z][A-Z0-9]Z[A-Z0-9]\b/g;
+function bkPidParts(pid){pid=pid||"";const i=pid.indexOf("~"),base=i<0?pid:pid.slice(0,i),rest=i<0?"":pid.slice(i+1);return{pid:base,self:base==="_self",gstin:/^\d{2}[A-Z0-9]{13}$/.test(rest)?rest:""}}
+const bkCgOk=v=>!v.cg||!(bk.book&&bk.book.gstin)||v.cg===bk.book.gstin;
+let bkMeta={self:null,tally:{},loaded:false};
+const bkMetaSelf=()=>bkMeta.self||[];
+function bkMetaLoad(){if(bkMeta.loaded)return;bkMeta.loaded=true;
+  if(mode!=="db"){const m=lget("compliance_bk_meta","{}");bkMeta.self=m.self||[];bkMeta.tally=m.tally||{};return}
+  try{appDb.collection("bk_meta").doc("self").onSnapshot(d=>{bkMeta.self=(d.exists&&d.data().books)||[];bkMeta.selfX=d.exists;renderBk()},()=>{});
+    appDb.collection("bk_meta").doc("tally").onSnapshot(d=>{bkMeta.tally=(d.exists&&d.data().map)||{};bkMeta.tallyX=d.exists},()=>{})}catch(e){}}
+async function bkMetaPut(doc,patch){if(mode!=="db"){const m=lget("compliance_bk_meta","{}");if(doc==="self")m.self=patch.books;else{m.tally=m.tally||{};Object.assign(m.tally,patch.map)}lset("compliance_bk_meta",m);bkMeta.self=m.self||[];bkMeta.tally=m.tally||{};return}
+  const ref=appDb.collection("bk_meta").doc(doc),ex=doc==="self"?bkMeta.selfX:bkMeta.tallyX;if(window.__site)return ref.set(patch,{merge:true});if(ex)return ref.update(patch);return ref.set(patch)}
+/* the books list: own firm (and its other businesses / GSTINs), then clients — one entry per GSTIN */
+bkPartyOpts=function(){bkMetaLoad();const sel=v=>v===bk.pid?" selected":"",fname=(window.__site&&__site.firm&&__site.firm.name)||bt("मेरी फ़र्म","My firm");
+  let h=`<optgroup label="${esc(bt("अपनी फ़र्म","My own firm"))}"><option value="_self"${sel("_self")}>🏢 ${esc(fname)}</option>`+bkMetaSelf().map(b=>`<option value="${esc(b.id)}"${sel(b.id)}>🏢 ${esc(b.name)}${b.gstin?" — "+esc(b.gstin):""}</option>`).join("")+
+    `<option value="__addself">＋ ${esc(bt("दूसरा बिज़नेस / GSTIN जोड़ें","Add another business / GSTIN"))}</option></optgroup><optgroup label="${esc(bt("ग्राहक","Clients"))}">`;
+  h+=(typeof parties!=="undefined"?parties:[]).slice().sort((a,b)=>(a.name||"").localeCompare(b.name||"")).map(p=>{const gs=[...new Set((p.gsts||[]).map(g=>String(g.gstin||"").toUpperCase()).filter(Boolean))];
+    if(gs.length<=1)return `<option value="${esc(p.id)}"${sel(p.id)}>${esc(p.name)}${gs[0]?" — "+esc(gs[0]):""}</option>`;
+    return gs.map((g,i)=>{const v=i===0?p.id:p.id+"~"+g;return `<option value="${esc(v)}"${sel(v)}>${esc(p.name)} — ${esc(g)} (${esc(STATES[g.slice(0,2)]||g.slice(0,2))})</option>`}).join("")}).join("");
+  return h+"</optgroup>"};
+{const _o=bkOpen;bkOpen=function(pid,fy){if(pid==="__addself"){bkSelfForm();renderBk();return}return _o(pid,fy)}}
+function bkSelfForm(){openSheet(`<h3>🏢 ${esc(bt("दूसरा बिज़नेस / GSTIN","Another business / GSTIN"))}</h3><div class="m">${esc(bt("एक ही मालिक के अलग बिज़नेस या अलग राज्य के GSTIN की किताबें अलग रखें।","Keep separate books for each business or each state's GSTIN of the same owner."))}</div>
+   <label>${esc(bt("बिज़नेस का नाम","Business name"))}</label><input id="bsN" maxlength="80"><label>GSTIN ${esc(bt("(अगर है)","(if any)"))}</label><input id="bsGi" maxlength="15" style="text-transform:uppercase">
+   <div class="actions"><button class="btn" id="bsOk">${esc(bt("जोड़ें","Add"))}</button><button class="btn ghost" id="bsNo">${esc(t("cancel")||"Cancel")}</button></div><div class="err" id="bsEr"></div>`);
+  $("#bsNo").onclick=closeSheet;$("#bsOk").onclick=async()=>{const n=$("#bsN").value.trim(),g=$("#bsGi").value.trim().toUpperCase();if(n.length<2){$("#bsEr").textContent=bt("नाम लिखें","Enter the name");return}
+    if(g&&!/^\d{2}[A-Z]{5}\d{4}[A-Z][A-Z0-9]Z[A-Z0-9]$/.test(g)){$("#bsEr").textContent=bt("GSTIN सही नहीं लगता","GSTIN does not look right");return}
+    const id="_self~"+(g||n.toLowerCase().replace(/[^a-z0-9]+/g,"-").slice(0,20)+"-"+Math.random().toString(36).slice(2,5));if(bkMetaSelf().some(b=>b.id===id)){$("#bsEr").textContent=bt("यह पहले से है","Already there");return}
+    try{await bkMetaPut("self",{books:bkMetaSelf().concat([{id,name:n.slice(0,80),gstin:g}])});closeSheet();bkOpen(id,bk.fy)}catch(e){$("#bsEr").textContent=t("saveFail")}}}
+/* Tally companies with their GSTIN(s) */
+tlCompanies=async function(){const tx=await tlPost(tlColl("MCCompanies","Company","NAME,STATENAME,GSTREGISTRATIONNUMBER,BASICCOMPANYFORMALNAME",""),15000),d=tlDoc(tx),ser=new XMLSerializer();
+  return [...d.getElementsByTagName("COMPANY")].map(c=>{const name=c.getAttribute("NAME")||bkTx(c,"NAME");return{name,state:bkTx(c,"STATENAME"),gstins:[...new Set(ser.serializeToString(c).toUpperCase().match(GSTIN_RE)||[])]}}).filter(c=>c.name)};
+function tlCheck(c){const g=(bk.book.gstin||"").toUpperCase(),other=bkMeta.tally[c.name];
+  if(other&&other.pid&&other.pid!==bk.pid)return{lv:"block",msg:bt(`⛔ यह Tally कंपनी पहले से "${other.name||other.pid}" की किताबों से जुड़ी है। एक कंपनी एक ही किताबों से जुड़ सकती है।`,`⛔ This Tally company is already linked to the books of "${other.name||other.pid}". One company can be linked to one set of books only.`)};
+  if(c.gstins.length&&g&&c.gstins.includes(g))return{lv:"ok",multi:c.gstins.length>1,msg:"✅ "+bt(`GSTIN मेल खाता है (${g})`,`GSTIN matches (${g})`)+(c.gstins.length>1?" · "+bt(`इस Tally कंपनी में ${c.gstins.length} GSTIN हैं — सिर्फ़ ${g} वाले वाउचर सिंक होंगे।`,`This Tally company has ${c.gstins.length} GSTINs — only vouchers of ${g} will sync.`):"")};
+  if(c.gstins.length)return{lv:"bad",msg:"✖ "+bt(`GSTIN अलग है — Tally कंपनी: ${c.gstins.join(", ")} · ये किताबें: ${g||"GSTIN नहीं"}`,`GSTIN differs — Tally company: ${c.gstins.join(", ")} · these books: ${g||"no GSTIN"}`)};
+  return{lv:"warn",msg:"⚠ "+bt(`Tally कंपनी में GSTIN नहीं मिला। नाम देखकर पक्का करें: Tally "${c.name}" ↔ किताबें "${bk.book.name||""}"`,`No GSTIN found in the Tally company. Confirm by name: Tally "${c.name}" ↔ books "${bk.book.name||""}"`)}}
+async function tlGuard(co){const cs=await tlCompanies(),c=cs.find(x=>x.name===co);if(!c)throw new Error("nocompany");const r=tlCheck(c);if(r.lv==="block")throw new Error("mismatch");if(r.lv==="bad"&&!(bk.book.tl&&bk.book.tl.force))throw new Error("mismatch");
+  if(r.lv==="ok"&&!!r.multi!==!!(bk.book.tl&&bk.book.tl.multi))await bkMerge("bk_books",bk.pid,{tl:{multi:!!r.multi}},true);return c}
+{const _f=bkTallyForm;bkTallyForm=function(){_f();const box=$("#tlBox");if(!box)return;bkMetaLoad();const link=bk.book.tl||{};
+  const co=$("#tlCo");co.innerHTML=`<option value="">${esc(link.co||"—")}</option>`;if(link.co)co.options[0].value=link.co;
+  co.closest(".row2").insertAdjacentHTML("afterend",`<div id="tlVer" class="note" style="margin:6px 0">${link.co?esc(bt("जुड़ी कंपनी: ","Linked company: "))+"<b>"+esc(link.co)+"</b>"+(link.gstins&&link.gstins.length?" · "+esc(link.gstins.join(", ")):""):esc(bt("अभी कोई Tally कंपनी नहीं जुड़ी — \"जाँचें\" दबाकर चुनें।","No Tally company linked yet — press \"Check\" and choose."))}</div><div id="tlLinkA"></div>`);
+  let comps=[];
+  const show=name=>{const A=$("#tlLinkA"),V=$("#tlVer");const c=comps.find(x=>x.name===name);if(!c){A.innerHTML="";return}const r=tlCheck(c);
+    V.innerHTML=esc(r.msg);V.style.background=r.lv==="ok"?"#eaf7ee":r.lv==="warn"?"#fff7e6":"#fdecec";
+    if(r.lv==="block"){A.innerHTML="";return}
+    A.innerHTML=(r.lv!=="ok"?`<label class="chk"><input type="checkbox" id="tlForce"> ${esc(r.lv==="bad"?bt("मुझे पक्का पता है कि यही सही कंपनी है — फिर भी जोड़ें","I am sure this is the right company — link anyway"):bt("हाँ, यही सही कंपनी है","Yes, this is the right company"))}</label>`:"")+
+      `<div class="actions" style="margin:4px 0"><button class="btn" id="tlLink"${r.lv!=="ok"?" disabled":""}>🔗 ${esc(bt("इस कंपनी को इन किताबों से जोड़ें","Link this company to these books"))}</button>${link.co?`<button class="btn ghost" id="tlUnlink">🔓 ${esc(bt("जोड़ हटाएँ","Unlink"))}</button>`:""}</div>`;
+    const f=$("#tlForce");if(f)f.onchange=()=>{$("#tlLink").disabled=!f.checked};
+    $("#tlLink").onclick=async()=>{const fresh=(await tlCompanies().catch(()=>comps)).find(x=>x.name===name)||c,r2=tlCheck(fresh);if(r2.lv==="block"){V.textContent=r2.msg;return}
+      const tl={co:name,gstins:fresh.gstins,multi:!!r2.multi,force:r2.lv!=="ok",at:new Date().toISOString(),by:me.id||"local"};
+      try{const mp={[name]:{pid:bk.pid,name:bk.book.name||"",gstin:bk.book.gstin||""}};if(link.co&&link.co!==name)mp[link.co]=null;await bkMetaPut("tally",{map:mp});await bkMerge("bk_books",bk.pid,{tl},true);bk.book.tl=tl;
+        V.innerHTML="🔗 "+esc(bt("जुड़ गई: ","Linked: "))+"<b>"+esc(name)+"</b>";V.style.background="#eaf7ee";A.innerHTML="";toast(bt("Tally कंपनी जुड़ गई","Tally company linked"))}catch(e){V.textContent=t("saveFail")}};
+    const u=$("#tlUnlink");if(u)u.onclick=()=>tlUnlink()};
+  async function tlUnlink(){try{await bkMetaPut("tally",{map:{[link.co]:null}});await bkMerge("bk_books",bk.pid,{tl:{co:"",gstins:[],multi:false,force:false}},true);bk.book.tl={};tlSet({auto:false});closeSheet();toast(bt("जोड़ हटा","Unlinked"))}catch(e){toast(t("saveFail"))}}
+  if(link.co)$("#tlLinkA").innerHTML=`<div class="actions" style="margin:4px 0"><button class="btn ghost" id="tlUnlink">🔓 ${esc(bt("जोड़ हटाएँ","Unlink"))}</button></div>`;const u0=$("#tlUnlink");if(u0)u0.onclick=()=>tlUnlink();
+  $("#tlChk").onclick=async()=>{tlState.msg=bt("जाँच रहे हैं…","Checking…");tlPaint();try{comps=await tlCompanies();tlState.ok=true;tlState.msg=comps.length?bt("Tally में खुली कंपनियाँ: ","Companies open in Tally: ")+comps.map(c=>c.name+(c.gstins.length?" ("+c.gstins.join(", ")+")":"")).join(" · "):bt("Tally में कोई कंपनी खुली नहीं","No company open in Tally");
+      co.innerHTML=`<option value="">— ${esc(bt("कंपनी चुनें","choose company"))} —</option>`+comps.map(c=>`<option${c.name===link.co?" selected":""}>${esc(c.name)}</option>`).join("");if(link.co&&comps.some(c=>c.name===link.co))show(link.co)}
+    catch(e){tlState.ok=false;tlState.msg=e.message==="tally"?bt("कनेक्टर चालू है पर Tally जवाब नहीं दे रहा — Tally खोलें और पोर्ट 9000 चालू करें।","The connector is on but Tally is not answering — open Tally and turn on port 9000."):bt("कनेक्टर नहीं मिला — इसी कंप्यूटर पर Tally-Connector चालू करें (ब्राउज़र \"लोकल नेटवर्क\" की अनुमति माँगे तो Allow दबाएँ)।","Connector not found — start Tally-Connector on this computer (allow \"local network\" access if the browser asks).")}tlPaint()};
+  co.onchange=e=>show(e.target.value)}}
 
 paintStatic();render();init();
 </script>
