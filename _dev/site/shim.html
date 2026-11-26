@@ -36,7 +36,9 @@ const MAXB=10*1024*1024,CH=700000;
 firebase.initializeApp(CFG);
 const auth=firebase.auth(),fs=firebase.firestore();
 try{auth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(()=>{})}catch(e){}
-try{fs.settings({ignoreUndefinedProperties:true,experimentalAutoDetectLongPolling:true,merge:true})}catch(e){}
+try{fs.settings({ignoreUndefinedProperties:true,experimentalForceLongPolling:true,merge:true})}catch(e){}
+/* "repair connection": drop this browser's saved copy of the data and reload (the data in the cloud is not touched) */
+window.__siteFixConn=async()=>{try{await fs.terminate()}catch(e){}try{await fs.clearPersistence()}catch(e){}try{localStorage.removeItem("__site_rl")}catch(e){}location.reload()};
 fs.enablePersistence({synchronizeTabs:true}).catch(()=>{});
 let ready,readyRes;let step="";
 /* a write the sign-in does not depend on: wait at most a few seconds (a write waits for the server and can sit forever when the link is poor) */

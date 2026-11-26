@@ -289,3 +289,8 @@ Approach that worked for GST: ask him for REAL sample files of one client, read 
 
 ### Fix 26 Nov 2026 — "Data could not be loaded (permission-denied)" seen on /addenda (Accounts)
 - His screenshot (older cached build: dropdown still had part-7/8 labels) showed the main `compliances` listener refused. Cause not found from here (rules allow firm members/owner). Mitigation: on `permission-denied` on the website the page reloads once (`sessionStorage.__pdRetry`, cleared after a good server snapshot); if it fails again the banner stays. Ask him which ID / firm if it repeats.
+
+### Fix 26 Nov 2026 (2) — "Can't reach the data right now" after sign-in (his PC)
+- After the reload-retry he got the slow banner (no server snapshot in 10 s) and empty books → the Firestore connection from his browser is not getting data (sign-in reads worked). Likely streaming blocked/buffered (antivirus web-shield / proxy) or a stuck local cache.
+- Now `experimentalForceLongPolling:true` (was auto-detect). Banner (slow / load error) on the website has **🧹 कनेक्शन ठीक करें** → `window.__siteFixConn` = `fs.terminate()` + `clearPersistence()` + reload (cloud data untouched).
+- If still failing: ask him to try an Incognito window and another browser / network, and whether an antivirus (Quick Heal / K7 / etc.) web protection is on.
