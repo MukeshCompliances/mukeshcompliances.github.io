@@ -6518,7 +6518,7 @@ function tlPaint(){const el=$("#tlBox");if(!el)return;const S=tlGet();
     if(dlCap){try{await dlCap.save({filename:"Tally-Connector.bat",data:blob})}catch(e){}}else{const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="Tally-Connector.bat";document.body.appendChild(a);a.click();a.remove()}};
   $("#tlChk").onclick=async()=>{tlState.msg=bt("जाँच रहे हैं…","Checking…");tlPaint();try{const cs=await tlCompanies();tlState.ok=true;tlState.msg=cs.length?bt("Tally में खुली कंपनियाँ: ","Companies open in Tally: ")+cs.join(", "):bt("Tally में कोई कंपनी खुली नहीं","No company open in Tally");
       const sel=$("#tlCo");const cur=tlGet().co||"";sel.innerHTML=`<option value="">—</option>`+cs.map(c=>`<option${c===cur?" selected":""}>${esc(c)}</option>`).join("");if(cs.length===1&&!cur){sel.value=cs[0];tlSet({co:cs[0]})}}
-    catch(e){tlState.ok=false;tlState.msg=e.message==="tally"?bt("कनेक्टर चालू है पर Tally जवाब नहीं दे रहा — Tally खोलें और पोर्ट 9000 चालू करें।","The connector is on but Tally is not answering — open Tally and turn on port 9000."):bt("कनेक्टर नहीं मिला — इसी कंप्यूटर पर Tally-Connector चालू करें (ब्राउज़र \"लोकल नेटवर्क\" की अनुमति माँगे तो Allow दबाएँ)।","Connector not found — start Tally-Connector on this computer (allow \"local network\" access if the browser asks).")}tlPaint()};
+    catch(e){tlState.ok=false;tlState.msg=e.message==="tally"?bt("कनेक्टर चालू है पर Tally जवाब नहीं दे रहा — Tally खोलें और पोर्ट 9000 चालू करें।","The connector is on but Tally is not answering — open Tally and turn on port 9000."):bt("Tally Bridge / कनेक्टर नहीं मिला — इसी कंप्यूटर के Chrome में \"🧩 Tally Bridge\" लगाएँ।","Tally Bridge / connector not found — add \"🧩 Tally Bridge\" to Chrome on this computer.")}tlPaint()};
   $("#tlCo").onchange=e=>tlSet({co:e.target.value});$("#tlDir").onchange=e=>tlSet({dir:e.target.value});$("#tlAuto").onchange=e=>{tlSet({auto:e.target.checked});if(e.target.checked)tlSync(false)};
   $("#tlNow").onclick=()=>tlSync(true)}}
 /* automatic sync while the books are open on this computer */
@@ -6586,7 +6586,7 @@ async function tlGuard(co){const cs=await tlCompanies(),c=cs.find(x=>x.name===co
   if(link.co)$("#tlLinkA").innerHTML=`<div class="actions" style="margin:4px 0"><button class="btn ghost" id="tlUnlink">🔓 ${esc(bt("जोड़ हटाएँ","Unlink"))}</button></div>`;const u0=$("#tlUnlink");if(u0)u0.onclick=()=>tlUnlink();
   $("#tlChk").onclick=async()=>{tlState.msg=bt("जाँच रहे हैं…","Checking…");tlPaint();try{comps=await tlCompanies();tlState.ok=true;tlState.msg=comps.length?bt("Tally में खुली कंपनियाँ: ","Companies open in Tally: ")+comps.map(c=>c.name+(c.gstins.length?" ("+c.gstins.join(", ")+")":"")).join(" · "):bt("Tally में कोई कंपनी खुली नहीं","No company open in Tally");
       co.innerHTML=`<option value="">— ${esc(bt("कंपनी चुनें","choose company"))} —</option>`+comps.map(c=>`<option${c.name===link.co?" selected":""}>${esc(c.name)}</option>`).join("");if(link.co&&comps.some(c=>c.name===link.co))show(link.co)}
-    catch(e){tlState.ok=false;tlState.msg=e.message==="tally"?bt("कनेक्टर चालू है पर Tally जवाब नहीं दे रहा — Tally खोलें और पोर्ट 9000 चालू करें।","The connector is on but Tally is not answering — open Tally and turn on port 9000."):bt("कनेक्टर नहीं मिला — इसी कंप्यूटर पर Tally-Connector चालू करें (ब्राउज़र \"लोकल नेटवर्क\" की अनुमति माँगे तो Allow दबाएँ)।","Connector not found — start Tally-Connector on this computer (allow \"local network\" access if the browser asks).")}tlPaint()};
+    catch(e){tlState.ok=false;tlState.msg=e.message==="tally"?bt("कनेक्टर चालू है पर Tally जवाब नहीं दे रहा — Tally खोलें और पोर्ट 9000 चालू करें।","The connector is on but Tally is not answering — open Tally and turn on port 9000."):bt("Tally Bridge / कनेक्टर नहीं मिला — इसी कंप्यूटर के Chrome में \"🧩 Tally Bridge\" लगाएँ।","Tally Bridge / connector not found — add \"🧩 Tally Bridge\" to Chrome on this computer.")}tlPaint()};
   co.onchange=e=>show(e.target.value)}}
 
 /* ===== 📒 Accounts part 8: 🧩 one business in several states — all GSTIN books together (read-only) =====
@@ -6727,6 +6727,23 @@ function bkPlHtml(R){const line=(a,b,bo,c)=>`<tr${c?` style="background:${c}"`:"
   return head+(bk.tab==="pl"?bkPlHtml(R):raw())}}
 /* GST view keeps the GST tab in the menu */
 {const _m=bkMenu;bkMenu=function(tabs){if(bk.cons&&bk.consGst){bk.cons=false;bk.consRO=true;let h;try{h=_m(tabs)}finally{bk.cons=true;bk.consRO=false}return h.replace(/<div class="bkSec">[^<]*<\/div><div class="bkVg">[\s\S]*?<\/div>(?=<div class="bkSec">)/,"").replace(/<button class="bkMk" data-k="(led|item|info|tally)">[\s\S]*?<\/button>/g,"")}return _m(tabs)}}
+
+/* ===== Tally Bridge: a tiny Chrome / Edge extension (works where Windows blocks .bat files, e.g. Smart App Control) =====
+   The site sends Tally XML to the extension (fixed id), the extension posts it to Tally at localhost:9000. The .bat connector stays as a fallback. */
+const TL_EXT="flhnehdbaolddadpdckoadkhlamgfobn";
+const tlHasRuntime=()=>!!(window.chrome&&chrome.runtime&&chrome.runtime.sendMessage);
+function tlExt(msg,ms){return new Promise((res,rej)=>{if(!tlHasRuntime())return rej(new Error("noext"));const tm=setTimeout(()=>rej(new Error("timeout")),ms||60000);
+  try{chrome.runtime.sendMessage(TL_EXT,msg,r=>{clearTimeout(tm);if(chrome.runtime.lastError||!r)return rej(new Error("noext"));res(r)})}catch(e){clearTimeout(tm);rej(new Error("noext"))}})}
+let tlVia="";
+{const _p=tlPost;tlPost=async function(xml,ms){try{const r=await tlExt({xml},ms||60000);tlVia="ext";if(r.err==="tally")throw new Error("tally");if(r.err)throw new Error("connector");return r.text}
+  catch(e){if(e.message==="tally"||e.message==="timeout")throw e;tlVia="bat";return _p(xml,ms)}}}
+/* company GSTINs live in the company's GST registrations (Tax Units) in TallyPrime */
+{const _c=tlCompanies;tlCompanies=async function(){const cs=await _c();for(const c of cs){try{const tx=await tlPost(tlColl("MCTax","TaxUnit","NAME,GSTREGNUMBER,STATENAME",c.name),15000);
+    const g=(tx.toUpperCase().match(GSTIN_RE)||[]);c.gstins=[...new Set(c.gstins.concat(g))]}catch(e){}}return cs}}
+{const _f=bkTallyForm;bkTallyForm=function(){_f();const dl=$("#tlDl");if(!dl)return;
+  dl.insertAdjacentHTML("beforebegin",`<a class="btn ghost" id="tlBr" href="/tally-bridge.zip" download>🧩 Tally Bridge (Chrome)</a>`);dl.textContent="⬇ "+bt("कनेक्टर (.bat) — दूसरा तरीका","Connector (.bat) — other way");
+  const box=$("#tlBox"),m=box&&box.querySelector(".m");if(m)m.innerHTML=esc(bt("Tally वाले कंप्यूटर पर: (1) \"🧩 Tally Bridge\" डाउनलोड करके unzip करें → Chrome में chrome://extensions → ऊपर दाएँ Developer mode चालू → \"Load unpacked\" → unzip किया हुआ tally-bridge फ़ोल्डर चुनें (एक बार)। (2) Tally में: F1 Help → Settings → Connectivity → \"acts as\" = Both, पोर्ट 9000। (3) यहाँ \"जाँचें\" दबाकर कंपनी चुनें और जोड़ें।","On the Tally computer: (1) download \"🧩 Tally Bridge\", unzip → in Chrome open chrome://extensions → turn on Developer mode (top right) → \"Load unpacked\" → choose the unzipped tally-bridge folder (once). (2) In Tally: F1 Help → Settings → Connectivity → \"acts as\" = Both, port 9000. (3) Press \"Check\" here, choose the company and link it."));
+  tlExt({ping:1},2500).then(()=>{const st=$("#tlSt");if(st&&!tlState.ok)st.innerHTML="🧩 "+esc(bt("Tally Bridge लगा हुआ है","Tally Bridge is installed"))}).catch(()=>{})}}
 
 paintStatic();render();init();
 </script>

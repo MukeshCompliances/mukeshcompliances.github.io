@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Mukesh Compliances - Tally Bridge",
+  "version": "1.0",
+  "description": "Lets mukeshcompliances.github.io talk to Tally on this computer (localhost:9000). Nothing else.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAypHPTmfbhEb0cVNsVzAu3FVJTroFSPe2wqw6y1VwEU9UZSMmIW1c6SOP20FzrmGFKHif6kCUlUOgQaW3jl7fV9iwH9zuul61YszO5Z1quRoPEemcz+xhrdbirLc72/eeiqf0Gj4zWqYa2BFCFPY05h2uKV/8+OHDLH9BaaeDdB193SzYkzg/y1rsda+EtswOJuyMbqd4sTD6uQjW64YDBLfs/Wd9V2kZwt0p10tDxN848ZCkSbvMuFoLxijRXYlwMQW/9yQnH2HhFj0F7JwSZiD14Qqn7jkdNIWTIdbrAU1+Gd+bzyebTp+zJwN+xadmZfCK2S1KPRbbqNq37yLdOQIDAQAB",
+  "background": { "service_worker": "background.js" },
+  "host_permissions": ["http://localhost:9000/*", "http://127.0.0.1:9000/*"],
+  "externally_connectable": { "matches": ["https://mukeshcompliances.github.io/*"] }
+}
