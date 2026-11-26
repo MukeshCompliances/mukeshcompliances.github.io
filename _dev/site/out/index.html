@@ -5273,7 +5273,8 @@ const _fpRow=row;row=function(i){const h=_fpRow(i);if(i.code!=="FS")return h;con
   return h.replace('<div style="margin-top:6px">','<div style="margin-top:6px"><span class="badge '+(d===L?"b-filed":"b-up")+'" style="margin-right:4px">📑 '+d+"/"+L+"</span>")};
 
 /* ===== what's new: shown once per person; add a new entry at the top for each change ===== */
-const WHATS_NEW=[{id:"2026-11-26",items:[
+const WHATS_NEW=[{id:"2026-11-26b",items:[
+ ["🟢 Tally लाइव: Tally वाले कंप्यूटर पर छोटा \"Tally-Connector\" चालू करें (कुछ install नहीं) — फिर वेबसाइट खुली रहने पर हर 3 मिनट में दोनों तरफ़ अपने-आप सिंक: यहाँ बने लेजर / वाउचर Tally में, Tally के नए / बदले वाउचर यहाँ; यहाँ बदला या हटाया वाउचर Tally में भी बदलता / हटता है। 📒 → मास्टर → 🔄 Tally।","🟢 Tally live: start the small \"Tally-Connector\" on the Tally computer (nothing to install) — then, with the website open, both sides sync every 3 minutes: ledgers / vouchers made here go to Tally, new / changed Tally vouchers come here; a voucher changed or deleted here changes / goes in Tally too. 📒 → Masters → 🔄 Tally."]]},{id:"2026-11-26",items:[
  ["🔄 📒 हिसाब-किताब → मास्टर → \"🔄 Tally\": Tally में भेजने के लिए दो XML फ़ाइलें (लेजर + GST जानकारी, आइटम, वाउचर) और Tally की Export की हुई XML से लेजर, ओपनिंग बैलेंस, आइटम और वाउचर किताबों में लाना — Tally चालू या जुड़ा होना ज़रूरी नहीं। दोबारा लाने पर वही वाउचर दो बार नहीं आते।","🔄 📒 Accounts → Masters → \"🔄 Tally\": two XML files to import into Tally (ledgers with GST details, items, vouchers), and bring ledgers, opening balances, items and vouchers from an XML exported by Tally — Tally need not be running or connected. Importing again does not duplicate vouchers."]]},{id:"2026-11-24",items:[
  ["📒 हिसाब-किताब: बाईं ओर बिक्री / ख़रीद / रसीद… दबाने पर पहले उसका रजिस्टर (सूची, कुल, महीना / तिमाही, खोज) और ऊपर \"＋ नई बिक्री\" बटन। बिल में ही \"＋ नया ग्राहक\" और \"＋\" से नया आइटम, आइटम चुनते ही HSN, GST % और स्टॉक दिखता है (GST % अलग हो तो ⚠)। \"⚙ नंबर का फ़ॉर्मेट\" से बिल नंबर अपने-आप (जैसे INV/26-27/101)।","📒 Accounts: sales / purchase / receipt… in the menu first open their register (list, totals, month / quarter, search) with a \"＋ New sale\" button on top. In the bill: \"＋ New customer\", \"＋\" for a new item, item shows HSN, GST % and stock (⚠ if GST % differs). \"⚙ Number format\" numbers bills automatically (e.g. INV/26-27/101)."]]},{id:"2026-11-23g",items:[
  ["🏢 वेबसाइट पर हर फ़र्म का अपना पोर्टल हो सकता है (जैसे …github.io/addenda): लॉगिन पेज और ऐप में उसी फ़र्म का नाम और रंग, और सिर्फ़ उसकी टीम अंदर आती है।","🏢 On the website each firm can have its own portal (e.g. …github.io/addenda): its name and colour on the login page and in the app, and only its team gets in."]]},{id:"2026-11-23f",items:[
@@ -5795,7 +5796,7 @@ function bkOpen(pid,fy){bk.un.forEach(u=>{try{u()}catch(e){}});bk.un=[];bk.pid=p
   bk.un.push(appDb.collection("bk_vm").where("pid","==",pid).where("fy","==",fy).onSnapshot(s=>{const m={};s.docs.forEach(d=>m[d.id]=d.data());bk.vm=m;renderBk()},()=>{}))}
 /* ---- derived data ---- */
 function bkL(){const L=(bk.book&&bk.book.L)||{};return Object.keys(L).filter(id=>!L[id].del).map(id=>Object.assign({id},L[id]))}
-function bkV(){const all={};for(const k in bk.vm){const v=bk.vm[k].v||{};for(const id in v){const x=v[id];if(!all[id]||(x.at||"")>(all[id].at||""))all[id]=Object.assign({id,doc:k},x)}}
+function bkV(){const all={};for(const k in bk.vm){const v=bk.vm[k].v||{};for(const id in v){const x=v[id];if(!all[id]||(x.at||"")>(all[id].at||"")||((x.at||"")===(all[id].at||"")&&all[id].del&&!x.del))all[id]=Object.assign({id,doc:k},x)}}
   return Object.values(all).filter(x=>!x.del&&x.d).sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:(a.at||"")<(b.at||"")?-1:1)}
 function bkOp(l){const L=bk.book&&bk.book.L&&bk.book.L[l];return r2(L&&L.op&&L.op[bk.fy]||0)}
 function bkBal(V){const b={};bkL().forEach(l=>b[l.id]=bkOp(l.id));V.forEach(v=>(v.ln||[]).forEach(x=>{b[x.l]=r2((b[x.l]||0)+(+x.a||0))}));return b}
@@ -5967,7 +5968,7 @@ function bkVForm(id,draft){if(!bkCan()&&!id)return;const V=id?bkV().find(v=>v.id
     if(!d.d||bkFyOfD(d.d)!==bk.fy){$("#bvE").textContent=bt("तारीख़ इसी साल (FY) की होनी चाहिए","The date must be in this financial year");return}
     const dr=r2(p.ln.reduce((a,x)=>a+(x.a>0?x.a:0),0)),cr=r2(p.ln.reduce((a,x)=>a+(x.a<0?-x.a:0),0));if(!dr||Math.abs(dr-cr)>=0.005){$("#bvE").textContent=bt("Dr और Cr बराबर होने चाहिए","Dr and Cr must be equal");return}
     const rec={d:d.d,t:d.t,no:d.no||bkNextNo(d.t),nar:d.nar,ln:p.ln,by:me.id||"local",at:new Date().toISOString()};if(d.gst)rec.gst=Object.assign({},d.gst,{items:p.items,pg:bk.book.L[d.gst.party]&&bk.book.L[d.gst.party].gstin||"",ps:p.ps,inter:p.inter});
-    const vid=id||("v"+Date.now().toString(36)+Math.random().toString(36).slice(2,6));go.disabled=true;
+    if(V)["tpAt","tk","src","ta"].forEach(k=>{if(V[k]!=null&&V[k]!=="")rec[k]=V[k]});const vid=id||("v"+Date.now().toString(36)+Math.random().toString(36).slice(2,6));go.disabled=true;
     try{const doc=bkDocFor(d.d,JSON.stringify(rec).length);if(V&&V.doc!==doc.id)await bkMerge("bk_vm",V.doc,{v:{[vid]:{del:true,at:rec.at,by:rec.by}}},true);
       await bkMerge("bk_vm",doc.id,Object.assign(doc.exists?{}:{pid:bk.pid,fy:bk.fy,ym:d.d.slice(0,7)},{v:{[vid]:rec}}),doc.exists);
       toast(bt("वाउचर सेव हुआ","Voucher saved"));bk.lastV={id:vid,t:d.t};if(id)closeSheet();else bkVForm(null,{t:d.t,d:d.d,nar:"",ln:[]})}catch(e){go.disabled=false;$("#bvE").textContent=t("saveFail")}}}
@@ -6290,8 +6291,8 @@ const BK_TALLY_T={sales:"Sales",purch:"Purchase",cn:"Credit Note",dn:"Debit Note
 const xe=s=>String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 const bkTD=d=>d.replace(/-/g,""); /* 2026-11-24 → 20261124 */
 const bkTA=a=>(Math.round(-a*100)/100).toFixed(2); /* our Dr is +, Tally's Dr is − */
-function bkTallyXml(opt){const B=bk.book,L=B.L||{},I=B.I||{},V=bkV().filter(v=>!opt.from||v.d>=opt.from).filter(v=>!opt.to||v.d<=opt.to),co=xe(opt.company||"");
-  const ledgers=Object.keys(L).filter(id=>!L[id].del).map(id=>{const l=L[id],gst=l.g==="dt"&&/gst/i.test(l.n)?{head:/igst/i.test(l.n)?"Integrated Tax":/cgst/i.test(l.n)?"Central Tax":/sgst|utgst/i.test(l.n)?"State Tax":""}:null;
+function bkTallyXml(opt){const B=bk.book,L=B.L||{},I=B.I||{},V=bkV().filter(v=>!opt.from||v.d>=opt.from).filter(v=>!opt.to||v.d<=opt.to).filter(v=>!opt.vids||opt.vids.includes(v.id)),co=xe(opt.company||"");
+  const ledgers=Object.keys(L).filter(id=>!L[id].del&&(!opt.lids||opt.lids.includes(id))).map(id=>{const l=L[id],gst=l.g==="dt"&&/gst/i.test(l.n)?{head:/igst/i.test(l.n)?"Integrated Tax":/cgst/i.test(l.n)?"Central Tax":/sgst|utgst/i.test(l.n)?"State Tax":""}:null;
     const op=bkOp(id);return `<TALLYMESSAGE xmlns:UDF="TallyUDF"><LEDGER NAME="${xe(l.n)}" ACTION="Create"><NAME.LIST><NAME>${xe(l.n)}</NAME></NAME.LIST><PARENT>${xe(BK_TALLY_G[l.g]||"Suspense A/c")}</PARENT>`+
       (["sdr","scr","bank","cash"].includes(l.g)?`<ISBILLWISEON>${l.g==="sdr"||l.g==="scr"?"Yes":"No"}</ISBILLWISEON>`:"")+
       (l.gstin?`<PARTYGSTIN>${xe(l.gstin)}</PARTYGSTIN><GSTREGISTRATIONTYPE>Regular</GSTREGISTRATIONTYPE>`:(l.g==="sdr"||l.g==="scr")?`<GSTREGISTRATIONTYPE>Unregistered/Consumer</GSTREGISTRATIONTYPE>`:"")+
@@ -6299,7 +6300,7 @@ function bkTallyXml(opt){const B=bk.book,L=B.L||{},I=B.I||{},V=bkV().filter(v=>!
       (gst&&gst.head?`<TAXTYPE>GST</TAXTYPE><GSTDUTYHEAD>${gst.head}</GSTDUTYHEAD>`:"")+(l.g==="sales"||l.g==="purch"?`<AFFECTSSTOCK>${opt.inv?"Yes":"No"}</AFFECTSSTOCK>`:"")+
       `<OPENINGBALANCE>${bkTA(op)}</OPENINGBALANCE></LEDGER></TALLYMESSAGE>`});
   const units=[...new Set(Object.values(I).filter(x=>!x.del&&x.u).map(x=>x.u))].map(u=>`<TALLYMESSAGE xmlns:UDF="TallyUDF"><UNIT NAME="${xe(u)}" ACTION="Create"><NAME>${xe(u)}</NAME><ISSIMPLEUNIT>Yes</ISSIMPLEUNIT><GSTREPUOM>${xe(u)}</GSTREPUOM></UNIT></TALLYMESSAGE>`);
-  const items=Object.keys(I).filter(id=>!I[id].del).map(id=>{const x=I[id],op=(x.op&&x.op[bk.fy])||{};return `<TALLYMESSAGE xmlns:UDF="TallyUDF"><STOCKITEM NAME="${xe(x.n)}" ACTION="Create"><NAME.LIST><NAME>${xe(x.n)}</NAME></NAME.LIST><PARENT/><BASEUNITS>${xe(x.u||"NOS")}</BASEUNITS><GSTAPPLICABLE>&#4; Applicable</GSTAPPLICABLE>`+
+  const items=Object.keys(I).filter(id=>!I[id].del&&(!opt.iids||opt.iids.includes(id))).map(id=>{const x=I[id],op=(x.op&&x.op[bk.fy])||{};return `<TALLYMESSAGE xmlns:UDF="TallyUDF"><STOCKITEM NAME="${xe(x.n)}" ACTION="Create"><NAME.LIST><NAME>${xe(x.n)}</NAME></NAME.LIST><PARENT/><BASEUNITS>${xe(x.u||"NOS")}</BASEUNITS><GSTAPPLICABLE>&#4; Applicable</GSTAPPLICABLE>`+
     `<GSTDETAILS.LIST><APPLICABLEFROM>${bk.fy}0401</APPLICABLEFROM><HSNCODE>${xe(x.hsn||"")}</HSNCODE><TAXABILITY>${+x.r?"Taxable":"Exempt"}</TAXABILITY><STATEWISEDETAILS.LIST><STATENAME>&#4; Any</STATENAME>`+
     (+x.r?`<RATEDETAILS.LIST><GSTRATEDUTYHEAD>Central Tax</GSTRATEDUTYHEAD><GSTRATE>${(+x.r)/2}</GSTRATE></RATEDETAILS.LIST><RATEDETAILS.LIST><GSTRATEDUTYHEAD>State Tax</GSTRATEDUTYHEAD><GSTRATE>${(+x.r)/2}</GSTRATE></RATEDETAILS.LIST><RATEDETAILS.LIST><GSTRATEDUTYHEAD>Integrated Tax</GSTRATEDUTYHEAD><GSTRATE>${+x.r}</GSTRATE></RATEDETAILS.LIST>`:"")+
     `</STATEWISEDETAILS.LIST></GSTDETAILS.LIST>`+(op.q?`<OPENINGBALANCE>${op.q} ${xe(x.u||"NOS")}</OPENINGBALANCE><OPENINGVALUE>${(-r2(op.v)).toFixed(2)}</OPENINGVALUE><OPENINGRATE>${r2(op.v/op.q)}/${xe(x.u||"NOS")}</OPENINGRATE>`:"")+`</STOCKITEM></TALLYMESSAGE>`});
@@ -6318,7 +6319,7 @@ function bkTallyXml(opt){const B=bk.book,L=B.L||{},I=B.I||{},V=bkV().filter(v=>!
         (g.party===k&&(v.t==="sales"||v.t==="purch")?`<BILLALLOCATIONS.LIST><NAME>${no}</NAME><BILLTYPE>New Ref</BILLTYPE><AMOUNT>${bkTA(left[k])}</AMOUNT></BILLALLOCATIONS.LIST>`:"")+`</LEDGERENTRIES.LIST>`).join("")}
     else body+=lines.map(x=>`<ALLLEDGERENTRIES.LIST><LEDGERNAME>${xe(x.n)}</LEDGERNAME><ISDEEMEDPOSITIVE>${x.a>0?"Yes":"No"}</ISDEEMEDPOSITIVE><ISPARTYLEDGER>${g&&g.party===x.l?"Yes":"No"}</ISPARTYLEDGER><AMOUNT>${bkTA(x.a)}</AMOUNT>`+
       (g&&g.party===x.l&&(v.t==="sales"||v.t==="purch")?`<BILLALLOCATIONS.LIST><NAME>${no}</NAME><BILLTYPE>New Ref</BILLTYPE><AMOUNT>${bkTA(x.a)}</AMOUNT></BILLALLOCATIONS.LIST>`:"")+`</ALLLEDGERENTRIES.LIST>`).join("");
-    return `<TALLYMESSAGE xmlns:UDF="TallyUDF"><VOUCHER VCHTYPE="${T}" ACTION="Create" OBJVIEW="${useInv?"Invoice Voucher View":"Accounting Voucher View"}">${body}</VOUCHER></TALLYMESSAGE>`});
+    return `<TALLYMESSAGE xmlns:UDF="TallyUDF"><VOUCHER ${opt.remote?`REMOTEID="${xe(bkRid(v))}" `:""}VCHTYPE="${T}" ACTION="${opt.remote&&v.tpAt?"Alter":"Create"}" OBJVIEW="${useInv?"Invoice Voucher View":"Accounting Voucher View"}">${body}</VOUCHER></TALLYMESSAGE>`});
   const env=(rep,msgs)=>`<?xml version="1.0" encoding="UTF-8"?>\n<ENVELOPE><HEADER><TALLYREQUEST>Import Data</TALLYREQUEST></HEADER><BODY><IMPORTDATA><REQUESTDESC><REPORTNAME>${rep}</REPORTNAME>${co?`<STATICVARIABLES><SVCURRENTCOMPANY>${co}</SVCURRENTCOMPANY></STATICVARIABLES>`:""}</REQUESTDESC><REQUESTDATA>\n${msgs.join("\n")}\n</REQUESTDATA></IMPORTDATA></BODY></ENVELOPE>`;
   return{masters:env("All Masters",units.concat(opt.inv?items:[]).concat(ledgers)),vouchers:env("Vouchers",vch),n:{l:ledgers.length,i:opt.inv?items.length:0,v:vch.length}}}
 /* ---- reading a Tally export ---- */
@@ -6340,7 +6341,7 @@ function bkTallyParse(docs){const G={},LG=[],VS=[],IT=[];
       const ln=[];[...v.children].filter(c=>/^(ALL)?LEDGERENTRIES\.LIST$/.test(c.tagName)).forEach(e=>{const n=bkTx(e,"LEDGERNAME");if(n)ln.push({n,a:-bkTNum(bkTx(e,"AMOUNT"))})});
       const inv=[];[...v.children].filter(c=>c.tagName==="ALLINVENTORYENTRIES.LIST"||c.tagName==="INVENTORYENTRIES.LIST").forEach(e=>{const it=bkTx(e,"STOCKITEMNAME"),q=Math.abs(bkTNum(bkTx(e,"BILLEDQTY")||bkTx(e,"ACTUALQTY"))),p=Math.abs(bkTNum(bkTx(e,"RATE")));
         [...e.children].filter(c=>c.tagName==="ACCOUNTINGALLOCATIONS.LIST").forEach(a=>{const n=bkTx(a,"LEDGERNAME"),amt=-bkTNum(bkTx(a,"AMOUNT"));if(n){ln.push({n,a:amt});inv.push({it,q,p,l:n,v:Math.abs(amt)})}})});
-      VS.push({guid:bkTx(v,"GUID")||"",tn,d:d.slice(0,4)+"-"+d.slice(4,6)+"-"+d.slice(6,8),no:bkTx(v,"VOUCHERNUMBER"),ref:bkTx(v,"REFERENCE"),nar:bkTx(v,"NARRATION"),party:bkTx(v,"PARTYLEDGERNAME"),ln,inv})})});
+      VS.push({guid:bkTx(v,"GUID")||"",remote:v.getAttribute("REMOTEID")||"",alt:bkTx(v,"ALTERID")||"",tn,d:d.slice(0,4)+"-"+d.slice(4,6)+"-"+d.slice(6,8),no:bkTx(v,"VOUCHERNUMBER"),ref:bkTx(v,"REFERENCE"),nar:bkTx(v,"NARRATION"),party:bkTx(v,"PARTYLEDGERNAME"),ln,inv})})});
   const grpOf=parent=>{let p=(parent||"").toLowerCase(),k=0;while(p&&k<20){if(BK_TALLY_GR[p])return BK_TALLY_GR[p];p=(G[p]||"").toLowerCase();k++}return"sus"};
   LG.forEach(l=>l.g=grpOf(l.parent));
   const typ=tn=>{const s=tn.toLowerCase();if(/stock\s*journal|physical|memo|order|delivery\s*note|receipt\s*note|rejection|material|job\s*work|manufactur|attendance|payroll|reversing/.test(s))return"";return /credit\s*note/.test(s)?"cn":/debit\s*note/.test(s)?"dn":/purchase/.test(s)?"purch":/sales|invoice/.test(s)?"sales":/receipt/.test(s)?"rcpt":/payment/.test(s)?"pay":/contra/.test(s)?"contra":/journal/.test(s)?"jrnl":""};
@@ -6408,6 +6409,116 @@ function bkTallyPreview(X){const P=$("#tiP"),L=(bk.book&&bk.book.L)||{},byName={
 /* menu: Masters → 🔄 Tally */
 {const _m=bkMenu;bkMenu=function(tabs){return _m(tabs).replace('<button class="bkMk" data-k="xl">',`<button class="bkMk" data-k="tally"><span class="bkIc">🔄</span><span class="bkLb">Tally</span></button><button class="bkMk" data-k="xl">`)}}
 {const _w=bkWire;bkWire=function(){_w();const el=$("#bk");if(!el)return;el.querySelectorAll('.bkMk[data-k="tally"]').forEach(b=>b.onclick=()=>{if(!bk.book){toast(bt("पहले किताबें शुरू करें","Start the books first"));return}bkTallyForm()})}}
+
+/* ===== 📒 Accounts part 6: Tally LIVE through a small connector on the Tally computer =====
+   Browser → http://localhost:9100 (Tally-Connector.bat: PowerShell, adds CORS / local-network headers, only for this site) → Tally XML server :9000.
+   Sync = push masters made here → push vouchers made / changed / deleted here (REMOTEID "mcbk-<id>", Alter / Delete later) → pull Tally's masters + Day Book (new and altered by ALTERID). */
+const TL_URL="http://localhost:9100/",TL_EVERY=180000;
+const bkRid=v=>v.src==="tally"&&v.tk&&!/\|/.test(v.tk)?v.tk:"mcbk-"+v.id;
+const tlKey=()=>"__tl_"+bk.pid;
+const tlGet=()=>{try{return JSON.parse(localStorage.getItem(tlKey())||"{}")}catch(e){return{}}};
+const tlSet=o=>{try{localStorage.setItem(tlKey(),JSON.stringify(Object.assign(tlGet(),o)))}catch(e){}};
+let tlState={ok:false,msg:"",busy:false,last:""};
+async function tlPost(xml,ms){const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),ms||60000);
+  try{const r=await fetch(TL_URL,{method:"POST",body:xml,headers:{"Content-Type":"text/xml;charset=utf-8"},signal:ac.signal});const tx=await r.text();if(!r.ok)throw new Error(tx.startsWith("TALLY_DOWN")?"tally":"conn "+r.status);return tx}
+  catch(e){throw new Error(e&&e.message==="tally"?"tally":(e&&e.name==="AbortError")?"timeout":"connector")}finally{clearTimeout(tm)}}
+const tlDoc=tx=>new DOMParser().parseFromString(tx.replace(/&#(\d+);/g,(m,n)=>(+n<32&&![9,10,13].includes(+n))?"":m).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,""),"text/xml");
+const tlEnvExport=(id,type,inner,co,extra)=>`<ENVELOPE><HEADER><VERSION>1</VERSION><TALLYREQUEST>Export</TALLYREQUEST><TYPE>${type}</TYPE><ID>${id}</ID></HEADER><BODY><DESC><STATICVARIABLES><SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>${co?`<SVCURRENTCOMPANY>${xe(co)}</SVCURRENTCOMPANY>`:""}${extra||""}</STATICVARIABLES>${inner||""}</DESC></BODY></ENVELOPE>`;
+const tlColl=(name,type,fetch,co)=>tlEnvExport(name,"Collection",`<TDL><TDLMESSAGE><COLLECTION NAME="${name}" ISMODIFY="No"><TYPE>${type}</TYPE><FETCH>${fetch}</FETCH></COLLECTION></TDLMESSAGE></TDL>`,co);
+async function tlCompanies(){const tx=await tlPost(tlColl("MCCompanies","Company","NAME"),15000);return [...tlDoc(tx).getElementsByTagName("COMPANY")].map(c=>c.getAttribute("NAME")||bkTx(c,"NAME")).filter(Boolean)}
+function tlResult(tx){const d=tlDoc(tx),n=k=>{const e=d.getElementsByTagName(k)[0];return e?+e.textContent||0:0};return{c:n("CREATED"),a:n("ALTERED"),del:n("DELETED"),e:n("ERRORS"),x:n("EXCEPTIONS"),err:[...d.getElementsByTagName("LINEERROR")].map(e=>e.textContent.trim()).slice(0,5)}}
+/* every stored voucher, deleted ones too, newest record per id */
+function tlAllV(){const all={};for(const k in bk.vm){const v=bk.vm[k].v||{};for(const id in v){const x=v[id];if(!all[id]||(x.at||"")>(all[id].at||"")||((x.at||"")===(all[id].at||"")&&all[id].del&&!x.del))all[id]=Object.assign({id,doc:k},x)}}return Object.values(all)}
+async function tlPush(co){const B=bk.book,L=B.L||{},I=B.I||{},out={m:0,v:0,d:0,err:[]};
+  const lids=Object.keys(L).filter(id=>!L[id].del&&L[id].src!=="tally"&&!L[id].tp&&!/^(cash|profit & loss a\/c)$/i.test(L[id].n)),iids=Object.keys(I).filter(id=>!I[id].del&&I[id].src!=="tally"&&!I[id].tp);
+  if(lids.length||iids.length){const X=bkTallyXml({company:co,inv:true,lids,iids,vids:[]});const r=tlResult(await tlPost(X.masters));out.m=r.c+r.a;
+    if(r.e)out.err.push(...r.err);const patch={L:{},I:{}};lids.forEach(id=>patch.L[id]={tp:true});iids.forEach(id=>patch.I[id]={tp:true});if(!iids.length)delete patch.I;await bkMerge("bk_books",bk.pid,patch,true)}
+  const all=tlAllV(),now=new Date().toISOString();
+  const send=all.filter(v=>!v.del&&v.d&&(!v.tpAt||(v.at||"")>v.tpAt)),gone=all.filter(v=>v.del&&v.tpAt);
+  if(send.length){for(let i=0;i<send.length;i+=100){const part=send.slice(i,i+100);const X=bkTallyXml({company:co,inv:true,remote:true,vids:part.map(v=>v.id),lids:[],iids:[]});
+    const r=tlResult(await tlPost(X.vouchers,120000));if(r.e){out.err.push(...r.err);continue}out.v+=r.c+r.a;
+    const by={};part.forEach(v=>{(by[v.doc]=by[v.doc]||{})[v.id]={tpAt:now}});for(const doc in by)await bkMerge("bk_vm",doc,{v:by[doc]},true)}}
+  if(gone.length){const prev=gone.map(v=>{const full=Object.values(bk.vm).map(d=>(d.v||{})[v.id]).find(x=>x&&x.t)||{};return Object.assign({},full,v)});
+    const xml=`<ENVELOPE><HEADER><TALLYREQUEST>Import Data</TALLYREQUEST></HEADER><BODY><IMPORTDATA><REQUESTDESC><REPORTNAME>Vouchers</REPORTNAME>${co?`<STATICVARIABLES><SVCURRENTCOMPANY>${xe(co)}</SVCURRENTCOMPANY></STATICVARIABLES>`:""}</REQUESTDESC><REQUESTDATA>`+
+      prev.map(v=>`<TALLYMESSAGE xmlns:UDF="TallyUDF"><VOUCHER REMOTEID="${xe(bkRid(v))}" VCHTYPE="${BK_TALLY_T[v.t]||"Journal"}" ACTION="Delete"><DATE>${bkTD(v.d||bk.fy+"0401")}</DATE><VOUCHERTYPENAME>${BK_TALLY_T[v.t]||"Journal"}</VOUCHERTYPENAME></VOUCHER></TALLYMESSAGE>`).join("")+`</REQUESTDATA></IMPORTDATA></BODY></ENVELOPE>`;
+    const r=tlResult(await tlPost(xml));if(r.e)out.err.push(...r.err);else{out.d=gone.length;const by={};gone.forEach(v=>{(by[v.doc]=by[v.doc]||{})[v.id]={tpAt:""}});for(const doc in by)await bkMerge("bk_vm",doc,{v:by[doc]},true)}}
+  return out}
+async function tlPull(co){const docs=[];
+  docs.push(tlDoc(await tlPost(tlColl("MCGroups","Group","NAME,PARENT",co))));
+  docs.push(tlDoc(await tlPost(tlColl("MCLedgers","Ledger","NAME,PARENT,OPENINGBALANCE,PARTYGSTIN,LEDSTATENAME,ADDRESS,LEDGSTREGDETAILS",co))));
+  docs.push(tlDoc(await tlPost(tlColl("MCItems","StockItem","NAME,BASEUNITS,OPENINGBALANCE,OPENINGVALUE,GSTDETAILS",co))));
+  docs.push(tlDoc(await tlPost(tlEnvExport("Day Book","Data","",co,`<SVFROMDATE>${bk.fy}0401</SVFROMDATE><SVTODATE>${bk.fy+1}0331</SVTODATE>`),180000)));
+  const X=bkTallyParse(docs);X.VS=X.VS.filter(v=>!/^mcbk-/.test(v.remote)&&!/^mcbk-/.test(v.guid));return bkTallyApply(X,{takeOp:false,live:true})}
+/* bring parsed Tally data into the books: new ledgers / items, new vouchers, and vouchers altered in Tally (ALTERID changed) */
+async function bkTallyApply(X,o){const L=(bk.book&&bk.book.L)||{},byName={};Object.keys(L).filter(id=>!L[id].del).forEach(id=>byName[L[id].n.toLowerCase()]=id);
+  const key=v=>v.guid||(v.tn+"|"+v.no+"|"+v.d),have={};tlAllV().filter(v=>v.tk).forEach(v=>have[v.tk]=v);
+  const inFy=X.VS.filter(v=>v.t&&bkFyOfD(v.d)===bk.fy),fresh=inFy.filter(v=>!have[key(v)]),changed=o.live?inFy.filter(v=>{const h=have[key(v)];return h&&!h.del&&v.alt&&h.ta&&v.alt!==h.ta}):[];
+  const use=fresh.concat(changed),missingL=[...new Set(use.flatMap(v=>v.ln.map(x=>x.n)).filter(n=>!byName[n.toLowerCase()]&&!X.LG.some(l=>l.n.toLowerCase()===n.toLowerCase())))];
+  const Lp={},mk=()=>"l"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  X.LG.forEach(l=>{const id=byName[l.n.toLowerCase()];if(id){if(o.takeOp&&l.op)Lp[id]={op:{[bk.fy]:r2(l.op)}};if(l.gstin&&!L[id].gstin)Lp[id]=Object.assign(Lp[id]||{},{gstin:l.gstin,st:l.st})}
+    else{const nid=mk();byName[l.n.toLowerCase()]=nid;Lp[nid]={n:l.n.slice(0,80),g:l.g,gstin:l.gstin||"",st:l.st||"",addr:(l.addr||"").slice(0,250),op:{[bk.fy]:r2(l.op)},src:"tally"}}});
+  missingL.forEach(n=>{const nid=mk();byName[n.toLowerCase()]=nid;Lp[nid]={n:n.slice(0,80),g:"sus",op:{},src:"tally"}});
+  const Ip={},iBy={};bkItems().forEach(x=>iBy[x.n.toLowerCase()]=x.id);X.IT.forEach(x=>{if(iBy[x.n.toLowerCase()])return;const nid="i"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);iBy[x.n.toLowerCase()]=nid;
+    Ip[nid]={n:x.n.slice(0,80),hsn:/^\d{4,8}$/.test(x.hsn)?x.hsn:"",u:BK_UQC.includes(x.u)?x.u:"OTH",r:x.r==null?18:x.r,op:{[bk.fy]:{q:x.oq||0,v:r2(x.ov||0)}},src:"tally"}});
+  if(Object.keys(Lp).length||Object.keys(Ip).length){const patch={L:Lp};if(Object.keys(Ip).length)patch.I=Ip;await bkMerge("bk_books",bk.pid,patch,true)}
+  const LmapG={};Object.keys(L).forEach(id=>{if(!L[id].del)LmapG[L[id].n]=L[id].g});Object.keys(Lp).forEach(id=>{if(Lp[id].n)LmapG[Lp[id].n]=Lp[id].g});
+  const now=new Date().toISOString(),who=me.id||"local",by={};let n=0;
+  const recOf=v=>{const ln=[];v.ln.forEach(x=>{const id=byName[x.n.toLowerCase()];const e=ln.find(y=>y.l===id);if(e)e.a=r2(e.a+x.a);else ln.push({l:id,a:r2(x.a)})});
+    const rec={d:v.d,t:v.t,no:v.no||"",nar:(v.nar||"").slice(0,300),ln:ln.filter(x=>Math.abs(x.a)>=0.005),by:who,at:now,tpAt:now,tk:key(v),ta:v.alt||"",src:"tally"};
+    const G0=bkTallyGst(v,LmapG);if(G0){const P0=byName[G0.partyN.toLowerCase()],PL=Lp[P0]||L[P0]||{};const ps=PL.st||(PL.gstin||"").slice(0,2)||bk.book.st;
+      rec.gst={party:P0,inv:G0.inv,ro:false,inter:G0.inter||(!!ps&&ps!==bk.book.st),ps,pg:PL.gstin||"",items:G0.items.map(x=>Object.assign({l:byName[x.l.toLowerCase()],v:x.v,r:x.r},x.it&&iBy[x.it.toLowerCase()]?{it:iBy[x.it.toLowerCase()],q:x.q,p:x.p}:{}))}}return rec};
+  fresh.forEach(v=>{const m=v.d.slice(5,7);(by["new|"+m]=by["new|"+m]||{})["v"+Date.now().toString(36)+(n++).toString(36)+Math.random().toString(36).slice(2,5)]=recOf(v)});
+  changed.forEach(v=>{const h=have[key(v)],rec=recOf(v);if(h.d.slice(0,7)===v.d.slice(0,7)){(by["old|"+h.doc]=by["old|"+h.doc]||{})[h.id]=rec}else{(by["old|"+h.doc]=by["old|"+h.doc]||{})[h.id]={del:true,at:now,tpAt:""};const m=v.d.slice(5,7);(by["new|"+m]=by["new|"+m]||{})[h.id]=rec}});
+  for(const k of Object.keys(by)){const [kind,ref]=k.split("|"),ids=Object.keys(by[k]);
+    if(kind==="old"){await bkMerge("bk_vm",ref,{v:by[k]},true);continue}
+    for(let i=0;i<ids.length;i+=300){const part={};ids.slice(i,i+300).forEach(x=>part[x]=by[k][x]);const doc=bkDocFor(bk.fy+"-"+ref+"-01",JSON.stringify(part).length);
+      await bkMerge("bk_vm",doc.id,Object.assign(doc.exists?{}:{pid:bk.pid,fy:bk.fy,ym:bk.fy+"-"+ref},{v:part}),doc.exists);if(!doc.exists)bk.vm[doc.id]={pid:bk.pid,fy:bk.fy,v:part}}}
+  return{l:Object.keys(Lp).length,i:Object.keys(Ip).length,v:fresh.length,u:changed.length,skipped:X.VS.length-inFy.length}}
+async function tlSync(manual){if(tlState.busy||!bk.book)return;const S=tlGet();if(!S.co){if(manual)toast(bt("पहले Tally कंपनी चुनें","Choose the Tally company first"));return}
+  tlState.busy=true;tlPaint();const dir=S.dir||"both";let msg="";
+  try{let p={m:0,v:0,d:0,err:[]},q={l:0,i:0,v:0,u:0};if(dir!=="pull")p=await tlPush(S.co);if(dir!=="push")q=await tlPull(S.co);
+    tlState.ok=true;tlState.last=new Date().toLocaleTimeString(lang==="hi"?"hi-IN":"en-IN",{hour:"2-digit",minute:"2-digit"});
+    msg=bt(`⬆ Tally में: ${p.m} मास्टर, ${p.v} वाउचर${p.d?", "+p.d+" हटाए":""} · ⬇ यहाँ: ${q.l} लेजर, ${q.i} आइटम, ${q.v} नए, ${q.u} बदले वाउचर`,`⬆ To Tally: ${p.m} masters, ${p.v} vouchers${p.d?", "+p.d+" deleted":""} · ⬇ Here: ${q.l} ledgers, ${q.i} items, ${q.v} new, ${q.u} changed vouchers`);
+    if(p.err.length)msg+=" · ⚠ Tally: "+p.err.join(" | ");}
+  catch(e){tlState.ok=false;msg=e.message==="tally"?bt("कनेक्टर चल रहा है पर Tally जवाब नहीं दे रहा — Tally खुला है? कंपनी खुली है? पोर्ट 9000 चालू है?","The connector is running but Tally is not answering — is Tally open with the company, and port 9000 on?"):e.message==="timeout"?bt("Tally ने समय पर जवाब नहीं दिया","Tally did not answer in time"):bt("कनेक्टर नहीं मिला — Tally वाले कंप्यूटर पर Tally-Connector चालू करें","Connector not found — start Tally-Connector on the Tally computer")}
+  tlState.busy=false;tlState.msg=msg;tlPaint();if(manual)toast(tlState.ok?bt("Tally सिंक हुआ","Tally synced"):bt("Tally सिंक नहीं हुआ","Tally sync failed"))}
+function tlConnectorFile(){const origins=["https://mukeshcompliances.github.io",location.origin].filter((x,i,a)=>/^https:\/\//.test(x)&&a.indexOf(x)===i);
+  return `@echo off\r\ntitle Tally Connector - Mukesh Compliances\r\npowershell -NoProfile -ExecutionPolicy Bypass -Command "iex ((Get-Content -Raw -Encoding UTF8 '%~f0') -split '#PS#')[2]"\r\npause\r\nexit /b\r\n#PS#\r\n`+
+`# Tally Connector: lets the website talk to Tally on this computer. Keep this window open while you work. Close it to stop.\r\n$port=9100; $tally="http://localhost:9000"\r\n$allowed=@(${origins.map(o=>`"${o}"`).join(",")})\r\n`+
+`$l=New-Object System.Net.HttpListener; $l.Prefixes.Add("http://localhost:$port/"); $l.Prefixes.Add("http://127.0.0.1:$port/")\r\ntry{ $l.Start() } catch { Write-Host "Port $port is busy - is the connector already open?" -ForegroundColor Red; return }\r\n`+
+`Write-Host "Tally Connector is ON (keep this window open). Tally must be open with its port 9000 on." -ForegroundColor Green\r\n`+
+`while($l.IsListening){ $c=$l.GetContext(); $q=$c.Request; $r=$c.Response; $o=$q.Headers["Origin"]; $ok=($o -and ($allowed -contains $o))\r\n`+
+` if($ok){ $r.AddHeader("Access-Control-Allow-Origin",$o); $r.AddHeader("Vary","Origin") }\r\n $r.AddHeader("Access-Control-Allow-Methods","POST, GET, OPTIONS"); $r.AddHeader("Access-Control-Allow-Headers","Content-Type"); $r.AddHeader("Access-Control-Allow-Private-Network","true")\r\n`+
+` try{\r\n  if($q.HttpMethod -eq "OPTIONS"){ $r.StatusCode=204 }\r\n  elseif(-not $ok){ $r.StatusCode=403 }\r\n  elseif($q.HttpMethod -eq "GET"){ $b=[Text.Encoding]::UTF8.GetBytes('{"ok":true,"v":1}'); $r.ContentType="application/json"; $r.OutputStream.Write($b,0,$b.Length) }\r\n`+
+`  else{ $sr=New-Object IO.StreamReader($q.InputStream,[Text.Encoding]::UTF8); $body=$sr.ReadToEnd(); $wc=New-Object Net.WebClient; $wc.Encoding=[Text.Encoding]::UTF8; $wc.Headers.Add("Content-Type","text/xml;charset=utf-8")\r\n`+
+`   $resp=$wc.UploadString($tally,$body); $b=[Text.Encoding]::UTF8.GetBytes($resp); $r.ContentType="text/xml; charset=utf-8"; $r.OutputStream.Write($b,0,$b.Length); Write-Host (Get-Date -Format "HH:mm:ss") "sync ok" }\r\n`+
+` } catch { $r.StatusCode=502; $b=[Text.Encoding]::UTF8.GetBytes("TALLY_DOWN: "+$_.Exception.Message); $r.OutputStream.Write($b,0,$b.Length); Write-Host "Tally not answering: $($_.Exception.Message)" -ForegroundColor Yellow }\r\n $r.Close() }\r\n`}
+function tlPaint(){const el=$("#tlBox");if(!el)return;const S=tlGet();
+  el.querySelector("#tlSt").innerHTML=tlState.busy?"⏳ "+esc(bt("सिंक हो रहा है…","Syncing…")):(tlState.ok?"🟢 "+esc(bt("जुड़ा","Connected"))+(tlState.last?" · "+esc(bt("आख़िरी सिंक ","last sync "))+tlState.last:""):"🔴 "+esc(bt("नहीं जुड़ा","Not connected")));
+  el.querySelector("#tlMsg").textContent=tlState.msg||"";const a=el.querySelector("#tlAuto");if(a)a.checked=!!S.auto}
+{const _f=bkTallyForm;bkTallyForm=function(){_f();const h4=document.querySelector("#sheet h4");if(!h4)return;const S=tlGet();
+  h4.insertAdjacentHTML("beforebegin",`<div id="tlBox" style="border:2px solid var(--brand);border-radius:12px;padding:10px;margin:10px 0"><b>🔴🟢 ${esc(bt("Tally लाइव (अपने-आप सिंक)","Tally live (automatic sync)"))}</b>
+   <div class="m" style="margin:4px 0 8px">${esc(bt("Tally वाले कंप्यूटर पर: (1) नीचे से कनेक्टर डाउनलोड करें और दो बार क्लिक करके चालू करें — काली खिड़की खुली रहने दें। (2) Tally में: F1 Help → Settings → Connectivity → \"TallyPrime acts as\" = Server या Both, पोर्ट 9000। (3) यहाँ \"जाँचें\" दबाकर कंपनी चुनें। यह साइट इसी कंप्यूटर पर खुली हो तो हर 3 मिनट में दोनों तरफ़ सिंक होगा।","On the Tally computer: (1) download the connector below and double-click it — leave the black window open. (2) In Tally: F1 Help → Settings → Connectivity → \"TallyPrime acts as\" = Server or Both, port 9000. (3) Press \"Check\" here and choose the company. With this site open on that computer, both sides sync every 3 minutes."))}</div>
+   <div class="actions" style="margin:0 0 8px"><button class="btn ghost" id="tlDl">⬇ Tally-Connector</button><button class="btn ghost" id="tlChk">🔌 ${esc(bt("जाँचें","Check"))}</button></div>
+   <div class="row2"><div><label>${esc(bt("Tally कंपनी","Tally company"))}</label><select id="tlCo"><option value="">${esc(S.co||"—")}</option></select></div><div><label>${esc(bt("दिशा","Direction"))}</label><select id="tlDir"><option value="both">⇅ ${esc(bt("दोनों तरफ़","Both ways"))}</option><option value="pull"${S.dir==="pull"?" selected":""}>⬇ ${esc(bt("सिर्फ़ Tally से","Only from Tally"))}</option><option value="push"${S.dir==="push"?" selected":""}>⬆ ${esc(bt("सिर्फ़ Tally में","Only to Tally"))}</option></select></div></div>
+   <label class="chk"><input type="checkbox" id="tlAuto"> ${esc(bt("हर 3 मिनट में अपने-आप (इस कंप्यूटर पर)","Every 3 minutes automatically (on this computer)"))}</label>
+   <div class="actions" style="margin:6px 0"><button class="btn" id="tlNow">⇅ ${esc(bt("अभी सिंक करें","Sync now"))}</button><span id="tlSt" style="align-self:center"></span></div><div class="m" id="tlMsg"></div>
+   <div class="m" style="margin-top:6px">${esc(bt("पहली बार सिंक से पहले Tally का बैकअप ले लें। यहाँ हटाया वाउचर Tally से भी हटेगा।","Take a Tally backup before the first sync. A voucher deleted here is deleted in Tally too."))}</div></div>`);
+  if(S.co){const o=$("#tlCo").options[0];o.value=S.co;o.textContent=S.co}tlPaint();
+  $("#tlDl").onclick=async()=>{const blob=new Blob([tlConnectorFile()],{type:"application/octet-stream"});if(dlCap===undefined)dlCap=(window.claude&&claude.use)?await claude.use("downloads").catch(()=>null):null;
+    if(dlCap){try{await dlCap.save({filename:"Tally-Connector.bat",data:blob})}catch(e){}}else{const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="Tally-Connector.bat";document.body.appendChild(a);a.click();a.remove()}};
+  $("#tlChk").onclick=async()=>{tlState.msg=bt("जाँच रहे हैं…","Checking…");tlPaint();try{const cs=await tlCompanies();tlState.ok=true;tlState.msg=cs.length?bt("Tally में खुली कंपनियाँ: ","Companies open in Tally: ")+cs.join(", "):bt("Tally में कोई कंपनी खुली नहीं","No company open in Tally");
+      const sel=$("#tlCo");const cur=tlGet().co||"";sel.innerHTML=`<option value="">—</option>`+cs.map(c=>`<option${c===cur?" selected":""}>${esc(c)}</option>`).join("");if(cs.length===1&&!cur){sel.value=cs[0];tlSet({co:cs[0]})}}
+    catch(e){tlState.ok=false;tlState.msg=e.message==="tally"?bt("कनेक्टर चालू है पर Tally जवाब नहीं दे रहा — Tally खोलें और पोर्ट 9000 चालू करें।","The connector is on but Tally is not answering — open Tally and turn on port 9000."):bt("कनेक्टर नहीं मिला — इसी कंप्यूटर पर Tally-Connector चालू करें (ब्राउज़र \"लोकल नेटवर्क\" की अनुमति माँगे तो Allow दबाएँ)।","Connector not found — start Tally-Connector on this computer (allow \"local network\" access if the browser asks).")}tlPaint()};
+  $("#tlCo").onchange=e=>tlSet({co:e.target.value});$("#tlDir").onchange=e=>tlSet({dir:e.target.value});$("#tlAuto").onchange=e=>{tlSet({auto:e.target.checked});if(e.target.checked)tlSync(false)};
+  $("#tlNow").onclick=()=>tlSync(true)}}
+/* automatic sync while the books are open on this computer */
+setInterval(()=>{try{if(bk.book&&tlGet().auto&&document.visibilityState==="visible")tlSync(false)}catch(e){}},TL_EVERY);
+{const _m=bkMenu;bkMenu=function(tabs){const h=_m(tabs);const S=bk.pid?tlGet():{};return S.auto?h.replace('<span class="bkLb">Tally</span>',`<span class="bkLb">Tally ${tlState.ok?"🟢":"🔴"}</span>`):h}}
+/* the file import button now uses the same apply step */
+bkTallyPreview=(function(_p){return function(X){_p(X);const b=$("#tiGo");if(!b)return;b.onclick=async()=>{b.disabled=true;const M=$("#tiM");M.textContent=bt("ला रहे हैं…","Bringing in…");
+  try{const r=await bkTallyApply(X,{takeOp:$("#tiOp").checked,live:false});M.innerHTML="✅ "+esc(bt(`आ गए: ${r.l} लेजर, ${r.i} आइटम, ${r.v} वाउचर।`,`Brought in: ${r.l} ledgers, ${r.i} items, ${r.v} vouchers.`));toast(bt("Tally से डेटा आ गया","Data brought from Tally"))}
+  catch(e){b.disabled=false;M.innerHTML=`<span class="err">${esc(t("saveFail"))}</span>`}}}})(bkTallyPreview);
 
 paintStatic();render();init();
 </script>
