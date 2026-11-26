@@ -5934,7 +5934,7 @@ function bkLForm(id,after,pre){const L=id?bk.book.L[id]:(pre||null),op=id?bkOp(i
     if(bkL().some(l=>l.id!==id&&l.n.toLowerCase()===n.toLowerCase())){$("#blE").textContent=bt("इस नाम का लेजर पहले से है","A ledger with this name exists");return}
     const gi=($("#blGi").value||"").trim().toUpperCase();if(gi&&!/^\d{2}[A-Z]{5}\d{4}[A-Z][A-Z0-9]Z[A-Z0-9]$/.test(gi)){$("#blE").textContent=bt("GSTIN सही नहीं लगता","GSTIN does not look right");return}
     const nid=id||("l"+Date.now().toString(36)+Math.random().toString(36).slice(2,5));const o=r2((+$("#blO").value||0)*(+$("#blD").value));
-    const rec={n,g:$("#blG").value,gstin:gi,st:$("#blS").value||"",addr:($("#blA").value||"").trim(),op:{[bk.fy]:o}};$("#blGo").disabled=true;
+    const rec={n,g:$("#blG").value,gstin:gi,st:$("#blS").value||"",addr:($("#blA").value||"").trim(),op:{[bk.fy]:o},...bkLxGrab()};$("#blGo").disabled=true;
     try{await bkMerge("bk_books",bk.pid,{L:{[nid]:rec}},true);closeSheet();toast(bt("लेजर सेव हुआ","Ledger saved"));if(after)after(nid)}catch(e){$("#blGo").disabled=false;$("#blE").textContent=t("saveFail")}}}
 /* ---- voucher entry ---- */
 const BK_TAXL=/^(ocgst|osgst|oigst|icgst|isgst|iigst|round)$/;
@@ -7075,7 +7075,7 @@ body.partBk main,body.partBk .wrap{padding-right:140px}}`;document.head.appendCh
 /* ===== Bill-wise details (New Ref / Agst Ref / Advance / On Account), like Tally =====
    v.bw=[{l,tp:"new"|"agst"|"adv"|"oa",ref,a,cd}] — a has the same sign as the party's ledger line (Dr +). */
 const BK_BWT=[["new","New Ref"],["agst","Agst Ref"],["adv","Advance"],["oa","On Account"]];
-const bkIsParty=l=>{const x=bk.book&&bk.book.L[l];return !!x&&["sdr","scr"].includes(x.g)};
+const bkIsParty=l=>{const x=bk.book&&bk.book.L[l];return !!x&&["sdr","scr"].includes(x.g)&&x.bwo!==false};
 const bkPSign=l=>{const x=bk.book.L[l]||{};return x.g==="scr"?-1:1};
 /* pending bills of one party from a list of vouchers (refs where given, oldest-first for the rest) */
 function bkPartyBills(V,lid,cd,skip){const sign=bkPSign(lid),fs=bkFyS(),bills=[];let pool=0,oa=0;const op=r2(sign*bkOp(lid));
@@ -7091,8 +7091,8 @@ function bkPartyBills(V,lid,cd,skip){const sign=bkPSign(lid),fs=bkFyS(),bills=[]
   return{pend:bills.filter(b=>b.left>=0.005),credit:r2(pool+oa),oa,cd}}
 /* Outstanding now follows the bill references */
 function bkOutData(R,asOn,cd){const out=[];const dd=(a,b)=>Math.round((new Date(b)-new Date(a))/864e5);
-  [["sdr"],["scr"]].forEach(([g])=>R.G(g).forEach(l=>{const P=bkPartyBills(R.V,l.id,cd);
-    const pend=P.pend.map(b=>{const due=new Date(b.d);due.setDate(due.getDate()+(b.cd!=null?b.cd:cd));const ds=due.toISOString().slice(0,10);return Object.assign(b,{age:dd(b.d,asOn),due:ds,od:Math.max(0,dd(ds,asOn))})});
+  [["sdr"],["scr"]].forEach(([g])=>R.G(g).forEach(l=>{const lcd=l.cd!=null?+l.cd:cd,P=bkPartyBills(R.V,l.id,lcd);
+    const pend=P.pend.map(b=>{const due=new Date(b.d);due.setDate(due.getDate()+(b.cd!=null?b.cd:lcd));const ds=due.toISOString().slice(0,10);return Object.assign(b,{age:dd(b.d,asOn),due:ds,od:Math.max(0,dd(ds,asOn))})});
     const bal=r2(pend.reduce((s,b)=>s+b.left,0)-P.credit);if(Math.abs(bal)<0.005&&!pend.length)return;
     out.push({l,side:g==="sdr"?"dr":"cr",bal,adv:P.credit,pend,od:r2(pend.filter(b=>b.od>0).reduce((s,b)=>s+b.left,0)),old:pend.length?Math.max(...pend.map(b=>b.age)):0,
       bk:BK_AGE.map(a=>r2(pend.filter(b=>b.age>=a[0]&&b.age<=a[1]).reduce((s,b)=>s+b.left,0)))})}));return out}
@@ -7133,6 +7133,27 @@ function bkTaxAn(){if(!$("#bvItems"))return;let x=$("#bvTax");if(x){x.remove();r
 document.addEventListener("keydown",e=>{if(!$("#bvGo")||!bkSheetOn())return;const ctl=e.ctrlKey||e.metaKey;if(ctl&&/^h$/i.test(e.key)&&$("#bvItems")){e.preventDefault();e.stopPropagation();bkAccMode()}else if(ctl&&/^o$/i.test(e.key)&&$("#bvItems")){e.preventDefault();e.stopPropagation();bkTaxAn()}},true);
 {const _kl=bkKeyList;bkKeyList=function(){const k=_kl();if(bkSheetOn()&&$("#bvItems"))k.push(["Ctrl+H",bt("आइटम / अकाउंटिंग मोड","Item / Accounting"),bkAccMode],["Ctrl+O",bt("टैक्स विश्लेषण","Tax analysis"),bkTaxAn]);return k}}
 (function(){const st=document.createElement("style");st.textContent=`#sheet.bvAcc .biIt,#sheet.bvAcc .biNew,#sheet.bvAcc .biQ,#sheet.bvAcc .biP{display:none}@media(max-width:600px){.bwR{grid-template-columns:1fr 1fr!important}}`;document.head.appendChild(st)})();
+
+/* ===== Masters like Tally: ledger alias, PAN, bill-wise on/off, credit days, bank & contact; Chart of Accounts ===== */
+{const _lf=bkLForm;bkLForm=function(id,after,pre){const r=_lf.apply(this,arguments);const L=(id?bk.book.L[id]:pre)||{},act=document.querySelector("#sheet .actions");if(!act||!$("#blGo"))return r;
+  const f=(k,lab,ph,max,typ)=>`<div><label style="font-size:12px;margin:2px 0">${esc(lab)}</label><input id="blx_${k}" ${typ?`type="${typ}"`:""} maxlength="${max||60}" placeholder="${esc(ph||"")}" value="${esc(L[k]!=null?L[k]:"")}"></div>`;
+  act.insertAdjacentHTML("beforebegin",`<details id="blX2" style="margin-top:8px"${L.al||L.pan||L.bank||L.cd!=null?" open":""}><summary style="cursor:pointer;font-weight:600">⚙ ${esc(bt("और जानकारी (Tally जैसी) — Alias, PAN, बिल-वार, बैंक","More (as in Tally) — alias, PAN, bill-wise, bank"))}</summary>
+   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:4px 10px;margin-top:6px">${f("al",bt("दूसरा नाम (Alias)","Alias"),"",60)}${f("pan","PAN","AAAAA9999A",10)}${f("cd",bt("क्रेडिट दिन","Default credit period (days)"),"30",3,"number")}${f("ph",bt("फ़ोन","Phone"),"",20)}${f("em",bt("ई-मेल","E-mail"),"",80)}${f("bank",bt("बैंक का नाम","Bank name"),"",60)}${f("ac",bt("खाता नं.","A/c no."),"",30)}${f("ifsc","IFSC","",11)}</div>
+   <label class="chk" style="margin-top:6px"><input type="checkbox" id="blx_bw"${L.bwo===false?"":" checked"}> ${esc(bt("बिल-वार हिसाब रखें (Maintain balances bill-by-bill)","Maintain balances bill-by-bill"))}</label></details>`);
+  const gi=$("#blGi"),pan=$("#blx_pan");if(gi&&pan&&!pan.value&&gi.value.trim().length>=12)pan.value=gi.value.trim().toUpperCase().slice(2,12);if(gi&&pan)gi.addEventListener("input",()=>{const g=gi.value.trim().toUpperCase();if(g.length>=12&&!pan.value)pan.value=g.slice(2,12)});
+  $("#blGo").addEventListener("click",e=>{const p=($("#blx_pan").value||"").trim().toUpperCase();if(p&&!/^[A-Z]{5}\d{4}[A-Z]$/.test(p)){e.stopImmediatePropagation();$("#blE").textContent=bt("PAN सही नहीं लगता","PAN does not look right")}
+    const ifsc=($("#blx_ifsc").value||"").trim().toUpperCase();if(ifsc&&!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)){e.stopImmediatePropagation();$("#blE").textContent=bt("IFSC सही नहीं लगता","IFSC does not look right")}
+    const al=($("#blx_al").value||"").trim().toLowerCase();if(al&&bkL().some(l=>l.id!==id&&(l.n.toLowerCase()===al||(l.al||"").toLowerCase()===al))){e.stopImmediatePropagation();$("#blE").textContent=bt("यह Alias किसी और लेजर का नाम/Alias है","This alias is already used")}},true);
+  return r}}
+function bkLxGrab(){if(!$("#blX2"))return{};const v=k=>($("#blx_"+k).value||"").trim(),o={al:v("al").slice(0,60),pan:v("pan").toUpperCase(),ph:v("ph"),em:v("em"),bank:v("bank"),ac:v("ac"),ifsc:v("ifsc").toUpperCase(),bwo:$("#blx_bw").checked};const c=v("cd");o.cd=c===""?null:Math.max(0,Math.min(999,+c||0));return o}
+{const _id=bkIdOf;bkIdOf=function(name){const r=_id(name);if(r)return r;const n=(name||"").trim().toLowerCase();if(!n)return"";const l=bkL().find(x=>(x.al||"").toLowerCase()===n);return l?l.id:""}}
+/* Chart of Accounts */
+{const _t=bkTab;bkTab=function(R){if(bk.tab!=="coa")return _t(R);const side={L:bt("देनदारियाँ (Liabilities)","Liabilities"),A:bt("संपत्तियाँ (Assets)","Assets"),I:bt("आमदनी (Income)","Income"),E:bt("ख़र्चे (Expenses)","Expenses")};
+  return `<div class="m" style="margin:0 0 6px">${esc(bt("ग्रुप पर दबाएँ — उसके लेजर खुलेंगे। Esc = वापस","Tap a group to see its ledgers. Esc = back"))}</div>`+Object.keys(side).map(s=>{const gs=BK_G.filter(g=>g[3]===s||(s==="L"&&!["L","A","I","E"].includes(g[3])));if(!gs.length)return"";
+    return `<h3 style="margin:12px 0 6px">${esc(side[s])}</h3>`+bkTbl(gs.map(g=>{const ls=R.G(g[0]);const b=r2(ls.reduce((x,l)=>x+(R.B[l.id]||0),0));return `<tr class="bkGh" data-g="${g[0]}" style="cursor:pointer">${bkTd("<b>"+esc(bkGN(g[0]))+"</b>")}${bkTd(String(ls.length),1)}${bkTd(ls.length?bkDC(b):"—",1)}</tr>`}),[bt("ग्रुप","Group"),bt("लेजर","Ledgers"),bt("बैलेंस","Balance")])}).join("")}}
+BK_OUT_TABS.push("coa");
+{const _m=bkMenu;bkMenu=function(t){return _m(t).replace(/(<button class="bkTab[^"]*" data-t="mst">[\s\S]*?<\/button>)/,`$1<button class="bkTab${bk.tab==="coa"?" on":""}" data-t="coa"><span class="bkIc">🌳</span><span class="bkLb">${esc(bt("चार्ट ऑफ़ अकाउंट्स","Chart of Accounts"))}</span></button>`)}}
+{const _w=bkWire;bkWire=function(){_w();if(bk.tab==="coa")document.querySelectorAll("#bkBody tr.bkGh").forEach(r=>r.onclick=()=>bkOpenGrp(r.dataset.g))}}
 
 paintStatic();render();init();
 </script>
