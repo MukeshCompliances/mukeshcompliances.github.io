@@ -6305,9 +6305,10 @@ bkConsLoad=async function(pid,fy){const ids=bkConsMembers(pid),books={},vms={};
   if(mode!=="db"){const s0=bkLocal();ids.forEach(id=>{if(s0.books[id])books[id]=s0.books[id];vms[id]={};for(const k in s0.vm){const d=s0.vm[k];if(d.pid===id&&d.fy===fy)vms[id][k]=d}})}
   else await Promise.all(ids.map(async id=>{try{const d=await appDb.collection("bk_books").doc(id).get();if(d.exists)books[id]=d.data()}catch(e){}
     try{const q=await appDb.collection("bk_vm").where("pid","==",id).where("fy","==",fy).get();vms[id]={};q.docs.forEach(x=>vms[id][x.id]=x.data())}catch(e){vms[id]={}}}));
-  const use=ids.filter(id=>books[id]),notStarted=ids.filter(id=>!books[id]),L={},I={},map={},imap={},cs={},V={};
+  const use=ids.filter(id=>books[id]),notStarted=ids.filter(id=>!books[id]),L={},I={},map={},imap={},cs={},V={},src={};
   use.forEach(id=>{const B=books[id];map[id]={};imap[id]={};
-    Object.keys(B.L||{}).forEach(l=>{const x=B.L[l];if(x.del)return;const k="c:"+x.n.toLowerCase();map[id][l]=k;const y=L[k]=L[k]||{n:x.n,g:x.g,op:{},gstin:"",st:""};if(!y.gstin&&x.gstin){y.gstin=x.gstin;y.st=x.st}y.op[fy]=r2((y.op[fy]||0)+r2(x.op&&x.op[fy]||0))});
+    Object.keys(B.L||{}).forEach(l=>{const x=B.L[l];if(x.del)return;const k=bkMergeKey(x);map[id][l]=k;const y=L[k]=L[k]||{n:x.n,g:x.g,op:{},gstin:"",st:""};if(!y.gstin&&x.gstin){y.gstin=x.gstin;y.st=x.st}y.op[fy]=r2((y.op[fy]||0)+r2(x.op&&x.op[fy]||0));
+      (src[k]=src[k]||[]).push({sc:(B.gstin||"").slice(0,2)||B.st||"",n:x.n,op:r2(x.op&&x.op[fy]||0)})});
     Object.keys(B.I||{}).forEach(i=>{const x=B.I[i];if(x.del)return;const k="ci:"+x.n.toLowerCase();imap[id][i]=k;const y=I[k]=I[k]||{n:x.n,hsn:x.hsn,u:x.u,r:x.r,op:{}};const o=(x.op&&x.op[fy])||{};const yo=y.op[fy]=y.op[fy]||{q:0,v:0};yo.q+=+o.q||0;yo.v=r2(yo.v+r2(o.v))});
     if(B.cs&&B.cs[fy])cs[fy]=r2((cs[fy]||0)+B.cs[fy]);
     const all={};for(const k in vms[id]){const v=vms[id][k].v||{};for(const vid in v){const x=v[vid];if(!all[vid]||(x.at||"")>(all[vid].at||"")||((x.at||"")===(all[vid].at||"")&&all[vid].del&&!x.del))all[vid]=x}}
@@ -6315,7 +6316,7 @@ bkConsLoad=async function(pid,fy){const ids=bkConsMembers(pid),books={},vms={};
     Object.keys(all).forEach(vid=>{const x=all[vid];if(x.del||!x.d)return;const nx=JSON.parse(JSON.stringify(x));nx.ln=(x.ln||[]).map(y=>({l:map[id][y.l]||"c:?",a:y.a}));
       if(nx.gst){nx.gst.party=map[id][x.gst.party];nx.gst.items=(x.gst.items||[]).map(y=>Object.assign({},y,{l:map[id][y.l],it:y.it?imap[id][y.it]:undefined}))}nx.nar="["+sc+"] "+(x.nar||"");V[id+":"+vid]=nx})});
   const first=books[use[0]]||{};
-  return{book:{pid,name:first.name||"",gstin:"",st:first.st||"",L,I,cs,info:first.info||{}},vm:{cons:{pid,fy,v:V}},info:{use:use.map(id=>({id,g:books[id].gstin||"",n:books[id].name||"",biz:(bkUnits(bkPidParts(id).pid).find(u=>u.id===id)||{}).biz||""})),skipped:[],notStarted,gst:/~GST~/.test(pid)}}};
+  return{book:{pid,name:first.name||"",gstin:"",st:first.st||"",L,I,cs,info:first.info||{}},vm:{cons:{pid,fy,v:V}},info:{src,use:use.map(id=>({id,g:books[id].gstin||"",n:books[id].name||"",biz:(bkUnits(bkPidParts(id).pid).find(u=>u.id===id)||{}).biz||""})),skipped:[],notStarted,gst:/~GST~/.test(pid)}}};
 /* P&L with internal transfers on their own lines */
 function bkPlHtml(R){const line=(a,b,bo,c)=>`<tr${c?` style="background:${c}"`:""}>${bkTd(esc(a),0,bo)}${bkTd(bkN(b),1,bo)}</tr>`,grp=(g,sign)=>R.G(g).filter(l=>Math.abs(R.B[l.id]||0)>=0.005).map(l=>`<tr class="bkLg" data-id="${esc(l.id)}" style="cursor:pointer">${bkTd("&nbsp;&nbsp;"+esc(l.n))}${bkTd(bkN(sign*(R.B[l.id]||0)),1)}</tr>`).join("");
   const tr="#f3f0ff",rows=[`<tr><td colspan="2" style="padding:6px;font-weight:700">${esc(bt("ट्रेडिंग खाता","Trading Account"))}</td></tr>`,line(bt("बिक्री (बाहर)","Sales (outside)"),r2(R.sales-R.bOut),1),grp("sales",-1)];
@@ -6438,6 +6439,69 @@ function bkInvoiceHtml(v){const B=bk.book,f=B.info||{},g=v.gst||{},P=B.L[g.party
    <td style="${c};border-left:0">${f.bank||f.ac?`<div>Company's Bank Details</div><table style="${sm}"><tr><td>A/c Holder's Name</td><td>: <b>${e(f.name||B.name)}</b></td></tr><tr><td>Bank Name</td><td>: <b>${e(f.bank||"")}</b></td></tr><tr><td>A/c No.</td><td>: <b>${e(f.ac||"")}</b></td></tr><tr><td>Branch &amp; IFS Code</td><td>: <b>${e(f.ifsc||"")}</b></td></tr></table>`:""}
     <div style="border-top:1px solid #000;border-left:1px solid #000;margin-top:6px;padding:3px;text-align:right;min-height:52px;display:flex;flex-direction:column;justify-content:space-between"><b>for ${e(f.name||B.name)}</b><span>Authorised Signatory</span></div></td></tr></table>
   <div style="text-align:center;${sm};margin-top:3px">This is a Computer Generated ${v.t==="cn"?"Credit Note":v.t==="dn"?"Debit Note":"Invoice"}.</div></div>`}
+
+/* ===== Merged view: same ledger in different states becomes one line; reports open condensed (groups only, like Tally) and expand on tap ===== */
+function bkMergeKey(x){if(x.gstin&&["sdr","scr","cl","ca","la","dep","unsec","sec"].includes(x.g))return "g:"+x.gstin.toUpperCase();
+  const syn={private:"pvt",limited:"ltd",and:"",the:"",a:"",c:"",ac:"",account:"",accounts:"",co:"company",corpn:"corporation",corp:"corporation"};
+  const tk=String(x.n||"").toLowerCase().replace(/&/g," and ").replace(/[^a-z0-9%]+/g," ").replace(/%/g," ").split(" ").filter(Boolean).map(w=>syn[w]!==undefined?syn[w]:w).filter(Boolean).sort();
+  return "c:"+(tk.join(" ")||String(x.n||"").toLowerCase())}
+{const _rb=renderBk;renderBk=function(){_rb();const body=$("#bkBody");if(!body||!bk.book||!["tb","bs","pl"].includes(bk.tab))return;
+  bk.open=bk.open||{};const det=!!bk.detail;let n=0;
+  body.querySelectorAll("table").forEach(tb=>{const rows=[...tb.querySelectorAll("tr")];rows.forEach((r,i)=>{if(r.classList.contains("bkLg")||!rows[i+1]||!rows[i+1].classList.contains("bkLg"))return;
+    const kids=[];for(let j=i+1;j<rows.length&&rows[j].classList.contains("bkLg");j++)kids.push(rows[j]);const key=bk.tab+"|"+r.cells[0].textContent.trim();const open=key in bk.open?bk.open[key]:det;n++;
+    r.classList.add("bkGh");r.style.cursor="pointer";const c0=r.cells[0];c0.innerHTML=`<span class="bkTw">${open?"▾":"▸"}</span> `+c0.innerHTML+` <span class="m" style="font-weight:400">(${kids.length})</span>`;kids.forEach(k=>k.style.display=open?"":"none");
+    r.onclick=()=>{const o=kids[0].style.display==="none";kids.forEach(k=>k.style.display=o?"":"none");c0.querySelector(".bkTw").textContent=o?"▾":"▸";bk.open[key]=o}})});
+  if(!n)return;const bar=document.querySelector(".bkPer");const btn=`<button class="btn ghost" id="bkDet" style="padding:4px 10px;font-size:12px">${det?"▸ "+esc(bt("सिर्फ़ ग्रुप (Condensed)","Groups only (Condensed)")):"▾ "+esc(bt("सब लेजर खोलें (Detailed)","Show all ledgers (Detailed)"))}</button>`;
+  if(bar)bar.insertAdjacentHTML("beforeend",btn);else body.insertAdjacentHTML("beforebegin",btn);
+  $("#bkDet").onclick=()=>{bk.detail=!det;bk.open={};renderBk()}}}
+/* in the merged view, a ledger shows how much came from each state */
+{const _t=bkTab;bkTab=function(R){const h=_t(R);if(!bk.cons||bk.tab!=="led"||!bk.led)return h;const S=(bk.consInfo&&bk.consInfo.src||{})[bk.led];if(!S||!S.length)return h;
+  const P=R.per||bkPer(),mv={};R.V.forEach(v=>{const m=/^\[(\d{2})\]/.exec(v.nar||"");const sc=m?m[1]:"";(v.ln||[]).forEach(x=>{if(x.l===bk.led)mv[sc]=r2((mv[sc]||0)+(+x.a||0))})});
+  const by={};S.forEach(s=>{const y=by[s.sc]=by[s.sc]||{names:[],op:0};y.names.push(s.n);y.op=r2(y.op+s.op)});
+  const rows=Object.keys(by).map(sc=>{const y=by[sc],cl=r2(y.op+(mv[sc]||0));return `<tr>${bkTd(esc((STATES[sc]||sc)+" ("+sc+")")+"<br><span class='m'>"+esc([...new Set(y.names)].join(" · "))+"</span>")}${bkTd(bkDC(y.op),1)}${bkTd(bkDC(mv[sc]||0),1)}${bkTd(bkDC(cl),1,1)}</tr>`});
+  return h+`<h4 style="margin:12px 0 4px">🧩 ${esc(bt("किस राज्य से कितना","How much from each state"))} <span class="m">(${esc(bt("तक ","as on ")+bkDt(P.t))})</span></h4>`+bkTbl(rows,[bt("राज्य / Tally में नाम","State / name in books"),bt("ओपनिंग","Opening"),bt("साल में","In the year"),bt("बैलेंस","Balance")])}}
+
+/* ===== Outstanding the Tally way: debtors / creditors / both · party-wise, bill-wise (oldest bill settled first), ageing, overdue ===== */
+const BK_AGE=[[0,30,"0–30"],[31,60,"31–60"],[61,90,"61–90"],[91,180,"91–180"],[181,1e9,"180+"]];
+function bkOutData(R,asOn,cd){const fs=bkFyS(),out=[];const dd=(a,b)=>Math.round((new Date(b)-new Date(a))/864e5);
+  [["sdr",1],["scr",-1]].forEach(([g,sign])=>R.G(g).forEach(l=>{const bills=[];let credit=0;const op=r2(sign*bkOp(l.id));
+    if(op>0)bills.push({d:fs,no:bt("ओपनिंग","Opening"),amt:op,left:op,op:1});else if(op<0)credit=r2(credit-op);
+    R.V.forEach(v=>{const a=r2(sign*(v.ln||[]).filter(x=>x.l===l.id).reduce((s,x)=>s+(+x.a||0),0));if(!a)return;
+      if(a>0)bills.push({d:v.d,no:(v.gst&&v.gst.inv)||v.no||"",t:v.t,id:v.id,amt:a,left:a});else credit=r2(credit-a)});
+    bills.forEach(b=>{const u=Math.min(b.left,credit);b.left=r2(b.left-u);credit=r2(credit-u)});
+    const pend=bills.filter(b=>b.left>=0.005).map(b=>{const due=new Date(b.d);due.setDate(due.getDate()+cd);const ds=due.toISOString().slice(0,10);return Object.assign(b,{age:dd(b.d,asOn),due:ds,od:Math.max(0,dd(ds,asOn))})});
+    const bal=r2(pend.reduce((s,b)=>s+b.left,0)-credit);if(Math.abs(bal)<0.005&&!pend.length)return;
+    out.push({l,side:g==="sdr"?"dr":"cr",bal,adv:credit,pend,od:r2(pend.filter(b=>b.od>0).reduce((s,b)=>s+b.left,0)),old:pend.length?Math.max(...pend.map(b=>b.age)):0,
+      bk:BK_AGE.map(a=>r2(pend.filter(b=>b.age>=a[0]&&b.age<=a[1]).reduce((s,b)=>s+b.left,0)))})}));return out}
+function bkOutHtml(R){const o=bk.oo=Object.assign({side:"dr",view:"party",sort:"amt",q:"",ovd:false,cd:30},bk.oo||{});const P=R.per||bkPer(),today=todayStr(),asOn=P.t<today?P.t:today;
+  let D=bkOutData(R,asOn,+o.cd||0);const all=D;D=D.filter(x=>o.side==="both"||x.side===o.side);const q=o.q.trim().toLowerCase();if(q)D=D.filter(x=>(x.l.n+" "+(x.l.gstin||"")).toLowerCase().includes(q));if(o.ovd)D=D.filter(x=>x.od>0);
+  D.sort(o.sort==="name"?(a,b)=>a.l.n.localeCompare(b.l.n):o.sort==="days"?(a,b)=>b.old-a.old:(a,b)=>b.bal-a.bal);
+  const sum=s=>r2(all.filter(x=>x.side===s).reduce((t,x)=>t+x.bal,0)),odS=s=>r2(all.filter(x=>x.side===s).reduce((t,x)=>t+x.od,0));
+  const card=(k,t,a,od,c)=>`<button class="bkOc${o.side===k?" on":""}" data-s="${k}" style="border-color:${c}"><span>${esc(t)}</span><b>₹${bkN(a)}</b>${od!=null?`<small>${esc(bt("ड्यू निकल चुका","Overdue"))}: ₹${bkN(od)}</small>`:""}</button>`;
+  const sel=(id,v,opts)=>`<select id="${id}">${opts.map(x=>`<option value="${x[0]}"${String(v)===String(x[0])?" selected":""}>${esc(x[1])}</option>`).join("")}</select>`;
+  let h=`<div class="bkOcs">${card("dr",bt("लेना है (Debtors / Receivables)","To receive (Debtors)"),sum("dr"),odS("dr"),"#1e8e3e")}${card("cr",bt("देना है (Creditors / Payables)","To pay (Creditors)"),sum("cr"),odS("cr"),"#d93025")}${card("both",bt("दोनों","Both"),r2(sum("dr")-sum("cr")),null,"var(--line)")}</div>
+   <div class="filters">${sel("bkOv",o.view,[["party",bt("पार्टी-वार","Party-wise")],["bill",bt("बिल-वार (Bill-wise)","Bill-wise")],["age",bt("एजिंग (Ageing)","Ageing")],["due",bt("ड्यू तारीख़ वार","By due date")]])}
+   ${sel("bkOs",o.sort,[["amt",bt("रकम से","By amount")],["name",bt("नाम से","By name")],["days",bt("सबसे पुराना पहले","Oldest first")]])}
+   <label style="display:flex;align-items:center;gap:4px;font-size:13px;white-space:nowrap">${esc(bt("क्रेडिट दिन","Credit days"))} <input id="bkOd" type="number" min="0" max="365" value="${o.cd}" style="width:70px"></label>
+   <label class="chk" style="margin:0"><input type="checkbox" id="bkOo"${o.ovd?" checked":""}> ${esc(bt("सिर्फ़ ड्यू निकले","Overdue only"))}</label>
+   <input id="bkOq" type="search" placeholder="🔍 ${esc(bt("पार्टी खोजें…","Search party…"))}" value="${esc(o.q)}" style="flex:1 1 180px"></div>
+   <div class="m" style="margin:-2px 0 6px">${esc(bt(`${bkDt(asOn)} तक · पुराना बिल पहले चुकता माना गया (FIFO) · ड्यू = बिल तारीख़ + ${o.cd} दिन`,`As on ${bkDt(asOn)} · payments settle the oldest bill first (FIFO) · due = bill date + ${o.cd} days`))}</div>`;
+  if(!D.length)return h+`<div class="empty">${esc(bt("कुछ बकाया नहीं।","Nothing outstanding."))}</div>`;
+  const sd=x=>o.side==="both"?`<span class="m" style="color:${x.side==="dr"?"#1e8e3e":"#d93025"}">${x.side==="dr"?bt("लेना","Receive"):bt("देना","Pay")}</span> `:"";
+  const pName=x=>sd(x)+esc(x.l.n)+(x.l.gstin?"<br><span class='m'>"+esc(x.l.gstin)+"</span>":"");const tot=k=>r2(D.reduce((s,x)=>s+(x.side==="dr"||o.side!=="both"?1:-1)*x[k],0));
+  if(o.view==="party")return h+bkTbl(D.map(x=>`<tr class="bkLg" data-id="${esc(x.l.id)}" style="cursor:pointer">${bkTd(pName(x))}${bkTd(String(x.pend.length),1)}${bkTd(x.old?x.old+" "+esc(bt("दिन","d")):"—",1)}${bkTd(x.od?`<span style="color:var(--red)">${bkN(x.od)}</span>`:"—",1)}${bkTd(x.adv?bkN(x.adv):"—",1)}${bkTd((x.bal<0?"<span style='color:var(--red)'>":"")+bkN(x.bal)+(x.bal<0?" "+esc(bt("(एडवांस)","(advance)"))+"</span>":""),1,1)}</tr>`).concat([`<tr>${bkTd(esc(bt("कुल","Total"))+` (${D.length})`,0,1)}${bkTd("")}${bkTd("")}${bkTd(bkN(tot("od")),1,1)}${bkTd("")}${bkTd(bkN(tot("bal")),1,1)}</tr>`]),[bt("पार्टी","Party"),bt("बिल","Bills"),bt("सबसे पुराना","Oldest"),bt("ड्यू निकला","Overdue"),bt("एडवांस / On a/c","On account"),bt("बकाया","Pending")]);
+  if(o.view==="age")return h+bkTbl(D.map(x=>`<tr class="bkLg" data-id="${esc(x.l.id)}" style="cursor:pointer">${bkTd(pName(x))}${x.bk.map(a=>bkTd(a?bkN(a):"—",1)).join("")}${bkTd(x.adv?"-"+bkN(x.adv):"—",1)}${bkTd(bkN(x.bal),1,1)}</tr>`).concat([`<tr>${bkTd(esc(bt("कुल","Total")),0,1)}${BK_AGE.map((a,i)=>bkTd(bkN(r2(D.reduce((s,x)=>s+(x.side==="dr"||o.side!=="both"?1:-1)*x.bk[i],0))),1,1)).join("")}${bkTd(bkN(tot("adv")),1,1)}${bkTd(bkN(tot("bal")),1,1)}</tr>`]),[bt("पार्टी","Party")].concat(BK_AGE.map(a=>a[2]+" "+bt("दिन","days")),[bt("एडवांस","On a/c"),bt("कुल","Total")]));
+  const bills=[];D.forEach(x=>x.pend.forEach(b=>bills.push({x,b})));
+  const brow=(x,b,showP)=>`<tr${b.id?` class="bkV" data-id="${esc(b.id)}" style="cursor:pointer"`:""}>${showP?bkTd(pName(x)):""}${bkTd(esc(bkDt(b.d)))}${bkTd(esc(b.no))}${bkTd(bkN(b.amt),1)}${bkTd(bkN(b.left),1,1)}${bkTd(esc(bkDt(b.due)))}${bkTd(b.od?`<span style="color:var(--red)">${b.od}</span>`:"—",1)}</tr>`;
+  const bh=[bt("तारीख़","Date"),bt("बिल नं.","Ref. no."),bt("बिल रकम","Bill amount"),bt("बकाया","Pending"),bt("ड्यू तारीख़","Due on"),bt("ड्यू निकले दिन","Overdue days")];
+  if(o.view==="due"){bills.sort((a,b)=>a.b.due<b.b.due?-1:1);return h+bkTbl(bills.map(z=>brow(z.x,z.b,1)),[bt("पार्टी","Party")].concat(bh))}
+  return h+D.map(x=>`<div class="bkLg" data-id="${esc(x.l.id)}" style="cursor:pointer;margin:12px 0 4px;display:flex;justify-content:space-between;gap:8px"><b>${sd(x)}${esc(x.l.n)}</b><b>₹${bkN(x.bal)}</b></div>`+bkTbl(x.pend.map(b=>brow(x,b,0)).concat(x.adv?[`<tr>${bkTd(esc(bt("एडवांस / On account","On account")),0,0)}${bkTd("")}${bkTd("")}${bkTd("-"+bkN(x.adv),1)}${bkTd("")}${bkTd("")}</tr>`]:[]),bh)).join("")}
+{const _w=bkWire;bkWire=function(){_w();if(bk.tab!=="out")return;const o=bk.oo||{},set=p=>{bk.oo=Object.assign({},o,p);renderBk()};
+  document.querySelectorAll(".bkOc").forEach(b=>b.onclick=()=>set({side:b.dataset.s}));const g=id=>$(id);
+  if(g("#bkOv"))g("#bkOv").onchange=e=>set({view:e.target.value});if(g("#bkOs"))g("#bkOs").onchange=e=>set({sort:e.target.value});
+  if(g("#bkOd"))g("#bkOd").onchange=e=>set({cd:Math.max(0,Math.min(365,+e.target.value||0))});if(g("#bkOo"))g("#bkOo").onchange=e=>set({ovd:e.target.checked});
+  const q=g("#bkOq");if(q){let tm;q.oninput=()=>{clearTimeout(tm);tm=setTimeout(()=>{set({q:q.value});const n=$("#bkOq");if(n){n.focus();n.setSelectionRange(n.value.length,n.value.length)}},350)}}}}
+(function(){const st=document.createElement("style");st.textContent=`.bkOcs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}.bkOc{font:inherit;text-align:left;background:var(--card);border:2px solid var(--line);border-radius:12px;padding:8px 10px;cursor:pointer;display:flex;flex-direction:column;gap:2px;color:var(--ink)}.bkOc span{font-size:12px;color:var(--mute)}.bkOc b{font-size:16px}.bkOc small{font-size:11px;color:var(--red)}.bkOc.on{box-shadow:0 0 0 3px rgba(26,115,232,.25);background:var(--grey-soft)}@media(max-width:600px){.bkOcs{grid-template-columns:1fr 1fr}.bkOc b{font-size:14px}}`;document.head.appendChild(st)})();
 
 paintStatic();render();init();
 </script>
