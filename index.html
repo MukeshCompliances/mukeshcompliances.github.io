@@ -6965,6 +6965,112 @@ function bkVchPrintHtml(v){const B=bk.book,f=B.info||{},e=s=>esc(s==null?"":Stri
    <tr><td style="${c}"><b>Amount (in words) :</b><br>${e(bkInr(tot))}</td><td style="${c};${R};font-weight:700">₹ ${bkN(tot)}</td><td style="${c};${R};font-weight:700">₹ ${bkN(tot)}</td></tr></table>
   <div style="display:flex;justify-content:space-between;margin-top:46px;font-size:12px">${pay?`<span>${v.t==="pay"?"Receiver's Signature":"Received with thanks"}</span>`:"<span>Prepared by</span>"}<span>Checked by</span><span>Authorised Signatory<br><b>for ${e(f.name||B.name)}</b></span></div></div>`}
 
+/* ===== Tally-like keyboard & navigation (phase 1) =====
+   Esc = back one level to the same line · Up/Down/Enter in every report · TB/BS/P&L > Group > Ledger > Voucher
+   Alt+G Go To · Ctrl+A save · Ctrl+Q quit · Alt+P print · Alt+E export · F2 period · Alt+F1 detailed · Alt+D delete
+   Alt+C new ledger · Ctrl+R repeat narration · Alt+2 duplicate voucher · PgUp/PgDn previous/next voucher · Ctrl+Enter alter master */
+bk.nav=[];
+const bkKey=()=>[bk.pid,bk.tab,bk.led||"",bk.grp||"",bk.rt||""].join("|");
+const bkRows=()=>[...document.querySelectorAll("#bkBody .bkLg,#bkBody .bkV,#bkBody .bkGh")].filter(r=>r.offsetParent!==null);
+function bkSetHi(i,scroll){const rs=bkRows();document.querySelectorAll("#bkBody .bkHi").forEach(r=>r.classList.remove("bkHi"));if(!rs.length){bk._hi=-1;return}
+  i=Math.max(0,Math.min(rs.length-1,i|0));bk._hi=i;rs[i].classList.add("bkHi");if(scroll)rs[i].scrollIntoView({block:"nearest"})}
+function bkBack(){const s=bk.nav.pop();if(!s)return false;bk._back=true;bk.tab=s.tab;bk.led=s.led;bk.grp=s.grp;bk.rt=s.rt;bk._restore={y:s.y,hi:s.hi};renderBk();return true}
+function bkOpenGrp(g){if(!g)return;bk.grp=g;bk.tab="grp";renderBk()}
+{const _rb=renderBk;renderBk=function(){const k=bkKey(),y=window.scrollY;
+  if(bk._cur){if(bk._cur.k.split("|")[0]!==String(bk.pid))bk.nav=[];else if(bk._cur.k!==k&&!bk._back){bk.nav.push(Object.assign({},bk._cur,{y,hi:bk._hi}));if(bk.nav.length>60)bk.nav.shift()}}
+  const same=bk._cur&&bk._cur.k===k,keepHi=bk._hi;bk._back=false;_rb();bk._cur={k,tab:bk.tab,led:bk.led,grp:bk.grp,rt:bk.rt};
+  const body=$("#bkBody");if(!body)return;
+  /* group rows: the arrow opens/closes, the name drills into the group (Tally: Enter on a group) */
+  body.querySelectorAll("tr.bkGh").forEach(r=>{const c0=r.cells[0],nm=[...c0.childNodes].filter(n=>!(n.classList&&(n.classList.contains("bkTw")||n.classList.contains("bkCnt")))).map(n=>n.textContent).join("").trim();
+    const g=(BK_G.find(x=>bkGN(x[0])===nm)||[])[0];if(!g)return;r.dataset.g=g;const tog=r.onclick;r.onclick=ev=>{if(ev.target.closest(".bkTw"))tog(ev);else bkOpenGrp(g)};c0.title=bt("खोलने के लिए नाम पर दबाएँ, ▸ से नीचे की लाइनें","Tap the name to open the group, ▸ to show its ledgers")});
+  if(bk._restore){const r=bk._restore;bk._restore=null;bkSetHi(r.hi>=0?r.hi:0);window.scrollTo(0,r.y||0)}else bkSetHi(same&&keepHi>=0?keepHi:0);
+  const pb=document.querySelector(".bkPer");if(pb&&!pb.querySelector(".bkToday"))pb.insertAdjacentHTML("beforeend",`<span class="m bkToday" title="${esc(bt("आज की तारीख़","Current date"))}">${esc(bt("आज ","Today "))}${esc(bkDt(todayStr()))}</span>`);
+  bkKeyBar()}}
+/* clicking a row also moves the highlight there, so Esc comes back to it */
+document.addEventListener("click",e=>{const r=e.target.closest&&e.target.closest("#bkBody .bkLg,#bkBody .bkV,#bkBody .bkGh");if(!r)return;const i=bkRows().indexOf(r);if(i>=0)bk._hi=i},true);
+/* Group summary */
+{const _t=bkTab;bkTab=function(R){if(bk.tab!=="grp")return _t(R);const g=bk.grp,ls=R.G(g).map(l=>({l,b:r2(R.B[l.id]||0),o:r2(bkOp(l.id))})).filter(x=>Math.abs(x.b)>=0.005||Math.abs(x.o)>=0.005);
+  const tot=r2(ls.reduce((s,x)=>s+x.b,0)),P=R.per||bkPer();
+  return `<div class="m" style="margin:0 0 6px">${esc(bt("ग्रुप सारांश","Group Summary"))} · ${esc(bkDt(P.t))} ${esc(bt("तक","as on"))} · <span class="m">Esc = ${esc(bt("वापस","back"))}</span></div><h3 style="margin:0 0 8px">${esc(bkGN(g))}</h3>`+
+   (ls.length?bkTbl(ls.sort((a,b)=>a.l.n.localeCompare(b.l.n)).map(x=>`<tr class="bkLg" data-id="${esc(x.l.id)}" style="cursor:pointer">${bkTd(esc(x.l.n)+(x.l.gstin?"<br><span class='m'>"+esc(x.l.gstin)+"</span>":""))}${bkTd(bkDC(x.o),1)}${bkTd(bkDC(x.b),1,1)}</tr>`).concat([`<tr>${bkTd(esc(bt("कुल","Grand Total")),0,1)}${bkTd(bkDC(r2(ls.reduce((s,x)=>s+x.o,0))),1,1)}${bkTd(bkDC(tot),1,1)}</tr>`]),[bt("विवरण","Particulars"),bt("ओपनिंग","Opening"),bt("क्लोज़िंग बैलेंस","Closing Balance")]):`<div class="empty">—</div>`)}}
+BK_PER_TABS.push("grp");BK_OUT_TABS.push("grp");
+/* voucher form: remember how it looked when opened (to ask before quitting), and which voucher it is */
+{const _vf=bkVForm;bkVForm=function(id,pre){const r=_vf.apply(this,arguments);bk._vf={id:id||null,t:(pre&&pre.t)||((id&&(bkV().find(x=>x.id===id)||{}).t)||"")};setTimeout(()=>{if($("#bvGo"))bk._vf.snap=bkSnap()},0);bkKeyBar();return r}}
+const bkSnap=()=>[...document.querySelectorAll("#sheet input,#sheet select,#sheet textarea")].map(e=>e.type==="checkbox"?e.checked:e.value).join("\u0001");
+const bkDirty=()=>!!($("#bvGo")&&bk._vf&&bk._vf.snap!=null&&bk._vf.snap!==bkSnap());
+const bkSheetOn=()=>!!($("#ov")&&$("#ov").classList.contains("on"));
+function bkQuitSheet(ask){if(ask&&bkDirty()&&!confirm(bt("बदलाव सेव नहीं हुए। बंद करें? (Quit? Yes/No)","Changes are not saved. Quit? (Yes/No)")))return;closeSheet();bkKeyBar()}
+function bkVOrder(){return bkV().filter(v=>!v.del).sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:String(a.at||"")<String(b.at||"")?-1:1)}
+function bkStepV(dir){if(!bk._vf||!bk._vf.id)return;if(bkDirty()&&!confirm(bt("बदलाव सेव नहीं हुए। फिर भी आगे जाएँ?","Changes are not saved. Move anyway?")))return;const a=bkVOrder(),i=a.findIndex(v=>v.id===bk._vf.id),n=a[i+dir];if(n)bkVForm(n.id);else toast(dir>0?bt("यह आख़िरी वाउचर है","This is the last voucher"):bt("यह पहला वाउचर है","This is the first voucher"))}
+function bkDupV(){const v=bk._vf&&bk._vf.id&&bkV().find(x=>x.id===bk._vf.id);if(!v){toast(bt("पहले कोई सेव हुआ वाउचर खोलें","Open a saved voucher first"));return}
+  const c=JSON.parse(JSON.stringify({t:v.t,d:v.d,nar:v.nar||"",ln:v.ln||[],gst:v.gst}));if(c.gst){delete c.gst.inv}bkVForm(null,c);toast(bt("कॉपी बनी — नंबर/तारीख़ देखकर Ctrl+A","Copy made — check number/date, then Ctrl+A"))}
+function bkRepeatNar(){const n=$("#bvNar");if(!n)return;const t=bk._vf&&bk._vf.t;const a=bkV().filter(v=>v.nar&&(!t||v.t===t)).sort((x,y)=>String(x.at||"")<String(y.at||"")?1:-1);if(a[0]){n.value=a[0].nar;n.dispatchEvent(new Event("input"))}}
+/* Alt+G — Go To */
+function bkGoTo(){if(!bk.book)return;closeSheet();const items=[];const EN={home:"Dashboard Gateway",day:"Day Book",led:"Ledger Vouchers",tb:"Trial Balance",pl:"Profit & Loss P&L",bs:"Balance Sheet",gst:"GST GSTR-1 GSTR-3B",out:"Outstandings Receivables Payables Ageing",stk:"Stock Summary Inventory",mst:"Ledger list Chart of Accounts Masters",dup:"Duplicate check",led2:"",item:"Create Stock Item",info:"Company Bill details",xl:"Excel export"},VE={sales:"Sales",purch:"Purchase",cn:"Credit Note",dn:"Debit Note",rcpt:"Receipt",pay:"Payment",contra:"Contra",jrnl:"Journal"};
+  document.querySelectorAll(".bkSide .bkTab,.bkSide .bkVt,.bkSide .bkMk").forEach(b=>{const lb=b.querySelector(".bkLb"),t=b.dataset.t||b.dataset.k||"",isV=b.classList.contains("bkVt");if(lb)items.push({n:(isV?bt("रजिस्टर: ","Register: "):"")+lb.textContent.trim(),s:(isV?"register "+(VE[t]||""):(b.dataset.k==="led"?"create ledger":EN[t]||"")),k:(b.querySelector(".bkKy")||{}).textContent||"",go:()=>b.click()})});
+  BK_VK.forEach(x=>items.push({n:bt("नया वाउचर: ","Create voucher: ")+bkTN(x[0]),s:"create voucher "+VE[x[0]],k:x[2],go:()=>bkNewOf(x[0])}));
+  bkL().slice().sort((a,b)=>a.n.localeCompare(b.n)).forEach(l=>items.push({n:bt("लेजर: ","Ledger: ")+l.n,s:"ledger "+(l.gstin||""),k:"",go:()=>{bk.led=l.id;bk.tab="led";renderBk()}}));
+  BK_G.forEach(g=>items.push({n:bt("ग्रुप: ","Group: ")+bkGN(g[0]),s:"group "+g[2],k:"",go:()=>bkOpenGrp(g[0])}));
+  openSheet(`<h3 style="margin:0 0 8px">🔎 ${esc(bt("कहाँ जाना है? (Go To)","Go To"))}</h3><input id="bkGq" type="search" autocomplete="off" placeholder="${esc(bt("रिपोर्ट, लेजर, ग्रुप या वाउचर का नाम लिखें…","Type a report, ledger, group or voucher…"))}"><div id="bkGl" style="max-height:55vh;overflow:auto;margin-top:6px"></div>`);
+  const q=$("#bkGq"),list=$("#bkGl");let sel=0,cur=[];
+  const draw=()=>{const s=q.value.trim().toLowerCase();cur=items.filter(x=>{const h=(x.n+" "+(x.s||"")).toLowerCase();return !s||s.split(/\s+/).every(w=>h.includes(w))}).slice(0,60);sel=Math.min(sel,Math.max(0,cur.length-1));
+    list.innerHTML=cur.map((x,i)=>`<div class="bkGi${i===sel?" bkHi":""}" data-i="${i}" style="padding:7px 10px;border-radius:8px;cursor:pointer;display:flex;justify-content:space-between"><span>${esc(x.n)}</span><span class="m">${esc(x.k)}</span></div>`).join("")||`<div class="m">—</div>`;
+    list.querySelectorAll(".bkGi").forEach(d=>d.onclick=()=>{const x=cur[+d.dataset.i];closeSheet();x.go()});const h=list.querySelector(".bkHi");if(h)h.scrollIntoView({block:"nearest"})};
+  q.oninput=()=>{sel=0;draw()};q.onkeydown=e=>{if(e.key==="ArrowDown"){e.preventDefault();sel=Math.min(cur.length-1,sel+1);draw()}else if(e.key==="ArrowUp"){e.preventDefault();sel=Math.max(0,sel-1);draw()}else if(e.key==="Enter"){e.preventDefault();const x=cur[sel];if(x){closeSheet();x.go()}}};
+  draw();setTimeout(()=>q.focus(),30)}
+/* the keys valid on this screen, shown on the right (desktop) — clicking a key = pressing it */
+function bkKeyList(){if($("#bkPrint"))return[["Alt+P",bt("प्रिंट","Print"),()=>$("#bkPp")&&$("#bkPp").click()],["Esc",bt("बंद","Close"),()=>$("#bkPrint").remove()]];
+  if(bkSheetOn()&&$("#bvGo"))return[["Ctrl+A",bt("सेव","Accept"),()=>$("#bvGo").click()],["Esc",bt("वापस","Quit"),()=>bkQuitSheet(1)],["Ctrl+Q",bt("बिना सेव बंद","Quit, no save"),()=>bkQuitSheet(0)],["Alt+C",bt("नया लेजर","Create ledger"),()=>$("#bvNewL")&&$("#bvNewL").click()],["Ctrl+R",bt("पिछला नैरेशन","Repeat narr."),bkRepeatNar],["Alt+P",bt("प्रिंट","Print"),()=>$("#bvPr")&&$("#bvPr").click()],["Alt+2",bt("डुप्लीकेट","Duplicate"),bkDupV],["Alt+D",bt("डिलीट","Delete"),()=>$("#bvDel")&&$("#bvDel").click()],["PgUp",bt("पिछला वाउचर","Prev voucher"),()=>bkStepV(-1)],["PgDn",bt("अगला वाउचर","Next voucher"),()=>bkStepV(1)]];
+  if(bkSheetOn())return[["Ctrl+A",bt("सेव","Accept"),bkSheetSave],["Esc",bt("वापस","Back"),()=>bkQuitSheet(0)]];
+  const k=[["F2",bt("अवधि","Period"),bkF2],["Alt+G",bt("कहाँ जाएँ","Go To"),bkGoTo],["Esc",bt("वापस","Back"),bkEsc],["Alt+P",bt("प्रिंट","Print"),()=>$("#bkRpP")&&$("#bkRpP").click()],["Alt+E",bt("एक्सपोर्ट","Export"),()=>$("#bkRpX")&&$("#bkRpX").click()]];
+  if($("#bkDet"))k.push(["Alt+F1",bt("डिटेल / कंडेंस्ड","Detailed"),()=>$("#bkDet").click()]);
+  if(bkCan())[["F4","contra"],["F5","pay"],["F6","rcpt"],["F7","jrnl"],["F8","sales"],["F9","purch"],["Ctrl+F8","cn"],["Ctrl+F9","dn"]].forEach(x=>k.push([x[0],bkTN(x[1]),()=>bkNewOf(x[1])]));
+  return k}
+function bkKeyBar(){let b=$("#bkKeys");const s0=$("#bk");if(!s0||s0.hidden||!bk.book){if(b)b.remove();return}if(!b){b=document.createElement("div");b.id="bkKeys";document.body.appendChild(b)}
+  const ks=bkKeyList();b.innerHTML=ks.map((x,i)=>`<button data-i="${i}"><b>${esc(x[0])}</b><span>${esc(x[1])}</span></button>`).join("");b.querySelectorAll("button").forEach(x=>x.onclick=()=>{ks[+x.dataset.i][2]();setTimeout(bkKeyBar,50)})}
+new MutationObserver(()=>bkKeyBar()).observe(document.getElementById("ov"),{attributes:true,attributeFilter:["class"]});
+setInterval(()=>{const b=$("#bkKeys"),s0=$("#bk");if(b&&(!s0||s0.hidden))b.remove()},1500);
+function bkF2(){const f=$("#bkPf")||$("#bkPt");if(f){f.focus();try{f.showPicker&&f.showPicker()}catch(e){}}}
+function bkSheetSave(){const s=$("#sheet");if(!s)return;const b=$("#bvGo")||[...s.querySelectorAll("button.btn")].find(x=>!x.classList.contains("ghost")&&!x.disabled&&x.offsetParent!==null);if(b)b.click()}
+function bkEsc(){if(bkBack())return;if(bk.tab!=="home"){bk.tab="home";bk.nav=[];renderBk()}}
+document.addEventListener("keydown",e=>{const s0=$("#bk");if(!s0||s0.hidden||!bk.book)return;const k=e.key,alt=e.altKey,ctl=e.ctrlKey||e.metaKey,tag=(e.target.tagName||"").toLowerCase(),typing=["input","textarea","select"].includes(tag);
+  const stop=f=>{e.preventDefault();e.stopPropagation();f();setTimeout(bkKeyBar,60)};
+  if(alt&&(k==="g"||k==="G"))return stop(bkGoTo);
+  if($("#bkPrint")){if(k==="Escape")return stop(()=>{$("#bkPrint").remove()});if(alt&&/^p$/i.test(k))return stop(()=>$("#bkPp")&&$("#bkPp").click());return}
+  if(bkSheetOn()){const vf=!!$("#bvGo");
+    if(k==="Escape"){if($("#bkGq")&&tag==="input"&&e.target.id!=="bkGq")return;return stop(()=>bkQuitSheet(vf))}
+    if(ctl&&/^a$/i.test(k)&&(vf||!typing||e.target.type!=="text"))return stop(bkSheetSave);
+    if(ctl&&/^q$/i.test(k))return stop(()=>bkQuitSheet(0));
+    if(!vf)return;
+    if(alt&&/^d$/i.test(k))return stop(()=>$("#bvDel")&&$("#bvDel").click());
+    if(alt&&/^p$/i.test(k))return stop(()=>$("#bvPr")&&$("#bvPr").click());
+    if(alt&&/^c$/i.test(k))return stop(()=>$("#bvNewL")&&$("#bvNewL").click());
+    if(alt&&k==="2")return stop(bkDupV);
+    if(ctl&&/^r$/i.test(k))return stop(bkRepeatNar);
+    {const m={F4:"contra",F5:"pay",F6:"rcpt",F7:"jrnl",F8:ctl?"cn":"sales",F9:ctl?"dn":"purch"}[k];if(m){const c=document.querySelector(`#sheet .bvT[data-t="${m}"]`);e.preventDefault();if(c&&!c.disabled){c.click();if(bk._vf)bk._vf.t=m}return}}
+    if(k==="PageUp"||k==="PageDown")return stop(()=>bkStepV(k==="PageDown"?1:-1));
+    if(k==="Enter"&&!ctl&&!alt&&tag==="input"&&!["checkbox","button","submit"].includes(e.target.type)){const t0=e.target;e.preventDefault();setTimeout(()=>{const f=[...$("#sheet").querySelectorAll("input:not([type=hidden]):not([disabled]),select:not([disabled]),textarea:not([disabled])")].filter(x=>x.offsetParent!==null);const i=f.indexOf(t0);if(i>=0&&f[i+1])f[i+1].focus();else $("#bvGo").focus()},0)}
+    return}
+  if(k==="Escape"&&!typing)return stop(bkEsc);
+  if(k==="Escape"&&typing){e.target.blur();return}
+  if(k==="F2"||(alt&&k==="F2"))return stop(bkF2);
+  if(alt&&(k==="F1"||k==="F5"))return stop(()=>$("#bkDet")&&$("#bkDet").click());
+  if(alt&&/^p$/i.test(k))return stop(()=>$("#bkRpP")&&$("#bkRpP").click());
+  if(alt&&/^e$/i.test(k))return stop(()=>$("#bkRpX")&&$("#bkRpX").click());
+  if(alt&&/^c$/i.test(k)&&bkCan())return stop(()=>bkLForm());
+  if(typing)return;
+  const rs=bkRows();if(!rs.length)return;const hi=bk._hi>=0?bk._hi:0;
+  if(k==="ArrowDown")return stop(()=>bkSetHi(hi+1,1));if(k==="ArrowUp")return stop(()=>bkSetHi(hi-1,1));
+  if(k==="Home"&&ctl)return stop(()=>bkSetHi(0,1));if(k==="End"&&ctl)return stop(()=>bkSetHi(rs.length-1,1));
+  if(k==="Enter"&&ctl){const r=rs[hi];if(r&&r.classList.contains("bkLg")&&bkCan())return stop(()=>bkLForm(r.dataset.id));return}
+  if(k==="Enter"){const r=rs[hi];if(!r)return;return stop(()=>{if(r.classList.contains("bkGh")&&r.dataset.g)bkOpenGrp(r.dataset.g);else r.click()})}},true);
+(function(){const st=document.createElement("style");st.textContent=`#bkBody .bkHi,#bkGl .bkHi{background:rgba(26,115,232,.13)!important;box-shadow:inset 3px 0 0 var(--brand)}
+#bkKeys{display:none}
+@media(min-width:1200px){#bkKeys{display:flex;flex-direction:column;gap:3px;position:fixed;right:6px;top:120px;z-index:10050;width:128px;max-height:calc(100vh - 140px);overflow:auto}
+#bkKeys button{font:inherit;font-size:11px;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:4px 7px;cursor:pointer;display:flex;flex-direction:column;color:var(--ink)}
+#bkKeys button b{color:var(--brand);font-size:11px}#bkKeys button:hover{background:var(--grey-soft)}
+body.partBk main,body.partBk .wrap{padding-right:140px}}`;document.head.appendChild(st)})();
+
 paintStatic();render();init();
 </script>
 </body>
