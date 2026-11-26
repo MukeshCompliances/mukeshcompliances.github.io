@@ -6838,7 +6838,7 @@ function bkMergeKey(x){if(x.gstin&&["sdr","scr","cl","ca","la","dep","unsec","se
   bk.open=bk.open||{};const det=!!bk.detail;let n=0;
   body.querySelectorAll("table").forEach(tb=>{const rows=[...tb.querySelectorAll("tr")];rows.forEach((r,i)=>{if(r.classList.contains("bkLg")||!rows[i+1]||!rows[i+1].classList.contains("bkLg"))return;
     const kids=[];for(let j=i+1;j<rows.length&&rows[j].classList.contains("bkLg");j++)kids.push(rows[j]);const key=bk.tab+"|"+r.cells[0].textContent.trim();const open=key in bk.open?bk.open[key]:det;n++;
-    r.classList.add("bkGh");r.style.cursor="pointer";const c0=r.cells[0];c0.innerHTML=`<span class="bkTw">${open?"▾":"▸"}</span> `+c0.innerHTML+` <span class="m" style="font-weight:400">(${kids.length})</span>`;kids.forEach(k=>k.style.display=open?"":"none");
+    r.classList.add("bkGh");r.style.cursor="pointer";const c0=r.cells[0];c0.innerHTML=`<span class="bkTw">${open?"▾":"▸"}</span> `+c0.innerHTML+` <span class="m bkCnt" style="font-weight:400">(${kids.length})</span>`;kids.forEach(k=>k.style.display=open?"":"none");
     r.onclick=()=>{const o=kids[0].style.display==="none";kids.forEach(k=>k.style.display=o?"":"none");c0.querySelector(".bkTw").textContent=o?"▾":"▸";bk.open[key]=o}})});
   if(!n)return;const bar=document.querySelector(".bkPer");const btn=`<button class="btn ghost" id="bkDet" style="padding:4px 10px;font-size:12px">${det?"▸ "+esc(bt("सिर्फ़ ग्रुप (Condensed)","Groups only (Condensed)")):"▾ "+esc(bt("सब लेजर खोलें (Detailed)","Show all ledgers (Detailed)"))}</button>`;
   if(bar)bar.insertAdjacentHTML("beforeend",btn);else body.insertAdjacentHTML("beforebegin",btn);
@@ -6916,6 +6916,37 @@ function bkDupHtml(R){if(bk.cons)return `<div class="empty">${esc(bt("डुप�
 {const _t=bkTab;bkTab=function(R){if(bk.tab==="dup")return bkDupHtml(R);const h=_t(R);if(bk.tab==="home"&&!bk.cons){const n=bkDups(R.V).length;if(n)return `<div class="warn" id="bkDupW" style="cursor:pointer">🔍 ${esc(bt(`${n} जगह एंट्री दो बार होने का शक है — देखने के लिए दबाएँ`,`${n} possible duplicate entries — tap to see`))}</div>`+h}return h}}
 {const _m=bkMenu;bkMenu=function(tabs){const i=tabs.findIndex(x=>x[0]==="mst");const t=tabs.slice();t.splice(i<0?t.length:i,0,["dup",bt("डुप्लीकेट जाँच","Duplicate check")]);return _m(t).replace('data-t="dup"><span class="bkIc"></span>','data-t="dup"><span class="bkIc">🔍</span>')}}
 {const _w=bkWire;bkWire=function(){_w();const w=$("#bkDupW");if(w)w.onclick=()=>{bk.tab="dup";renderBk()}}}
+
+/* ===== Print / PDF and Excel download for every report ===== */
+const BK_OUT_TABS=["day","led","tb","pl","bs","out","stk","dup","reg"];
+async function bkSaveBlob(blob,fname){if(dlCap===undefined)dlCap=(window.claude&&claude.use)?await claude.use("downloads").catch(()=>null):null;
+  if(dlCap){try{await dlCap.save({filename:fname,data:blob});toast(t("fSaved"))}catch(e){}}else{const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();a.remove()}}
+function bkRepTitle(){const b=document.querySelector(`.bkSide button.on .bkLb`);let t=b?b.textContent.trim():bk.tab;if(bk.tab==="led"&&bk.led)t+=" — "+bkLN(bk.led);return t}
+function bkRepHead(){const B=bk.book||{},P=bkPer(),at=["tb","bs","out","stk"].includes(bk.tab);const nm=(B.info&&B.info.name)||B.name||"";
+  return{nm,g:B.gstin||"",t:bkRepTitle(),per:at?bt("तक: ","As on ")+bkDt(P.t):bkDt(P.f)+" to "+bkDt(P.t)}}
+/* a clean copy of what is on screen: all rows open, no buttons / inputs */
+function bkRepClone(){const src=$("#bkBody");const c=src.cloneNode(true);c.querySelectorAll("button,input,select,textarea,datalist,.bkTw,.bkCnt,.bkPer,label.chk").forEach(e=>e.remove());
+  c.querySelectorAll("tr").forEach(r=>{r.style.display="";r.style.cursor=""});c.querySelectorAll(".filters").forEach(e=>{if(!e.textContent.trim())e.remove()});return c}
+function bkRepPrint(){const H=bkRepHead(),c=bkRepClone();let o=$("#bkPrint");if(o)o.remove();o=document.createElement("div");o.id="bkPrint";o.style.cssText="position:fixed;inset:0;z-index:9999;background:#e9ebef;overflow:auto;padding:12px";
+  o.innerHTML=`<div class="bkNoPrint" style="max-width:900px;margin:0 auto 10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="bkPp">🖨 ${esc(bt("प्रिंट / PDF","Print / PDF"))}</button><button class="btn ghost" id="bkPx">✕ ${esc(bt("बंद","Close"))}</button><span class="m" style="align-self:center">${esc(bt("PDF के लिए प्रिंट में \"Save as PDF\" चुनें।","For a PDF choose \"Save as PDF\" in print."))}</span></div>
+   <div class="bkRp" style="max-width:900px;margin:0 auto;background:#fff;color:#000;padding:16px;font-family:Arial,Helvetica,sans-serif"><div style="text-align:center;border-bottom:1px solid #000;padding-bottom:6px;margin-bottom:8px"><div style="font-size:16px;font-weight:700">${esc(H.nm)}</div>${H.g?`<div style="font-size:11px">GSTIN: ${esc(H.g)}</div>`:""}<div style="font-size:14px;font-weight:700;margin-top:4px">${esc(H.t)}</div><div style="font-size:11px">${esc(H.per)}</div></div>${c.innerHTML}</div>`;
+  document.body.appendChild(o);if(!$("#bkPrintCss")){const st=document.createElement("style");st.id="bkPrintCss";st.textContent="@media print{body>*:not(#bkPrint){display:none!important}#bkPrint{position:static!important;padding:0!important;background:#fff!important}.bkNoPrint{display:none!important}@page{size:A4;margin:10mm}}";document.head.appendChild(st)}
+  if(!$("#bkRpCss")){const st=document.createElement("style");st.id="bkRpCss";st.textContent=".bkRp *{color:#000!important;background:transparent!important;box-shadow:none!important}.bkRp table{width:100%;border-collapse:collapse;font-size:11px}.bkRp td,.bkRp th{border:1px solid #999!important;padding:3px 5px!important}.bkRp tr{break-inside:avoid}.bkRp .item{border:0!important;border-bottom:1px solid #ccc!important;border-radius:0!important;padding:4px 0!important;display:flex;justify-content:space-between;font-size:11px}.bkRp .note,.bkRp .warn{border:1px solid #ccc!important;font-size:11px}";document.head.appendChild(st)}
+  $("#bkPx").onclick=()=>o.remove();$("#bkPp").onclick=()=>{try{window.print()}catch(e){toast(bt("प्रिंट नहीं खुला","Print did not open"))}}}
+const bkCellVal=td=>{const t=td.innerText.replace(/\s+/g," ").trim();const m=/^-?[\d,]+(\.\d+)?( (Dr|Cr))?$/.exec(t);if(!m)return t;let n=+t.replace(/[^\d.\-]/g,"");if(m[3]==="Cr")n=-n;return n};
+async function bkRepExcel(){if(!window.XLSX)await loadScript(XLSX_SRC);const H=bkRepHead(),c=bkRepClone(),aoa=[[H.nm],[H.g?"GSTIN: "+H.g:""],[H.t],[H.per],[]];
+  const walk=el=>{[...el.children].forEach(ch=>{if(ch.matches(".bkPer,.filters,button,input,select,datalist,script,style"))return;
+    if(ch.tagName==="TABLE"){ch.querySelectorAll("tr").forEach(r=>{aoa.push([...r.children].map((td,i)=>{let v=bkCellVal(td);if(i===0&&typeof v==="string")v=v.replace(/^[▸▾]\s*/,"");return v}))});aoa.push([]);return}
+    if(ch.classList.contains("item")){const t=ch.querySelector(".t"),m=ch.querySelector(".m"),a=ch.lastElementChild;aoa.push([t?t.innerText:"",m?m.innerText:"",a?bkCellVal(a):""]);return}
+    if(ch.querySelector("table,.item"))return walk(ch);const tx=ch.innerText.replace(/\s+/g," ").trim();if(tx)aoa.push([tx])})};walk(c);
+  const ws=XLSX.utils.aoa_to_sheet(aoa);ws["!cols"]=[{wch:45},{wch:16},{wch:16},{wch:16},{wch:16},{wch:16},{wch:16}];const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,String(H.t).replace(/[\\\/\?\*\[\]:]/g," ").slice(0,30)||"Report");
+  const blob=new Blob([XLSX.write(wb,{type:"array",bookType:"xlsx"})],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+  const EN={day:"DayBook",led:"Ledger",tb:"TrialBalance",pl:"ProfitLoss",bs:"BalanceSheet",out:"Outstanding",stk:"Stock",dup:"Duplicates",reg:"Register"};await bkSaveBlob(blob,(EN[bk.tab]||"Report")+"-"+String(H.nm||"").replace(/[^\w]+/g,"_").replace(/^_+|_+$/g,"").slice(0,40)+"-"+bkPer().t+".xlsx")}
+{const _rb=renderBk;renderBk=function(){_rb();const body=$("#bkBody");if(!body||!bk.book||!BK_OUT_TABS.includes(bk.tab))return;
+  const btns=`<span class="bkRb"><button class="btn ghost" id="bkRpP" title="Print / PDF">🖨 ${esc(bt("प्रिंट / PDF","Print / PDF"))}</button><button class="btn ghost" id="bkRpX" title="Excel">⬇ Excel</button></span>`;
+  const bar=document.querySelector(".bkPer");if(bar)bar.insertAdjacentHTML("beforeend",btns);else body.insertAdjacentHTML("beforebegin",`<div class="bkPer">${btns}</div>`);
+  $("#bkRpP").onclick=bkRepPrint;$("#bkRpX").onclick=()=>bkRepExcel().catch(()=>toast(bt("Excel नहीं बना — इंटरनेट जाँचें","Could not make Excel — check internet")))}}
+(function(){const st=document.createElement("style");st.textContent=".bkRb{display:inline-flex;gap:6px}.bkRb .btn{padding:4px 10px;font-size:12px}";document.head.appendChild(st)})();
 
 paintStatic();render();init();
 </script>
