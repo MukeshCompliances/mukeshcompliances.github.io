@@ -5273,7 +5273,8 @@ const _fpRow=row;row=function(i){const h=_fpRow(i);if(i.code!=="FS")return h;con
   return h.replace('<div style="margin-top:6px">','<div style="margin-top:6px"><span class="badge '+(d===L?"b-filed":"b-up")+'" style="margin-right:4px">📑 '+d+"/"+L+"</span>")};
 
 /* ===== what's new: shown once per person; add a new entry at the top for each change ===== */
-const WHATS_NEW=[{id:"2026-11-24",items:[
+const WHATS_NEW=[{id:"2026-11-26",items:[
+ ["🔄 📒 हिसाब-किताब → मास्टर → \"🔄 Tally\": Tally में भेजने के लिए दो XML फ़ाइलें (लेजर + GST जानकारी, आइटम, वाउचर) और Tally की Export की हुई XML से लेजर, ओपनिंग बैलेंस, आइटम और वाउचर किताबों में लाना — Tally चालू या जुड़ा होना ज़रूरी नहीं। दोबारा लाने पर वही वाउचर दो बार नहीं आते।","🔄 📒 Accounts → Masters → \"🔄 Tally\": two XML files to import into Tally (ledgers with GST details, items, vouchers), and bring ledgers, opening balances, items and vouchers from an XML exported by Tally — Tally need not be running or connected. Importing again does not duplicate vouchers."]]},{id:"2026-11-24",items:[
  ["📒 हिसाब-किताब: बाईं ओर बिक्री / ख़रीद / रसीद… दबाने पर पहले उसका रजिस्टर (सूची, कुल, महीना / तिमाही, खोज) और ऊपर \"＋ नई बिक्री\" बटन। बिल में ही \"＋ नया ग्राहक\" और \"＋\" से नया आइटम, आइटम चुनते ही HSN, GST % और स्टॉक दिखता है (GST % अलग हो तो ⚠)। \"⚙ नंबर का फ़ॉर्मेट\" से बिल नंबर अपने-आप (जैसे INV/26-27/101)।","📒 Accounts: sales / purchase / receipt… in the menu first open their register (list, totals, month / quarter, search) with a \"＋ New sale\" button on top. In the bill: \"＋ New customer\", \"＋\" for a new item, item shows HSN, GST % and stock (⚠ if GST % differs). \"⚙ Number format\" numbers bills automatically (e.g. INV/26-27/101)."]]},{id:"2026-11-23g",items:[
  ["🏢 वेबसाइट पर हर फ़र्म का अपना पोर्टल हो सकता है (जैसे …github.io/addenda): लॉगिन पेज और ऐप में उसी फ़र्म का नाम और रंग, और सिर्फ़ उसकी टीम अंदर आती है।","🏢 On the website each firm can have its own portal (e.g. …github.io/addenda): its name and colour on the login page and in the app, and only its team gets in."]]},{id:"2026-11-23f",items:[
  ["🏠 📒 हिसाब-किताब खुलते ही डैशबोर्ड: बिक्री, ख़रीद, लाभ, नकद + बैंक, लेना / देना, इस महीने का GST, स्टॉक, महीने का चार्ट, हाल के वाउचर। कंप्लायंस डैशबोर्ड में \"सिर्फ़ मेरा काम\" और \"रिकॉर्ड पूरा करें\" अब सबसे ऊपर। कंप्यूटर पर स्क्रीन चौड़ी।","🏠 📒 Accounts opens on a dashboard: sales, purchases, profit, cash + bank, to receive / to pay, this month's GST, stock, a monthly chart and recent vouchers. In the compliance dashboard \"Only my work\" and \"Complete records\" now sit at the top. Wider screen on computers."]]},{id:"2026-11-23e",items:[
@@ -6277,6 +6278,136 @@ function bkRegHtml(R){const t0=bk.rt||"sales",K=BK_VK.find(x=>x[0]===t0)||[t0,""
 {const _t=bkTab;bkTab=function(R){if(bk.tab==="reg")return bkRegHtml(R);return _t(R)}}
 {const _w=bkWire;bkWire=function(){_w();const go=()=>bkNewOf(bk.rt||"sales");const a=$("#bkRegNew");if(a)a.onclick=go;const b=$("#bkRegNew2");if(b)b.onclick=go;
   const rp=$("#bkRp");if(rp)rp.onchange=()=>{bk.rp=rp.value;renderBk()};const rq=$("#bkRq");if(rq)rq.oninput=()=>{bk.rq=rq.value;clearTimeout(bkWire.t2);bkWire.t2=setTimeout(()=>{renderBk();const x=$("#bkRq");if(x){x.focus();x.setSelectionRange(x.value.length,x.value.length)}},350)}}}
+
+/* ===== 📒 Accounts part 5: Tally — file based, works without Tally being connected =====
+   Export: Tally XML (masters: groups are Tally's own, ledgers with GST details, units, stock items; vouchers) → Tally: Gateway → Import → Masters / Transactions.
+   Import: XML exported from Tally (List of Accounts / Day Book, Alt+E → XML) → ledgers, opening balances, vouchers (GST block rebuilt from tax ledgers). */
+const BK_TALLY_G={cap:"Capital Account",res:"Reserves & Surplus",sec:"Secured Loans",unsec:"Unsecured Loans",bod:"Bank OD A/c",cl:"Current Liabilities",dt:"Duties & Taxes",prov:"Provisions",scr:"Sundry Creditors",sus:"Suspense A/c",
+  fa:"Fixed Assets",inv:"Investments",ca:"Current Assets",bank:"Bank Accounts",cash:"Cash-in-Hand",sdr:"Sundry Debtors",dep:"Deposits (Asset)",la:"Loans & Advances (Asset)",stock:"Stock-in-Hand",misc:"Misc. Expenses (ASSET)",
+  sales:"Sales Accounts",dinc:"Direct Incomes",iinc:"Indirect Incomes",purch:"Purchase Accounts",dexp:"Direct Expenses",iexp:"Indirect Expenses"};
+const BK_TALLY_GR=Object.assign({},...Object.keys(BK_TALLY_G).map(k=>({[BK_TALLY_G[k].toLowerCase()]:k})),{"loans (liability)":"unsec","bank od a/c":"bod","bank occ a/c":"bod","branch / divisions":"cl","misc. expenses (asset)":"misc","primary":"sus","profit & loss a/c":"res"});
+const BK_TALLY_T={sales:"Sales",purch:"Purchase",cn:"Credit Note",dn:"Debit Note",rcpt:"Receipt",pay:"Payment",contra:"Contra",jrnl:"Journal"};
+const xe=s=>String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const bkTD=d=>d.replace(/-/g,""); /* 2026-11-24 → 20261124 */
+const bkTA=a=>(Math.round(-a*100)/100).toFixed(2); /* our Dr is +, Tally's Dr is − */
+function bkTallyXml(opt){const B=bk.book,L=B.L||{},I=B.I||{},V=bkV().filter(v=>!opt.from||v.d>=opt.from).filter(v=>!opt.to||v.d<=opt.to),co=xe(opt.company||"");
+  const ledgers=Object.keys(L).filter(id=>!L[id].del).map(id=>{const l=L[id],gst=l.g==="dt"&&/gst/i.test(l.n)?{head:/igst/i.test(l.n)?"Integrated Tax":/cgst/i.test(l.n)?"Central Tax":/sgst|utgst/i.test(l.n)?"State Tax":""}:null;
+    const op=bkOp(id);return `<TALLYMESSAGE xmlns:UDF="TallyUDF"><LEDGER NAME="${xe(l.n)}" ACTION="Create"><NAME.LIST><NAME>${xe(l.n)}</NAME></NAME.LIST><PARENT>${xe(BK_TALLY_G[l.g]||"Suspense A/c")}</PARENT>`+
+      (["sdr","scr","bank","cash"].includes(l.g)?`<ISBILLWISEON>${l.g==="sdr"||l.g==="scr"?"Yes":"No"}</ISBILLWISEON>`:"")+
+      (l.gstin?`<PARTYGSTIN>${xe(l.gstin)}</PARTYGSTIN><GSTREGISTRATIONTYPE>Regular</GSTREGISTRATIONTYPE>`:(l.g==="sdr"||l.g==="scr")?`<GSTREGISTRATIONTYPE>Unregistered/Consumer</GSTREGISTRATIONTYPE>`:"")+
+      (l.st&&STATES[l.st]?`<LEDSTATENAME>${xe(STATES[l.st])}</LEDSTATENAME><COUNTRYOFRESIDENCE>India</COUNTRYOFRESIDENCE>`:"")+(l.addr?`<ADDRESS.LIST TYPE="String">${l.addr.split(/\n/).slice(0,4).map(a=>`<ADDRESS>${xe(a)}</ADDRESS>`).join("")}</ADDRESS.LIST>`:"")+
+      (gst&&gst.head?`<TAXTYPE>GST</TAXTYPE><GSTDUTYHEAD>${gst.head}</GSTDUTYHEAD>`:"")+(l.g==="sales"||l.g==="purch"?`<AFFECTSSTOCK>${opt.inv?"Yes":"No"}</AFFECTSSTOCK>`:"")+
+      `<OPENINGBALANCE>${bkTA(op)}</OPENINGBALANCE></LEDGER></TALLYMESSAGE>`});
+  const units=[...new Set(Object.values(I).filter(x=>!x.del&&x.u).map(x=>x.u))].map(u=>`<TALLYMESSAGE xmlns:UDF="TallyUDF"><UNIT NAME="${xe(u)}" ACTION="Create"><NAME>${xe(u)}</NAME><ISSIMPLEUNIT>Yes</ISSIMPLEUNIT><GSTREPUOM>${xe(u)}</GSTREPUOM></UNIT></TALLYMESSAGE>`);
+  const items=Object.keys(I).filter(id=>!I[id].del).map(id=>{const x=I[id],op=(x.op&&x.op[bk.fy])||{};return `<TALLYMESSAGE xmlns:UDF="TallyUDF"><STOCKITEM NAME="${xe(x.n)}" ACTION="Create"><NAME.LIST><NAME>${xe(x.n)}</NAME></NAME.LIST><PARENT/><BASEUNITS>${xe(x.u||"NOS")}</BASEUNITS><GSTAPPLICABLE>&#4; Applicable</GSTAPPLICABLE>`+
+    `<GSTDETAILS.LIST><APPLICABLEFROM>${bk.fy}0401</APPLICABLEFROM><HSNCODE>${xe(x.hsn||"")}</HSNCODE><TAXABILITY>${+x.r?"Taxable":"Exempt"}</TAXABILITY><STATEWISEDETAILS.LIST><STATENAME>&#4; Any</STATENAME>`+
+    (+x.r?`<RATEDETAILS.LIST><GSTRATEDUTYHEAD>Central Tax</GSTRATEDUTYHEAD><GSTRATE>${(+x.r)/2}</GSTRATE></RATEDETAILS.LIST><RATEDETAILS.LIST><GSTRATEDUTYHEAD>State Tax</GSTRATEDUTYHEAD><GSTRATE>${(+x.r)/2}</GSTRATE></RATEDETAILS.LIST><RATEDETAILS.LIST><GSTRATEDUTYHEAD>Integrated Tax</GSTRATEDUTYHEAD><GSTRATE>${+x.r}</GSTRATE></RATEDETAILS.LIST>`:"")+
+    `</STATEWISEDETAILS.LIST></GSTDETAILS.LIST>`+(op.q?`<OPENINGBALANCE>${op.q} ${xe(x.u||"NOS")}</OPENINGBALANCE><OPENINGVALUE>${(-r2(op.v)).toFixed(2)}</OPENINGVALUE><OPENINGRATE>${r2(op.v/op.q)}/${xe(x.u||"NOS")}</OPENINGRATE>`:"")+`</STOCKITEM></TALLYMESSAGE>`});
+  const vch=V.map(v=>{const T=BK_TALLY_T[v.t]||"Journal",g=v.gst,useInv=opt.inv&&g&&(g.items||[]).some(it=>it.it&&I[it.it]&&+it.q);
+    const no=xe(g&&g.inv||v.no),party=g&&g.party?bk.book.L[g.party]:null;
+    let body=`<DATE>${bkTD(v.d)}</DATE><VOUCHERTYPENAME>${T}</VOUCHERTYPENAME><VOUCHERNUMBER>${no}</VOUCHERNUMBER>`+(g&&(v.t==="sales"||v.t==="purch"||v.t==="cn"||v.t==="dn")?`<REFERENCE>${no}</REFERENCE>`:"")+`<NARRATION>${xe(v.nar||"")}</NARRATION>`+
+      (party?`<PARTYLEDGERNAME>${xe(party.n)}</PARTYLEDGERNAME>`+(party.gstin?`<PARTYGSTIN>${xe(party.gstin)}</PARTYGSTIN>`:"")+(g.ps&&STATES[g.ps]?`<PLACEOFSUPPLY>${xe(STATES[g.ps])}</PLACEOFSUPPLY>`:""):"")+`<ISINVOICE>${useInv?"Yes":"No"}</ISINVOICE><PERSISTEDVIEW>${useInv?"Invoice Voucher View":"Accounting Voucher View"}</PERSISTEDVIEW>`;
+    const lines=(v.ln||[]).map(x=>({n:bkLN(x.l),a:x.a,l:x.l}));
+    if(useInv){const itemLedgers=new Set(g.items.filter(it=>it.it&&I[it.it]&&+it.q).map(it=>it.l));
+      body+=g.items.filter(it=>it.it&&I[it.it]&&+it.q).map(it=>{const x=I[it.it],sgn=(v.t==="sales"||v.t==="dn")?1:-1,amt=r2(it.v)*sgn,qty=`${+it.q} ${xe(x.u||"NOS")}`;
+        return `<ALLINVENTORYENTRIES.LIST><STOCKITEMNAME>${xe(x.n)}</STOCKITEMNAME><ISDEEMEDPOSITIVE>${sgn<0?"Yes":"No"}</ISDEEMEDPOSITIVE><RATE>${r2(it.p||it.v/it.q)}/${xe(x.u||"NOS")}</RATE><AMOUNT>${amt.toFixed(2)}</AMOUNT><ACTUALQTY>${qty}</ACTUALQTY><BILLEDQTY>${qty}</BILLEDQTY>`+
+          `<ACCOUNTINGALLOCATIONS.LIST><LEDGERNAME>${xe(bkLN(it.l))}</LEDGERNAME><ISDEEMEDPOSITIVE>${sgn<0?"Yes":"No"}</ISDEEMEDPOSITIVE><AMOUNT>${amt.toFixed(2)}</AMOUNT></ACCOUNTINGALLOCATIONS.LIST></ALLINVENTORYENTRIES.LIST>`}).join("");
+      /* item ledgers are carried by the inventory lines; the rest stay as ledger lines (party, tax, round off, non-stock lines) */
+      const left={};lines.forEach(x=>{left[x.l]=r2((left[x.l]||0)+x.a)});g.items.filter(it=>it.it&&I[it.it]&&+it.q).forEach(it=>{const sg=(v.t==="sales"||v.t==="dn")?-1:1;left[it.l]=r2((left[it.l]||0)-sg*r2(it.v))});
+      body+=Object.keys(left).filter(k=>Math.abs(left[k])>=0.005).map(k=>`<LEDGERENTRIES.LIST><LEDGERNAME>${xe(bkLN(k))}</LEDGERNAME><ISDEEMEDPOSITIVE>${left[k]>0?"Yes":"No"}</ISDEEMEDPOSITIVE><ISPARTYLEDGER>${g.party===k?"Yes":"No"}</ISPARTYLEDGER><AMOUNT>${bkTA(left[k])}</AMOUNT>`+
+        (g.party===k&&(v.t==="sales"||v.t==="purch")?`<BILLALLOCATIONS.LIST><NAME>${no}</NAME><BILLTYPE>New Ref</BILLTYPE><AMOUNT>${bkTA(left[k])}</AMOUNT></BILLALLOCATIONS.LIST>`:"")+`</LEDGERENTRIES.LIST>`).join("")}
+    else body+=lines.map(x=>`<ALLLEDGERENTRIES.LIST><LEDGERNAME>${xe(x.n)}</LEDGERNAME><ISDEEMEDPOSITIVE>${x.a>0?"Yes":"No"}</ISDEEMEDPOSITIVE><ISPARTYLEDGER>${g&&g.party===x.l?"Yes":"No"}</ISPARTYLEDGER><AMOUNT>${bkTA(x.a)}</AMOUNT>`+
+      (g&&g.party===x.l&&(v.t==="sales"||v.t==="purch")?`<BILLALLOCATIONS.LIST><NAME>${no}</NAME><BILLTYPE>New Ref</BILLTYPE><AMOUNT>${bkTA(x.a)}</AMOUNT></BILLALLOCATIONS.LIST>`:"")+`</ALLLEDGERENTRIES.LIST>`).join("");
+    return `<TALLYMESSAGE xmlns:UDF="TallyUDF"><VOUCHER VCHTYPE="${T}" ACTION="Create" OBJVIEW="${useInv?"Invoice Voucher View":"Accounting Voucher View"}">${body}</VOUCHER></TALLYMESSAGE>`});
+  const env=(rep,msgs)=>`<?xml version="1.0" encoding="UTF-8"?>\n<ENVELOPE><HEADER><TALLYREQUEST>Import Data</TALLYREQUEST></HEADER><BODY><IMPORTDATA><REQUESTDESC><REPORTNAME>${rep}</REPORTNAME>${co?`<STATICVARIABLES><SVCURRENTCOMPANY>${co}</SVCURRENTCOMPANY></STATICVARIABLES>`:""}</REQUESTDESC><REQUESTDATA>\n${msgs.join("\n")}\n</REQUESTDATA></IMPORTDATA></BODY></ENVELOPE>`;
+  return{masters:env("All Masters",units.concat(opt.inv?items:[]).concat(ledgers)),vouchers:env("Vouchers",vch),n:{l:ledgers.length,i:opt.inv?items.length:0,v:vch.length}}}
+/* ---- reading a Tally export ---- */
+async function bkReadXml(file){const buf=new Uint8Array(await file.arrayBuffer());let enc="utf-8";if(buf[0]===0xFF&&buf[1]===0xFE)enc="utf-16le";else if(buf[0]===0xFE&&buf[1]===0xFF)enc="utf-16be";else if(buf.length>1&&buf[1]===0&&buf[0]!==0)enc="utf-16le";
+  let s=new TextDecoder(enc).decode(buf).replace(/^﻿/,"");s=s.replace(/&#(\d+);/g,(m,n)=>(+n<32&&![9,10,13].includes(+n))?"":m).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,"");
+  const doc=new DOMParser().parseFromString(s,"text/xml");if(doc.getElementsByTagName("parsererror").length)throw new Error("xml");return doc}
+const bkTx=(el,tag)=>{const x=el&&[...el.children].find(c=>c.tagName===tag);return x?x.textContent.trim():""};
+const bkTNum=s=>{const m=String(s||"").replace(/,/g,"").match(/-?\d+(\.\d+)?/);return m?+m[0]:0};
+function bkTallyParse(docs){const G={},LG=[],VS=[],IT=[];
+  docs.forEach(doc=>{[...doc.getElementsByTagName("GROUP")].forEach(g=>{const n=g.getAttribute("NAME")||bkTx(g,"NAME");if(n)G[n.toLowerCase()]=bkTx(g,"PARENT")});
+    [...doc.getElementsByTagName("LEDGER")].forEach(l=>{const n=l.getAttribute("NAME")||bkTx(l,"NAME");if(!n)return;let gstin=bkTx(l,"PARTYGSTIN");const reg=l.getElementsByTagName("GSTIN")[0];if(!gstin&&reg)gstin=reg.textContent.trim();
+      const stn=bkTx(l,"LEDSTATENAME")||(l.getElementsByTagName("STATE")[0]||{}).textContent||"";const st=Object.keys(STATES).find(k=>STATES[k].toLowerCase()===String(stn).trim().toLowerCase())||(gstin?gstin.slice(0,2):"");
+      const addr=[...l.getElementsByTagName("ADDRESS")].map(a=>a.textContent.trim()).filter(Boolean).join("\n");LG.push({n:n.trim(),parent:bkTx(l,"PARENT"),op:-bkTNum(bkTx(l,"OPENINGBALANCE")),gstin:(gstin||"").toUpperCase(),st,addr})});
+    [...doc.getElementsByTagName("STOCKITEM")].forEach(x=>{const n=x.getAttribute("NAME")||bkTx(x,"NAME");if(!n)return;const hsn=(x.getElementsByTagName("HSNCODE")[0]||{}).textContent||"";
+      const rates=[...x.getElementsByTagName("RATEDETAILS.LIST")].filter(r=>/integrated/i.test(bkTx(r,"GSTRATEDUTYHEAD"))).map(r=>bkTNum(bkTx(r,"GSTRATE")));
+      IT.push({n:n.trim(),u:(bkTx(x,"BASEUNITS")||"NOS").toUpperCase().slice(0,3),hsn:String(hsn).trim(),r:rates.length?rates[rates.length-1]:null,oq:Math.abs(bkTNum(bkTx(x,"OPENINGBALANCE"))),ov:Math.abs(bkTNum(bkTx(x,"OPENINGVALUE")))})});
+    [...doc.getElementsByTagName("VOUCHER")].forEach(v=>{const tn=(bkTx(v,"VOUCHERTYPENAME")||v.getAttribute("VCHTYPE")||"").trim(),d=bkTx(v,"DATE");if(!/^\d{8}$/.test(d))return;
+      if(bkTx(v,"ISCANCELLED")==="Yes"||bkTx(v,"ISOPTIONAL")==="Yes")return;
+      const ln=[];[...v.children].filter(c=>/^(ALL)?LEDGERENTRIES\.LIST$/.test(c.tagName)).forEach(e=>{const n=bkTx(e,"LEDGERNAME");if(n)ln.push({n,a:-bkTNum(bkTx(e,"AMOUNT"))})});
+      const inv=[];[...v.children].filter(c=>c.tagName==="ALLINVENTORYENTRIES.LIST"||c.tagName==="INVENTORYENTRIES.LIST").forEach(e=>{const it=bkTx(e,"STOCKITEMNAME"),q=Math.abs(bkTNum(bkTx(e,"BILLEDQTY")||bkTx(e,"ACTUALQTY"))),p=Math.abs(bkTNum(bkTx(e,"RATE")));
+        [...e.children].filter(c=>c.tagName==="ACCOUNTINGALLOCATIONS.LIST").forEach(a=>{const n=bkTx(a,"LEDGERNAME"),amt=-bkTNum(bkTx(a,"AMOUNT"));if(n){ln.push({n,a:amt});inv.push({it,q,p,l:n,v:Math.abs(amt)})}})});
+      VS.push({guid:bkTx(v,"GUID")||"",tn,d:d.slice(0,4)+"-"+d.slice(4,6)+"-"+d.slice(6,8),no:bkTx(v,"VOUCHERNUMBER"),ref:bkTx(v,"REFERENCE"),nar:bkTx(v,"NARRATION"),party:bkTx(v,"PARTYLEDGERNAME"),ln,inv})})});
+  const grpOf=parent=>{let p=(parent||"").toLowerCase(),k=0;while(p&&k<20){if(BK_TALLY_GR[p])return BK_TALLY_GR[p];p=(G[p]||"").toLowerCase();k++}return"sus"};
+  LG.forEach(l=>l.g=grpOf(l.parent));
+  const typ=tn=>{const s=tn.toLowerCase();if(/stock\s*journal|physical|memo|order|delivery\s*note|receipt\s*note|rejection|material|job\s*work|manufactur|attendance|payroll|reversing/.test(s))return"";return /credit\s*note/.test(s)?"cn":/debit\s*note/.test(s)?"dn":/purchase/.test(s)?"purch":/sales|invoice/.test(s)?"sales":/receipt/.test(s)?"rcpt":/payment/.test(s)?"pay":/contra/.test(s)?"contra":/journal/.test(s)?"jrnl":""};
+  VS.forEach(v=>{v.t=typ(v.tn)});return{LG,VS,IT,unknownTypes:[...new Set(VS.filter(v=>!v.t).map(v=>v.tn))]}}
+/* rebuild the GST block of an imported bill from its tax ledgers so GST reports and bill print work */
+function bkTallyGst(v,LmapG){if(!["sales","purch","cn","dn"].includes(v.t))return null;const side=v.t==="sales"||v.t==="cn"?["sales","dinc","iinc"]:["purch","dexp","iexp","fa"];
+  const partyL=v.ln.find(x=>x.n===v.party)||v.ln.find(x=>["sdr","scr","cash","bank","bod"].includes(LmapG[x.n]));if(!partyL)return null;
+  const base=v.ln.filter(x=>side.includes(LmapG[x.n])),tax=v.ln.filter(x=>LmapG[x.n]==="dt"&&/gst|cgst|sgst|igst|utgst/i.test(x.n));if(!base.length)return null;
+  const tv=base.reduce((s,x)=>s+Math.abs(x.a),0),tx=tax.reduce((s,x)=>s+Math.abs(x.a),0),inter=tax.some(x=>/igst|integrated/i.test(x.n));
+  const raw=tv?tx/tv*100:0,rate=[0,0.1,0.25,1.5,3,5,6,12,18,28,40].reduce((b,r)=>Math.abs(r-raw)<Math.abs(b-raw)?r:b,0);
+  const items=v.inv.length?v.inv.map(x=>({it:x.it,q:x.q,p:x.p,l:x.l,v:r2(x.v),r:rate})):base.map(x=>({l:x.n,v:r2(Math.abs(x.a)),r:rate}));return{partyN:partyL.n,items,inter,inv:v.ref||v.no}}
+function bkTallyForm(){const has=bk.book&&Object.keys(bk.book.L||{}).length;const today=todayStr();
+  openSheet(`<h3>🔄 Tally</h3><div class="m">${esc(bt("फ़ाइल से — Tally का चालू होना या इंटरनेट से जुड़ा होना ज़रूरी नहीं।","With files — Tally does not need to be running or online."))}</div>
+   <h4 style="margin:12px 0 4px">⬆ ${esc(bt("Tally में भेजें","Send to Tally"))}</h4>
+   <div class="row2"><div><label>${esc(bt("से","From"))}</label><input type="date" id="txF" value="${bk.fy}-04-01"></div><div><label>${esc(bt("तक","To"))}</label><input type="date" id="txT" value="${(bk.fy+1)}-03-31"></div></div>
+   <label>${esc(bt("Tally में कंपनी का नाम (ज़रूरी नहीं — खुली कंपनी में जाएगा)","Company name in Tally (optional — goes to the open company)"))}</label><input id="txC" value="">
+   <label class="chk"><input type="checkbox" id="txI"> ${esc(bt("स्टॉक आइटम के साथ (आइटम, मात्रा, रेट भी)","With stock items (items, qty, rate too)"))}</label>
+   <div class="actions"><button class="btn" id="txGo">⬇ ${esc(bt("दो फ़ाइलें बनाएँ (मास्टर + वाउचर)","Make two files (masters + vouchers)"))}</button></div>
+   <div class="note">${esc(bt("Tally Prime में: Gateway → Import → Masters → पहली फ़ाइल चुनें; फिर Import → Transactions → दूसरी फ़ाइल। Tally ERP 9: Gateway → Import Data → Masters / Vouchers।","In Tally Prime: Gateway → Import → Masters → choose the first file; then Import → Transactions → the second file. Tally ERP 9: Gateway → Import Data → Masters / Vouchers."))}</div>
+   <h4 style="margin:16px 0 4px">⬇ ${esc(bt("Tally से लाएँ","Bring from Tally"))}</h4>
+   <div class="note">${esc(bt("Tally Prime में: (1) मास्टर — Display More Reports → List of Accounts → Alt+E (Export) → Format: XML (Data Interchange)। (2) वाउचर — Display More Reports → Day Book → F2 से पूरा साल चुनें → Alt+E → XML। दोनों फ़ाइलें यहाँ एक साथ चुनें।","In Tally Prime: (1) masters — Display More Reports → List of Accounts → Alt+E (Export) → Format: XML (Data Interchange). (2) vouchers — Display More Reports → Day Book → F2 for the whole year → Alt+E → XML. Choose both files here together."))}</div>
+   <input type="file" id="tiF" accept=".xml,text/xml" multiple><div id="tiP" style="margin-top:8px"></div>
+   <div class="actions"><button class="btn ghost" id="txX">${esc(t("cancel")||"Close")}</button></div>`);
+  $("#txX").onclick=closeSheet;
+  $("#txGo").onclick=async()=>{if(!has){toast(bt("पहले किताबें शुरू करें","Start the books first"));return}const X=bkTallyXml({from:$("#txF").value,to:$("#txT").value,company:$("#txC").value.trim(),inv:$("#txI").checked}),nm=(bk.book.name||"").replace(/[^\w]+/g,"_").replace(/^_+|_+$/g,"").slice(0,30)||"Books";
+    const save=async(fname,txt)=>{const blob=new Blob([txt],{type:"application/xml"});if(dlCap===undefined)dlCap=(window.claude&&claude.use)?await claude.use("downloads").catch(()=>null):null;
+      if(dlCap){try{await dlCap.save({filename:fname,data:blob})}catch(e){}}else{const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();a.remove()}};
+    await save("Tally-1-Masters-"+nm+".xml",X.masters);await save("Tally-2-Vouchers-"+nm+"-FY"+bk.fy+".xml",X.vouchers);
+    toast(bt(`बन गईं: ${X.n.l} लेजर${X.n.i?", "+X.n.i+" आइटम":""}, ${X.n.v} वाउचर`,`Done: ${X.n.l} ledgers${X.n.i?", "+X.n.i+" items":""}, ${X.n.v} vouchers`))};
+  $("#tiF").onchange=async e=>{const P=$("#tiP");P.innerHTML=esc(t("loading")||"…");let docs=[];try{for(const f of e.target.files)docs.push(await bkReadXml(f))}catch(err){P.innerHTML=`<div class="err">${esc(bt("फ़ाइल पढ़ी नहीं गई — Tally से XML (Data Interchange) फ़ॉर्मेट में export करें।","Could not read the file — export from Tally in XML (Data Interchange) format."))}</div>`;return}
+    const X=bkTallyParse(docs);bkTallyPreview(X)}}
+function bkTallyPreview(X){const P=$("#tiP"),L=(bk.book&&bk.book.L)||{},byName={};Object.keys(L).filter(id=>!L[id].del).forEach(id=>byName[L[id].n.toLowerCase()]=id);
+  const newL=X.LG.filter(l=>!byName[l.n.toLowerCase()]),inFy=X.VS.filter(v=>v.t&&bkFyOfD(v.d)===bk.fy),other=X.VS.filter(v=>v.t&&bkFyOfD(v.d)!==bk.fy);
+  const haveKey=new Set(bkV().map(v=>v.tk).filter(Boolean)),key=v=>v.guid||(v.tn+"|"+v.no+"|"+v.d),fresh=inFy.filter(v=>!haveKey.has(key(v)));
+  const missingL=[...new Set(fresh.flatMap(v=>v.ln.map(x=>x.n)).filter(n=>!byName[n.toLowerCase()]&&!X.LG.some(l=>l.n.toLowerCase()===n.toLowerCase())))];
+  const cnt={};fresh.forEach(v=>cnt[v.t]=(cnt[v.t]||0)+1);
+  P.innerHTML=`<div class="note"><b>${esc(bt("फ़ाइल में मिला","Found in the file"))}</b><br>${esc(bt("लेजर","Ledgers"))}: ${X.LG.length} (${esc(bt("नए","new"))} ${newL.length})${X.IT.length?" · "+esc(bt("आइटम","Items"))+": "+X.IT.length:""}<br>
+   ${esc(bt("इस साल के नए वाउचर","New vouchers in this year"))}: <b>${fresh.length}</b> ${Object.keys(cnt).map(k=>esc(bkTN(k))+" "+cnt[k]).join(" · ")}${inFy.length>fresh.length?"<br>"+esc(bt("पहले से आए (छोड़े जाएँगे): ","Already imported (skipped): "))+(inFy.length-fresh.length):""}
+   ${other.length?"<br>"+esc(bt("दूसरे साल के वाउचर (छोड़े जाएँगे — ऊपर वो साल चुनकर लाएँ): ","Vouchers of other years (skipped — choose that year above and import): "))+other.length:""}
+   ${X.unknownTypes.length?"<br>"+esc(bt("अनजान वाउचर टाइप (छोड़े जाएँगे): ","Unknown voucher types (skipped): "))+esc(X.unknownTypes.join(", ")):""}
+   ${missingL.length?"<br><span style='color:var(--red)'>"+esc(bt("ये लेजर फ़ाइल में नहीं — 'सस्पेंस' में बनेंगे: ","These ledgers are not in the file — they will be made under 'Suspense': "))+esc(missingL.slice(0,8).join(", "))+(missingL.length>8?"…":"")+"</span>":""}</div>
+   <label class="chk"><input type="checkbox" id="tiOp" checked> ${esc(bt("लेजर के ओपनिंग बैलेंस भी लें (इस साल के)","Also take the ledgers' opening balances (for this year)"))}</label>
+   <div class="actions"><button class="btn" id="tiGo"${!newL.length&&!fresh.length&&!X.IT.length?" disabled":""}>⬇ ${esc(bt("किताबों में लाएँ","Bring into the books"))}</button></div><div class="m" id="tiM"></div>`;
+  $("#tiGo").onclick=async()=>{const b=$("#tiGo");b.disabled=true;const M=$("#tiM");try{
+    /* 1. ledgers (+ missing ones under suspense) and items */
+    const Lp={},mk=()=>"l"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),takeOp=$("#tiOp").checked;
+    X.LG.forEach(l=>{const id=byName[l.n.toLowerCase()];if(id){if(takeOp&&l.op)Lp[id]={op:{[bk.fy]:r2(l.op)}};if(l.gstin&&!L[id].gstin)Lp[id]=Object.assign(Lp[id]||{},{gstin:l.gstin,st:l.st})}
+      else{const nid=mk();byName[l.n.toLowerCase()]=nid;Lp[nid]={n:l.n.slice(0,80),g:l.g,gstin:l.gstin||"",st:l.st||"",addr:(l.addr||"").slice(0,250),op:{[bk.fy]:takeOp?r2(l.op):0}}}});
+    missingL.forEach(n=>{const nid=mk();byName[n.toLowerCase()]=nid;Lp[nid]={n:n.slice(0,80),g:"sus",op:{}}});
+    const Ip={},iBy={};bkItems().forEach(x=>iBy[x.n.toLowerCase()]=x.id);X.IT.forEach(x=>{if(iBy[x.n.toLowerCase()])return;const nid="i"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);iBy[x.n.toLowerCase()]=nid;
+      Ip[nid]={n:x.n.slice(0,80),hsn:/^\d{4,8}$/.test(x.hsn)?x.hsn:"",u:BK_UQC.includes(x.u)?x.u:"OTH",r:x.r==null?18:x.r,op:{[bk.fy]:{q:x.oq||0,v:r2(x.ov||0)}}}});
+    M.textContent=bt("लेजर सेव हो रहे हैं…","Saving ledgers…");const patch={L:Lp};if(Object.keys(Ip).length)patch.I=Ip;await bkMerge("bk_books",bk.pid,patch,true);
+    const LmapG={};Object.keys(Lp).forEach(id=>LmapG[Lp[id].n||(L[id]&&L[id].n)]=Lp[id].g||(L[id]&&L[id].g));Object.keys(L).forEach(id=>{if(!L[id].del)LmapG[L[id].n]=L[id].g});
+    /* 2. vouchers, grouped by month document */
+    const by={},now=new Date().toISOString(),who=me.id||"local";let n=0;
+    fresh.forEach(v=>{const ln=[];v.ln.forEach(x=>{const id=byName[x.n.toLowerCase()];const e=ln.find(y=>y.l===id);if(e)e.a=r2(e.a+x.a);else ln.push({l:id,a:r2(x.a)})});
+      const rec={d:v.d,t:v.t,no:v.no||"",nar:(v.nar||"").slice(0,300),ln:ln.filter(x=>Math.abs(x.a)>=0.005),by:who,at:now,tk:v.guid||(v.tn+"|"+v.no+"|"+v.d),src:"tally"};
+      const G0=bkTallyGst(v,LmapG);if(G0){const P0=byName[G0.partyN.toLowerCase()],PL=Lp[P0]||L[P0]||{};const ps=PL.st||(PL.gstin||"").slice(0,2)||bk.book.st;
+        rec.gst={party:P0,inv:G0.inv,ro:false,inter:G0.inter||(!!ps&&ps!==bk.book.st),ps,pg:PL.gstin||"",items:G0.items.map(x=>Object.assign({l:byName[x.l.toLowerCase()],v:x.v,r:x.r},x.it&&iBy[x.it.toLowerCase()]?{it:iBy[x.it.toLowerCase()],q:x.q,p:x.p}:{}))}}
+      const m=v.d.slice(5,7);(by[m]=by[m]||{})["v"+Date.now().toString(36)+(n++).toString(36)+Math.random().toString(36).slice(2,5)]=rec});
+    for(const m of Object.keys(by)){const ids=Object.keys(by[m]);for(let i=0;i<ids.length;i+=300){const part={};ids.slice(i,i+300).forEach(k=>part[k]=by[m][k]);const doc=bkDocFor(bk.fy+"-"+m+"-01",JSON.stringify(part).length);
+      M.textContent=bt("वाउचर सेव हो रहे हैं… ","Saving vouchers… ")+(i+ids.length>300?"":"")+m;await bkMerge("bk_vm",doc.id,Object.assign(doc.exists?{}:{pid:bk.pid,fy:bk.fy,ym:bk.fy+"-"+m},{v:part}),doc.exists);if(!doc.exists)bk.vm[doc.id]={pid:bk.pid,fy:bk.fy,v:part}}}
+    M.innerHTML="✅ "+esc(bt(`आ गए: ${Object.keys(Lp).length} लेजर, ${Object.keys(Ip).length} आइटम, ${fresh.length} वाउचर।`,`Brought in: ${Object.keys(Lp).length} ledgers, ${Object.keys(Ip).length} items, ${fresh.length} vouchers.`));toast(bt("Tally से डेटा आ गया","Data brought from Tally"))}
+  catch(e){b.disabled=false;M.innerHTML=`<span class="err">${esc(t("saveFail"))}</span>`}}}
+/* menu: Masters → 🔄 Tally */
+{const _m=bkMenu;bkMenu=function(tabs){return _m(tabs).replace('<button class="bkMk" data-k="xl">',`<button class="bkMk" data-k="tally"><span class="bkIc">🔄</span><span class="bkLb">Tally</span></button><button class="bkMk" data-k="xl">`)}}
+{const _w=bkWire;bkWire=function(){_w();const el=$("#bk");if(!el)return;el.querySelectorAll('.bkMk[data-k="tally"]').forEach(b=>b.onclick=()=>{if(!bk.book){toast(bt("पहले किताबें शुरू करें","Start the books first"));return}bkTallyForm()})}}
 
 paintStatic();render();init();
 </script>
