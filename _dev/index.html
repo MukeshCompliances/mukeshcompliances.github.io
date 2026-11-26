@@ -4886,7 +4886,8 @@ const _fpRow=row;row=function(i){const h=_fpRow(i);if(i.code!=="FS")return h;con
   return h.replace('<div style="margin-top:6px">','<div style="margin-top:6px"><span class="badge '+(d===L?"b-filed":"b-up")+'" style="margin-right:4px">📑 '+d+"/"+L+"</span>")};
 
 /* ===== what's new: shown once per person; add a new entry at the top for each change ===== */
-const WHATS_NEW=[{id:"2026-11-26c",items:[
+const WHATS_NEW=[{id:"2026-11-26d",items:[
+ ["🧩 एक बिज़नेस, कई राज्य: क्लाइंट सूची में \"सभी GSTIN मिलाकर\" — सब राज्यों का डैशबोर्ड, डे बुक, लेजर, ट्रायल बैलेंस, लाभ-हानि, बैलेंस शीट, स्टॉक एक साथ (सिर्फ़ देखने के लिए)। अपनी शाखाओं के बीच के बिल अपने-आप छोड़े जाते हैं ताकि बिक्री दो बार न गिने, और शाखा खातों का कुल (0 होना चाहिए) दिखता है।","🧩 One business, several states: \"all GSTINs together\" in the client list — dashboard, day book, ledger, trial balance, P&L, balance sheet and stock of all states together (view only). Bills between your own branches are left out so sales are not counted twice, and the branch accounts' net (should be 0) is shown."]]},{id:"2026-11-26c",items:[
  ["🛡 Tally से जोड़ने में सुरक्षा: हर GSTIN की किताबें अलग (एक क्लाइंट के कई राज्य = अलग किताबें; अपनी फ़र्म में \"＋ दूसरा बिज़नेस / GSTIN\")। Tally कंपनी जोड़ते समय उसका GSTIN किताबों से मिलाया जाता है — अलग हो तो जोड़ना रुकता है; एक Tally कंपनी सिर्फ़ एक किताबों से जुड़ती है; हर सिंक से पहले दोबारा जाँच; कई GSTIN वाली Tally कंपनी से सिर्फ़ उसी GSTIN के वाउचर आते हैं।","🛡 Safe Tally linking: separate books for each GSTIN (a client in several states = separate books; for your own firm \"＋ Another business / GSTIN\"). Linking a Tally company checks its GSTIN against the books — a mismatch stops it; one Tally company links to one set of books; checked again before every sync; from a Tally company with several GSTINs only that GSTIN's vouchers come in."]]},{id:"2026-11-26b",items:[
  ["🟢 Tally लाइव: Tally वाले कंप्यूटर पर छोटा \"Tally-Connector\" चालू करें (कुछ install नहीं) — फिर वेबसाइट खुली रहने पर हर 3 मिनट में दोनों तरफ़ अपने-आप सिंक: यहाँ बने लेजर / वाउचर Tally में, Tally के नए / बदले वाउचर यहाँ; यहाँ बदला या हटाया वाउचर Tally में भी बदलता / हटता है। 📒 → मास्टर → 🔄 Tally।","🟢 Tally live: start the small \"Tally-Connector\" on the Tally computer (nothing to install) — then, with the website open, both sides sync every 3 minutes: ledgers / vouchers made here go to Tally, new / changed Tally vouchers come here; a voucher changed or deleted here changes / goes in Tally too. 📒 → Masters → 🔄 Tally."]]},{id:"2026-11-26",items:[
  ["🔄 📒 हिसाब-किताब → मास्टर → \"🔄 Tally\": Tally में भेजने के लिए दो XML फ़ाइलें (लेजर + GST जानकारी, आइटम, वाउचर) और Tally की Export की हुई XML से लेजर, ओपनिंग बैलेंस, आइटम और वाउचर किताबों में लाना — Tally चालू या जुड़ा होना ज़रूरी नहीं। दोबारा लाने पर वही वाउचर दो बार नहीं आते।","🔄 📒 Accounts → Masters → \"🔄 Tally\": two XML files to import into Tally (ledgers with GST details, items, vouchers), and bring ledgers, opening balances, items and vouchers from an XML exported by Tally — Tally need not be running or connected. Importing again does not duplicate vouchers."]]},{id:"2026-11-24",items:[
@@ -5393,7 +5394,7 @@ const bkDC=n=>Math.abs(n)<0.005?"0.00":bkN(Math.abs(n))+(n>0?" Dr":" Cr");
 const r2=n=>Math.round((+n||0)*100)/100;
 const bkFyNow=()=>{const d=new Date();return d.getMonth()>=3?d.getFullYear():d.getFullYear()-1};
 const bkFyOfD=d=>{const y=+d.slice(0,4),m=+d.slice(5,7);return m>=4?y:y-1};
-const bkCan=()=>typeof myRole!=="function"||myRole()!=="viewer";
+const bkCan=()=>!(typeof bk!=="undefined"&&bk.cons)&&(typeof myRole!=="function"||myRole()!=="viewer");
 let bk={pid:"",fy:bkFyNow(),book:null,vm:{},tab:"day",led:"",f:{t:"",q:""},un:[]};
 const BK_LK="compliance_bk_v1";
 const bkLocal=()=>lget(BK_LK,'{"books":{},"vm":{}}');
@@ -6193,6 +6194,52 @@ async function tlGuard(co){const cs=await tlCompanies(),c=cs.find(x=>x.name===co
       co.innerHTML=`<option value="">— ${esc(bt("कंपनी चुनें","choose company"))} —</option>`+comps.map(c=>`<option${c.name===link.co?" selected":""}>${esc(c.name)}</option>`).join("");if(link.co&&comps.some(c=>c.name===link.co))show(link.co)}
     catch(e){tlState.ok=false;tlState.msg=e.message==="tally"?bt("कनेक्टर चालू है पर Tally जवाब नहीं दे रहा — Tally खोलें और पोर्ट 9000 चालू करें।","The connector is on but Tally is not answering — open Tally and turn on port 9000."):bt("कनेक्टर नहीं मिला — इसी कंप्यूटर पर Tally-Connector चालू करें (ब्राउज़र \"लोकल नेटवर्क\" की अनुमति माँगे तो Allow दबाएँ)।","Connector not found — start Tally-Connector on this computer (allow \"local network\" access if the browser asks).")}tlPaint()};
   co.onchange=e=>show(e.target.value)}}
+
+/* ===== 📒 Accounts part 8: 🧩 one business in several states — all GSTIN books together (read-only) =====
+   Ledgers / items are joined by name, opening balances and vouchers added up. Sales / purchase bills between the business's own GSTINs
+   (party GSTIN is one of them) are left out, and the branch accounts are shown together — they should come to zero. GST stays per GSTIN. */
+const panOf=g=>/^\d{2}[A-Z]{5}\d{4}[A-Z]/.test(g||"")?g.slice(2,12):"";
+function bkConsMembers(pid){const base=pid.replace(/~ALL$/,"");if(base==="_self")return["_self"].concat(bkMetaSelf().map(b=>b.id));
+  const p=(parties||[]).find(x=>x.id===base);const gs=[...new Set(((p&&p.gsts)||[]).map(g=>String(g.gstin||"").toUpperCase()).filter(Boolean))];return gs.map((g,i)=>i===0?base:base+"~"+g)}
+{const _po=bkPartyOpts;bkPartyOpts=function(){let h=_po();const sel=v=>v===bk.pid?" selected":"";
+  (typeof parties!=="undefined"?parties:[]).forEach(p=>{const gs=[...new Set((p.gsts||[]).map(g=>String(g.gstin||"").toUpperCase()).filter(Boolean))];if(gs.length<2)return;const pans=new Set(gs.map(panOf));if(pans.size!==1)return;
+    const last=gs.map((g,i)=>i===0?p.id:p.id+"~"+g).pop(),opt=`<option value="${esc(last)}"`;const i=h.indexOf(opt);if(i<0)return;const j=h.indexOf("</option>",i)+9;
+    h=h.slice(0,j)+`<option value="${esc(p.id)}~ALL"${sel(p.id+"~ALL")}>🧩 ${esc(p.name)} — ${esc(bt("सभी "+gs.length+" GSTIN मिलाकर","all "+gs.length+" GSTINs together"))}</option>`+h.slice(j)});
+  if(bkMetaSelf().length)h=h.replace(`<option value="__addself">`,`<option value="_self~ALL"${sel("_self~ALL")}>🧩 ${esc(bt("अपनी फ़र्म — एक PAN के सभी GSTIN मिलाकर","My firm — all GSTINs of one PAN together"))}</option><option value="__addself">`);return h}}
+async function bkConsLoad(pid,fy){const ids=bkConsMembers(pid),books={},vms={};
+  if(mode!=="db"){const s0=bkLocal();ids.forEach(id=>{if(s0.books[id])books[id]=s0.books[id];vms[id]={};for(const k in s0.vm){const d=s0.vm[k];if(d.pid===id&&d.fy===fy)vms[id][k]=d}})}
+  else await Promise.all(ids.map(async id=>{try{const d=await appDb.collection("bk_books").doc(id).get();if(d.exists)books[id]=d.data()}catch(e){}
+    try{const q=await appDb.collection("bk_vm").where("pid","==",id).where("fy","==",fy).get();vms[id]={};q.docs.forEach(x=>vms[id][x.id]=x.data())}catch(e){vms[id]={}}}));
+  /* one PAN only: the PAN most books share */
+  const cnt={};Object.values(books).forEach(b=>{const p=panOf(b.gstin);if(p)cnt[p]=(cnt[p]||0)+1});const pan=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])[0]||"";
+  const use=ids.filter(id=>books[id]&&(!pan||!books[id].gstin||panOf(books[id].gstin)===pan)),skipped=ids.filter(id=>books[id]&&!use.includes(id)),notStarted=ids.filter(id=>!books[id]);
+  const gstins=use.map(id=>books[id].gstin).filter(Boolean),L={},I={},map={},imap={},cs={};let ibSales=0,ibN=0;const V={};
+  use.forEach(id=>{const B=books[id];map[id]={};imap[id]={};
+    Object.keys(B.L||{}).forEach(l=>{const x=B.L[l];if(x.del)return;const k="c:"+x.n.toLowerCase();map[id][l]=k;const y=L[k]=L[k]||{n:x.n,g:x.g,op:{},gstin:"",st:""};if(!y.gstin&&x.gstin){y.gstin=x.gstin;y.st=x.st}
+      if(x.gstin&&gstins.includes(x.gstin))y.ib=true;y.op[fy]=r2((y.op[fy]||0)+r2(x.op&&x.op[fy]||0))});
+    Object.keys(B.I||{}).forEach(i=>{const x=B.I[i];if(x.del)return;const k="ci:"+x.n.toLowerCase();imap[id][i]=k;const y=I[k]=I[k]||{n:x.n,hsn:x.hsn,u:x.u,r:x.r,op:{}};const o=(x.op&&x.op[fy])||{};const yo=y.op[fy]=y.op[fy]||{q:0,v:0};yo.q+=+o.q||0;yo.v=r2(yo.v+r2(o.v))});
+    if(B.cs&&B.cs[fy])cs[fy]=r2((cs[fy]||0)+B.cs[fy]);
+    const all={};for(const k in vms[id]){const v=vms[id][k].v||{};for(const vid in v){const x=v[vid];if(!all[vid]||(x.at||"")>(all[vid].at||"")||((x.at||"")===(all[vid].at||"")&&all[vid].del&&!x.del))all[vid]=x}}
+    const sc=(B.gstin||"").slice(0,2)||B.st||"";
+    Object.keys(all).forEach(vid=>{const x=all[vid];if(x.del||!x.d)return;
+      const pg=x.gst&&x.gst.party&&B.L[x.gst.party]&&B.L[x.gst.party].gstin;if(x.gst&&pg&&gstins.includes(pg)&&["sales","purch","cn","dn"].includes(x.t)){if(x.t==="sales")ibSales+=r2((x.gst.items||[]).reduce((s,y)=>s+(+y.v||0),0));ibN++;return}
+      const nx=JSON.parse(JSON.stringify(x));nx.ln=(x.ln||[]).map(y=>({l:map[id][y.l]||"c:?",a:y.a}));if(nx.gst){nx.gst.party=map[id][x.gst.party];nx.gst.items=(x.gst.items||[]).map(y=>Object.assign({},y,{l:map[id][y.l],it:y.it?imap[id][y.it]:undefined}))}
+      nx.nar="["+sc+"] "+(x.nar||"");V[id+":"+vid]=nx})});
+  return{book:{pid,name:(books[use[0]]&&books[use[0]].name)||"",gstin:"",st:(books[use[0]]&&books[use[0]].st)||"",L,I,cs,info:(books[use[0]]&&books[use[0]].info)||{}},vm:{cons:{pid,fy,v:V}},info:{use:use.map(id=>({id,g:books[id].gstin||"",n:books[id].name||""})),skipped,notStarted,ibSales:r2(ibSales),ibN,pan}}}
+{const _o=bkOpen;bkOpen=function(pid,fy){bk.cons=!!(pid&&/~ALL$/.test(pid));if(!bk.cons)return _o(pid,fy);
+  bk.un.forEach(u=>{try{u()}catch(e){}});bk.un=[];bk.pid=pid;bk.fy=fy;bk.book=null;bk.vm={};bk.led="";bk.loading=true;if(["gst","reg"].includes(bk.tab))bk.tab="home";renderBk();
+  bkConsLoad(pid,fy).then(r=>{if(bk.pid!==pid)return;bk.loading=false;bk.consInfo=r.info;bk.book=r.info.use.length?r.book:null;bk.vm=r.vm;renderBk()}).catch(()=>{bk.loading=false;renderBk()})}}
+{const _m=bkMenu;bkMenu=function(tabs){let h=_m(tabs);if(!bk.cons)return h;return h.replace(/<button class="bkTab[^"]*" data-t="gst">[\s\S]*?<\/button>/,"").replace(/<button class="bkMk" data-k="tally">[\s\S]*?<\/button>/,"")}}
+{const _t=bkTab;bkTab=function(R){if(!bk.cons)return _t(R);const I=bk.consInfo||{};
+  const ib=R.L.filter(l=>l.ib),ibNet=r2(ib.reduce((s,l)=>s+(R.B[l.id]||0),0));
+  const head=`<div class="note" style="background:#eef3ff">🧩 <b>${esc(bt("सभी GSTIN मिलाकर — सिर्फ़ देखने के लिए","All GSTINs together — view only"))}</b><br>${(I.use||[]).map(m=>`<a href="#" class="bkGoM" data-id="${esc(m.id)}">${esc(m.g||m.n)}${m.g?" ("+esc(STATES[m.g.slice(0,2)]||m.g.slice(0,2))+")":""}</a>`).join(" · ")}
+    ${I.ibN?"<br>"+esc(bt(`शाखाओं के बीच के ${I.ibN} बिल छोड़े गए (बिक्री ₹${bkN(I.ibSales)}) — ताकि बिक्री / ख़रीद दो बार न गिने।`,`${I.ibN} bills between branches left out (sales ₹${bkN(I.ibSales)}) — so sales / purchases are not counted twice.`)):""}
+    ${ib.length?"<br>"+esc(bt("शाखा खातों का कुल (0 होना चाहिए): ","Branch accounts net (should be 0): "))+"<b style='color:"+(Math.abs(ibNet)>=1?"var(--red)":"inherit")+"'>"+bkDC(ibNet)+"</b>":""}
+    ${(I.notStarted||[]).length?"<br>⚠ "+esc(bt("इन GSTIN की किताबें अभी शुरू नहीं हुईं: ","Books not started yet for: "))+esc(I.notStarted.map(x=>x.split("~")[1]||x).join(", ")):""}
+    ${(I.skipped||[]).length?"<br>⚠ "+esc(bt("दूसरे PAN की किताबें शामिल नहीं: ","Books of another PAN left out: "))+esc(I.skipped.join(", ")):""}
+    <br><span class="m">${esc(bt("GST रिटर्न हर GSTIN के अपने हिसाब में देखें। शाखाओं के बीच भेजे बिना बिके माल का मुनाफ़ा (स्टॉक में) यहाँ अलग से नहीं घटाया गया।","See GST returns in each GSTIN's own books. Profit on goods sent between branches and still in stock is not taken out here."))}</span></div>`;
+  return head+(bk.tab==="gst"?`<div class="empty">${esc(bt("GST रिपोर्ट हर GSTIN की अलग होती है — ऊपर किसी GSTIN पर दबाएँ।","GST returns are per GSTIN — tap a GSTIN above."))}</div>`:_t(R))}}
+{const _w=bkWire;bkWire=function(){_w();const el=$("#bk");if(!el)return;el.querySelectorAll(".bkGoM").forEach(a=>a.onclick=e=>{e.preventDefault();bkOpen(a.dataset.id,bk.fy)})}}
 
 paintStatic();render();init();
 </script>

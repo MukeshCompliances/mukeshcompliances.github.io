@@ -276,3 +276,8 @@ Approach that worked for GST: ask him for REAL sample files of one client, read 
 - **Tally link** stored in the book: `bk_books.tl` {co, gstins, multi, force, at, by} (no longer per computer); global map `bk_meta/tally` {map:{<company>:{pid,name,gstin}|null}} → one Tally company ↔ one book.
 - `tlCompanies()` now returns {name, state, gstins} (GSTINs found anywhere in the COMPANY element). `tlCheck`: ok (GSTIN matches) / bad (differs → link only with "I am sure" tick, stored `force`) / warn (no GSTIN in Tally → confirm by name) / block (company linked to other books). `tlGuard` re-checks before every sync (company must be open; mismatch stops unless forced).
 - Multi-GSTIN Tally company (`tl.multi`): pushed vouchers carry `<CMPGSTIN>`; pulled / file-imported vouchers with another `CMPGSTIN` are skipped (`bkCgOk`).
+
+### Update 26 Nov 2026 (4) — 🧩 all GSTINs together (artifact v86 + site)
+- Dropdown gets `pid~ALL` after a client's GSTIN entries (only when ≥2 GSTINs of one PAN) and `_self~ALL` when own extra businesses exist. `bkConsLoad` reads each member book + its FY month docs (get, not live), keeps books of the most common PAN (others listed as skipped), joins ledgers by name (`c:<name>`) and items (`ci:<name>`), adds openings / closing stock, copies vouchers with remapped ids and "[state] " before the narration.
+- Bills (sales / purchase / credit / debit notes) whose party GSTIN is one of the group's own GSTINs are left out (count + sales value shown); ledgers with a group GSTIN are flagged `ib` and their net shown ("should be 0"). Unrealised profit on branch stock is NOT eliminated (said on screen).
+- View only: `bkCan()` is false while `bk.cons`; GST tab and Tally button hidden; links on top jump to each GSTIN's own books.
