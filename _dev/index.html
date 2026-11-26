@@ -428,9 +428,12 @@ async function init(){
   mode="db";appDb=db;dbRef=db.collection("compliances");clientRef=db.collection("clients");paintWho();
   const timer=setTimeout(()=>setBanner("slowBanner"),10000);
   dbRef.onSnapshot(s=>{
-    if(!s.metadata.fromCache){clearTimeout(timer);if(banner&&banner.k==="slowBanner")setBanner(null)}
+    if(!s.metadata.fromCache){clearTimeout(timer);if(banner&&banner.k==="slowBanner")setBanner(null);try{sessionStorage.removeItem("__pdRetry")}catch(e){}}
     const all0=s.docs.map(d=>Object.assign({id:d.id},d.data()));trashItems=all0.filter(i=>i.deleted);itemsRaw=all0.filter(i=>!i.deleted);items=typeof ftItemOn==="function"?itemsRaw.filter(ftItemOn):itemsRaw;render();resolveNames();
-  },e=>{clearTimeout(timer);setBanner("loadErr",e.code)});
+  },e=>{clearTimeout(timer);
+    /* on the website a just-changed sign-in can be refused once; one quiet reload fixes it */
+    if(e&&e.code==="permission-denied"&&window.__site){let tried=false;try{tried=!!sessionStorage.getItem("__pdRetry");if(!tried)sessionStorage.setItem("__pdRetry","1")}catch(x){}if(!tried){setTimeout(()=>location.reload(),1200);return}}
+    setBanner("loadErr",e.code)});
   clientRef.onSnapshot(s=>{const c={};s.docs.forEach(d=>c[d.id]=d.data());clients=c},()=>{});
   initTeam(db);emInit(db);accInit(db);
   partyRef=db.collection("parties");
