@@ -300,3 +300,11 @@ Approach that worked for GST: ask him for REAL sample files of one client, read 
 - Windows **Smart App Control** blocks the downloaded .bat (and would also put PowerShell in constrained mode) → new **Tally Bridge** MV3 extension in repo `tally-bridge/` + `tally-bridge.zip` (fixed id `flhnehdbaolddadpdckoadkhlamgfobn` from the `key` in manifest; private key NOT in repo). `externally_connectable` only for https://mukeshcompliances.github.io; host permission localhost:9000. `tlPost` tries the extension first (`chrome.runtime.sendMessage(TL_EXT,{xml})`), falls back to the :9100 .bat connector.
 - Company GSTINs: TallyPrime keeps them in **TaxUnit** (`GSTREGNUMBER`), not on COMPANY → `tlCompanies` now also asks each company's TaxUnit collection. Verified on his Tally: HR = 06AAPCA8845F1ZC, MH = 27AAPCA8845F1Z8.
 - His Chrome "can't reach data": in a clean browser (built-in pane, Addenda ID f***@addimaster.com) everything loaded (147 compliances, both GSTIN books). Repair button / clear site data advised for his Chrome.
+
+## 26 Nov 2026 — period, ledger search, Tally invoice, opening difference
+- Tally live pull crashed on a duplicate ledger name in Tally (HR: "Autotech-Sirmax…") → fixed; sync errors now show the real reason.
+- Reports have a 📅 period bar (From–To for Day Book / Ledger / P&L, "As on" for TB / BS / Outstanding / Stock / Dashboard). bkV is cut at the To date only while bkReport runs; P&L for a period = (FY start→To) − (FY start→From−1); ledger opening at From includes earlier entries.
+- Ledger report: search box (datalist) instead of a plain list.
+- "Difference in opening balances" now counts the opening stock value of items (Tally keeps opening stock outside ledgers; HR & MH ledgers differ exactly by their opening stock).
+- Live sync now takes a ledger's Tally opening when ours is empty for that FY (pre-existing ledgers were skipped before).
+- Invoice print redone in the TallyPrime layout; optional "More bill details" (order no., e-Way bill, vehicle, IRN, ship-to…) on sales / credit / debit notes, stored in gst.x.
