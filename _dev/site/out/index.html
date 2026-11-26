@@ -5273,7 +5273,8 @@ const _fpRow=row;row=function(i){const h=_fpRow(i);if(i.code!=="FS")return h;con
   return h.replace('<div style="margin-top:6px">','<div style="margin-top:6px"><span class="badge '+(d===L?"b-filed":"b-up")+'" style="margin-right:4px">📑 '+d+"/"+L+"</span>")};
 
 /* ===== what's new: shown once per person; add a new entry at the top for each change ===== */
-const WHATS_NEW=[{id:"2026-11-26d",items:[
+const WHATS_NEW=[{id:"2026-11-26e",items:[
+ ["🔁 आंतरिक शाखा ट्रांसफ़र अब हटता नहीं: अपने ही PAN की दूसरी शाखा / राज्य को भेजा या वहाँ से आया माल लाभ-हानि में अलग लाइन में, और उनके खाते \"शाखा / डिवीज़न (आंतरिक)\" ग्रुप में (GST में ये सप्लाई ही रहती है)। हर क्लाइंट में \"＋ दूसरा बिज़नेस / राज्य\" — एक PAN के कई बिज़नेस अलग, और 🧩 एक बिज़नेस के सभी राज्य मिलाकर; एक GSTIN पर कई बिज़नेस हों तो 🧾 उस GSTIN का GST सबका मिलाकर।","🔁 Internal branch transfers are no longer dropped: goods sent to / received from your own PAN's other branch / state show on their own P&L lines, and their accounts sit in \"Branch / Divisions (internal)\" (under GST they stay supplies). Each client has \"＋ Another business / state\" — several businesses of one PAN kept apart, 🧩 one business's states together, and 🧾 one GSTIN's GST across all its businesses."]]},{id:"2026-11-26d",items:[
  ["🧩 एक बिज़नेस, कई राज्य: क्लाइंट सूची में \"सभी GSTIN मिलाकर\" — सब राज्यों का डैशबोर्ड, डे बुक, लेजर, ट्रायल बैलेंस, लाभ-हानि, बैलेंस शीट, स्टॉक एक साथ (सिर्फ़ देखने के लिए)। अपनी शाखाओं के बीच के बिल अपने-आप छोड़े जाते हैं ताकि बिक्री दो बार न गिने, और शाखा खातों का कुल (0 होना चाहिए) दिखता है।","🧩 One business, several states: \"all GSTINs together\" in the client list — dashboard, day book, ledger, trial balance, P&L, balance sheet and stock of all states together (view only). Bills between your own branches are left out so sales are not counted twice, and the branch accounts' net (should be 0) is shown."]]},{id:"2026-11-26c",items:[
  ["🛡 Tally से जोड़ने में सुरक्षा: हर GSTIN की किताबें अलग (एक क्लाइंट के कई राज्य = अलग किताबें; अपनी फ़र्म में \"＋ दूसरा बिज़नेस / GSTIN\")। Tally कंपनी जोड़ते समय उसका GSTIN किताबों से मिलाया जाता है — अलग हो तो जोड़ना रुकता है; एक Tally कंपनी सिर्फ़ एक किताबों से जुड़ती है; हर सिंक से पहले दोबारा जाँच; कई GSTIN वाली Tally कंपनी से सिर्फ़ उसी GSTIN के वाउचर आते हैं।","🛡 Safe Tally linking: separate books for each GSTIN (a client in several states = separate books; for your own firm \"＋ Another business / GSTIN\"). Linking a Tally company checks its GSTIN against the books — a mismatch stops it; one Tally company links to one set of books; checked again before every sync; from a Tally company with several GSTINs only that GSTIN's vouchers come in."]]},{id:"2026-11-26b",items:[
  ["🟢 Tally लाइव: Tally वाले कंप्यूटर पर छोटा \"Tally-Connector\" चालू करें (कुछ install नहीं) — फिर वेबसाइट खुली रहने पर हर 3 मिनट में दोनों तरफ़ अपने-आप सिंक: यहाँ बने लेजर / वाउचर Tally में, Tally के नए / बदले वाउचर यहाँ; यहाँ बदला या हटाया वाउचर Tally में भी बदलता / हटता है। 📒 → मास्टर → 🔄 Tally।","🟢 Tally live: start the small \"Tally-Connector\" on the Tally computer (nothing to install) — then, with the website open, both sides sync every 3 minutes: ledgers / vouchers made here go to Tally, new / changed Tally vouchers come here; a voucher changed or deleted here changes / goes in Tally too. 📒 → Masters → 🔄 Tally."]]},{id:"2026-11-26",items:[
@@ -5781,7 +5782,7 @@ const bkDC=n=>Math.abs(n)<0.005?"0.00":bkN(Math.abs(n))+(n>0?" Dr":" Cr");
 const r2=n=>Math.round((+n||0)*100)/100;
 const bkFyNow=()=>{const d=new Date();return d.getMonth()>=3?d.getFullYear():d.getFullYear()-1};
 const bkFyOfD=d=>{const y=+d.slice(0,4),m=+d.slice(5,7);return m>=4?y:y-1};
-const bkCan=()=>!(typeof bk!=="undefined"&&bk.cons)&&(typeof myRole!=="function"||myRole()!=="viewer");
+const bkCan=()=>!(typeof bk!=="undefined"&&(bk.cons||bk.consRO))&&(typeof myRole!=="function"||myRole()!=="viewer");
 let bk={pid:"",fy:bkFyNow(),book:null,vm:{},tab:"day",led:"",f:{t:"",q:""},un:[]};
 const BK_LK="compliance_bk_v1";
 const bkLocal=()=>lget(BK_LK,'{"books":{},"vm":{}}');
@@ -6613,8 +6614,8 @@ async function bkConsLoad(pid,fy){const ids=bkConsMembers(pid),books={},vms={};
       const nx=JSON.parse(JSON.stringify(x));nx.ln=(x.ln||[]).map(y=>({l:map[id][y.l]||"c:?",a:y.a}));if(nx.gst){nx.gst.party=map[id][x.gst.party];nx.gst.items=(x.gst.items||[]).map(y=>Object.assign({},y,{l:map[id][y.l],it:y.it?imap[id][y.it]:undefined}))}
       nx.nar="["+sc+"] "+(x.nar||"");V[id+":"+vid]=nx})});
   return{book:{pid,name:(books[use[0]]&&books[use[0]].name)||"",gstin:"",st:(books[use[0]]&&books[use[0]].st)||"",L,I,cs,info:(books[use[0]]&&books[use[0]].info)||{}},vm:{cons:{pid,fy,v:V}},info:{use:use.map(id=>({id,g:books[id].gstin||"",n:books[id].name||""})),skipped,notStarted,ibSales:r2(ibSales),ibN,pan}}}
-{const _o=bkOpen;bkOpen=function(pid,fy){bk.cons=!!(pid&&/~ALL$/.test(pid));if(!bk.cons)return _o(pid,fy);
-  bk.un.forEach(u=>{try{u()}catch(e){}});bk.un=[];bk.pid=pid;bk.fy=fy;bk.book=null;bk.vm={};bk.led="";bk.loading=true;if(["gst","reg"].includes(bk.tab))bk.tab="home";renderBk();
+{const _o=bkOpen;bkOpen=function(pid,fy){bk.cons=!!(pid&&/~(ALL|GST)(~|$)/.test(pid));bk.consGst=!!(pid&&/~GST~/.test(pid));if(!bk.cons)return _o(pid,fy);
+  bk.un.forEach(u=>{try{u()}catch(e){}});bk.un=[];bk.pid=pid;bk.fy=fy;bk.book=null;bk.vm={};bk.led="";bk.loading=true;if(bk.consGst)bk.tab="gst";else if(["gst","reg"].includes(bk.tab))bk.tab="home";renderBk();
   bkConsLoad(pid,fy).then(r=>{if(bk.pid!==pid)return;bk.loading=false;bk.consInfo=r.info;bk.book=r.info.use.length?r.book:null;bk.vm=r.vm;renderBk()}).catch(()=>{bk.loading=false;renderBk()})}}
 {const _m=bkMenu;bkMenu=function(tabs){let h=_m(tabs);if(!bk.cons)return h;return h.replace(/<button class="bkTab[^"]*" data-t="gst">[\s\S]*?<\/button>/,"").replace(/<button class="bkMk" data-k="tally">[\s\S]*?<\/button>/,"")}}
 {const _t=bkTab;bkTab=function(R){if(!bk.cons)return _t(R);const I=bk.consInfo||{};
@@ -6627,6 +6628,99 @@ async function bkConsLoad(pid,fy){const ids=bkConsMembers(pid),books={},vms={};
     <br><span class="m">${esc(bt("GST रिटर्न हर GSTIN के अपने हिसाब में देखें। शाखाओं के बीच भेजे बिना बिके माल का मुनाफ़ा (स्टॉक में) यहाँ अलग से नहीं घटाया गया।","See GST returns in each GSTIN's own books. Profit on goods sent between branches and still in stock is not taken out here."))}</span></div>`;
   return head+(bk.tab==="gst"?`<div class="empty">${esc(bt("GST रिपोर्ट हर GSTIN की अलग होती है — ऊपर किसी GSTIN पर दबाएँ।","GST returns are per GSTIN — tap a GSTIN above."))}</div>`:_t(R))}}
 {const _w=bkWire;bkWire=function(){_w();const el=$("#bk");if(!el)return;el.querySelectorAll(".bkGoM").forEach(a=>a.onclick=e=>{e.preventDefault();bkOpen(a.dataset.id,bk.fy)})}}
+
+/* ===== 📒 Accounts part 9: businesses and states kept apart; internal branch transfers shown, never dropped =====
+   A client (or my own firm) can have several businesses; each business can have several state GSTINs. Every business+GSTIN has its own books.
+   🧩 = one business, all its states (view). 🧾 = one GSTIN, all businesses on it (GST view). Bills to / from the same PAN = "internal branch transfer". */
+BK_G.splice(BK_G.findIndex(g=>g[0]==="scr")+1,0,["br","शाखा / डिवीज़न (आंतरिक)","Branch / Divisions (internal)","L"]);BK_GM.br={id:"br",hi:"शाखा / डिवीज़न (आंतरिक)",en:"Branch / Divisions (internal)",nat:"L"};
+BK_TALLY_G.br="Branch / Divisions";BK_TALLY_GR["branch / divisions"]="br";
+bkPidParts=function(pid){pid=pid||"";const seg=pid.split("~"),base=seg[0],last=seg.length>1?seg[seg.length-1]:"";return{pid:base,self:base==="_self",gstin:/^\d{2}[A-Z0-9]{13}$/.test(last)?last:""}};
+/* every set of books of one client / my firm: {id, biz ("" = main business), gstin} */
+function bkUnits(base){const out=[];const extra=bkMetaSelf().map(b=>Object.assign({pid:"_self",biz:b.name||""},b)).filter(b=>(b.pid||"_self")===base);
+  if(base==="_self")out.push({id:"_self",biz:"",gstin:""});
+  else{const p=(parties||[]).find(x=>x.id===base);const gs=[...new Set(((p&&p.gsts)||[]).map(g=>String(g.gstin||"").toUpperCase()).filter(Boolean))];if(gs.length)gs.forEach((g,i)=>out.push({id:i===0?base:base+"~"+g,biz:"",gstin:g}));else out.push({id:base,biz:"",gstin:""})}
+  extra.forEach(b=>out.push({id:b.id,biz:b.pid==="_self"&&b.biz===undefined?b.name:(b.biz||""),gstin:b.gstin||""}));return out}
+const bizKey=b=>(b||"").toLowerCase().replace(/[^a-z0-9ऀ-ॿ]+/g,"-").replace(/^-|-$/g,"");
+bkPartyOpts=function(){bkMetaLoad();const sel=v=>v===bk.pid?" selected":"",fname=(window.__site&&__site.firm&&__site.firm.name)||bt("मेरी फ़र्म","My firm");
+  const block=(base,title)=>{const U=bkUnits(base),st=g=>g?" — "+esc(g)+" ("+esc(STATES[g.slice(0,2)]||g.slice(0,2))+")":"";let h="";const bizs=[...new Set(U.map(u=>u.biz))];
+    bizs.forEach(bz=>{const us=U.filter(u=>u.biz===bz);us.forEach(u=>{h+=`<option value="${esc(u.id)}"${sel(u.id)}>${base==="_self"?"🏢 ":""}${esc(title)}${bz?" · "+esc(bz):""}${st(u.gstin)}</option>`});
+      if(us.length>1){const v=base+"~ALL"+(bz?"~"+bizKey(bz):"");h+=`<option value="${esc(v)}"${sel(v)}>🧩 ${esc(title)}${bz?" · "+esc(bz):""} — ${esc(bt("सभी "+us.length+" राज्य मिलाकर","all "+us.length+" states together"))}</option>`}});
+    const byG={};U.filter(u=>u.gstin).forEach(u=>(byG[u.gstin]=byG[u.gstin]||[]).push(u));Object.keys(byG).filter(g=>byG[g].length>1).forEach(g=>{const v=base+"~GST~"+g;h+=`<option value="${esc(v)}"${sel(v)}>🧾 ${esc(g)} — ${esc(bt("सभी "+byG[g].length+" बिज़नेस का GST","GST of all "+byG[g].length+" businesses"))}</option>`});
+    return h};
+  let h=`<optgroup label="${esc(bt("अपनी फ़र्म","My own firm"))}">`+block("_self",fname)+`<option value="__addunit:_self">＋ ${esc(bt("दूसरा बिज़नेस / राज्य (GSTIN) जोड़ें","Add another business / state (GSTIN)"))}</option></optgroup><optgroup label="${esc(bt("ग्राहक","Clients"))}">`;
+  h+=(typeof parties!=="undefined"?parties:[]).slice().sort((a,b)=>(a.name||"").localeCompare(b.name||"")).map(p=>block(p.id,p.name||"")).join("");
+  const cur=bkPidParts(bk.pid).pid;if(cur&&cur!=="_self"&&(parties||[]).some(p=>p.id===cur))h+=`<option value="__addunit:${esc(cur)}">＋ ${esc(bt("इस क्लाइंट का दूसरा बिज़नेस / राज्य जोड़ें","Add another business / state of this client"))}</option>`;
+  return h+"</optgroup>"};
+{const _o=bkOpen;bkOpen=function(pid,fy){if(pid&&pid.startsWith("__addunit:")){bkUnitForm(pid.slice(10));renderBk();return}if(pid==="__addself"){bkUnitForm("_self");renderBk();return}return _o(pid,fy)}}
+function bkUnitForm(base){const p=(parties||[]).find(x=>x.id===base),name=base==="_self"?((window.__site&&__site.firm&&__site.firm.name)||bt("मेरी फ़र्म","My firm")):(p&&p.name)||"";
+  const bizs=[...new Set(bkUnits(base).map(u=>u.biz).filter(Boolean))];
+  openSheet(`<h3>＋ ${esc(bt("दूसरा बिज़नेस / राज्य","Another business / state"))}</h3><div class="m">${esc(name)}</div>
+   <div class="note">${esc(bt("एक PAN पर कई बिज़नेस हो सकते हैं, और एक बिज़नेस के कई राज्य। हर बिज़नेस + GSTIN की किताबें अलग रहेंगी। एक ही बिज़नेस के राज्यों को \"🧩 सभी राज्य मिलाकर\" में देखें।","One PAN can have several businesses, and one business several states. Each business + GSTIN keeps its own books. See one business's states together in \"🧩 all states together\"."))}</div>
+   <label>${esc(bt("बिज़नेस","Business"))}</label><select id="buB"><option value="">${esc(bt("मुख्य बिज़नेस — ","Main business — "))}${esc(name)}</option>${bizs.map(b=>`<option>${esc(b)}</option>`).join("")}<option value="__new">＋ ${esc(bt("नया बिज़नेस","New business"))}</option></select>
+   <div id="buNw" style="display:none"><label>${esc(bt("नए बिज़नेस का नाम","New business name"))}</label><input id="buN" maxlength="60"></div>
+   <label>GSTIN ${esc(bt("(उस राज्य का)","(of that state)"))}</label><input id="buG" maxlength="15" style="text-transform:uppercase">
+   <div class="actions"><button class="btn" id="buOk">${esc(bt("जोड़ें","Add"))}</button><button class="btn ghost" id="buNo">${esc(t("cancel")||"Cancel")}</button></div><div class="err" id="buEr"></div>`);
+  $("#buB").onchange=()=>{$("#buNw").style.display=$("#buB").value==="__new"?"":"none"};$("#buNo").onclick=closeSheet;
+  $("#buOk").onclick=async()=>{let bz=$("#buB").value;if(bz==="__new")bz=$("#buN").value.trim();const g=$("#buG").value.trim().toUpperCase();
+    if($("#buB").value==="__new"&&bz.length<2){$("#buEr").textContent=bt("बिज़नेस का नाम लिखें","Enter the business name");return}
+    if(g&&!/^\d{2}[A-Z]{5}\d{4}[A-Z][A-Z0-9]Z[A-Z0-9]$/.test(g)){$("#buEr").textContent=bt("GSTIN सही नहीं लगता","GSTIN does not look right");return}
+    if(!g&&!bz){$("#buEr").textContent=bt("GSTIN या नया बिज़नेस लिखें","Enter a GSTIN or a new business");return}
+    if(bkUnits(base).some(u=>u.biz===bz&&u.gstin===g)){$("#buEr").textContent=bt("यह पहले से है","Already there");return}
+    const id=base+"~"+(bz?"b-"+bizKey(bz).slice(0,20)+"~":"")+(g||Math.random().toString(36).slice(2,7));
+    try{await bkMetaPut("self",{books:bkMetaSelf().concat([{id,pid:base,biz:bz,name:(bz||name).slice(0,80),gstin:g}])});closeSheet();bkOpen(id,bk.fy)}catch(e){$("#buEr").textContent=t("saveFail")}}}
+/* start form: GSTIN / name of the unit are known */
+{const _sf=bkStartForm;bkStartForm=function(){_sf();const u=bkUnits(bkPidParts(bk.pid).pid).find(x=>x.id===bk.pid);if(!u)return;const g=$("#bsG");if(g&&u.gstin){if(g.tagName==="SELECT")g.innerHTML=`<option>${esc(u.gstin)}</option>`;else g.value=u.gstin;g.dispatchEvent(new Event("input"))}
+  if(u.biz){const m=document.querySelector("#sheet .m");if(m)m.textContent=m.textContent+" · "+u.biz}}}
+/* consolidation members: one business (all states) or one GSTIN (all businesses) */
+bkConsMembers=function(pid){const seg=pid.split("~"),base=seg[0],U=bkUnits(base);if(seg[1]==="GST")return U.filter(u=>u.gstin===seg[2]).map(u=>u.id);const bk0=seg[2]||"";return U.filter(u=>bizKey(u.biz)===bk0).map(u=>u.id)};
+{const _cl=bkConsLoad;bkConsLoad=async function(pid,fy){const r=await _cl(pid,fy);return r}}
+/* internal branch transfer: party with the same PAN as these books */
+const bkOwnGstins=()=>bk.cons?((bk.consInfo&&bk.consInfo.use)||[]).map(m=>m.g).filter(Boolean):[(bk.book&&bk.book.gstin)||""].filter(Boolean);
+{const _r=bkReport;bkReport=function(){const R=_r(),pans=new Set(bkOwnGstins().map(panOf).filter(Boolean)),isBr=g=>!!g&&pans.has(panOf(g));
+  R.L.forEach(l=>{if(isBr(l.gstin)&&["sdr","scr","cl","ca","br"].includes(l.g))l.g="br"});R.G=g=>R.L.filter(l=>l.g===g);
+  let bOut=0,bIn=0,nOut=0,nIn=0;R.V.forEach(v=>{if(!v.gst||!v.gst.party)return;const P=bk.book.L[v.gst.party];if(!P||!isBr(P.gstin))return;const tv=r2((v.gst.items||[]).reduce((s,x)=>s+(+x.v||0),0));
+    if(v.t==="sales"){bOut+=tv;nOut++}else if(v.t==="cn"){bOut-=tv}else if(v.t==="purch"){bIn+=tv;nIn++}else if(v.t==="dn"){bIn-=tv}});
+  R.bOut=r2(bOut);R.bIn=r2(bIn);R.nOut=nOut;R.nIn=nIn;return R}}
+/* the cons loader no longer drops branch bills: rebuild without that step */
+bkConsLoad=async function(pid,fy){const ids=bkConsMembers(pid),books={},vms={};
+  if(mode!=="db"){const s0=bkLocal();ids.forEach(id=>{if(s0.books[id])books[id]=s0.books[id];vms[id]={};for(const k in s0.vm){const d=s0.vm[k];if(d.pid===id&&d.fy===fy)vms[id][k]=d}})}
+  else await Promise.all(ids.map(async id=>{try{const d=await appDb.collection("bk_books").doc(id).get();if(d.exists)books[id]=d.data()}catch(e){}
+    try{const q=await appDb.collection("bk_vm").where("pid","==",id).where("fy","==",fy).get();vms[id]={};q.docs.forEach(x=>vms[id][x.id]=x.data())}catch(e){vms[id]={}}}));
+  const use=ids.filter(id=>books[id]),notStarted=ids.filter(id=>!books[id]),L={},I={},map={},imap={},cs={},V={};
+  use.forEach(id=>{const B=books[id];map[id]={};imap[id]={};
+    Object.keys(B.L||{}).forEach(l=>{const x=B.L[l];if(x.del)return;const k="c:"+x.n.toLowerCase();map[id][l]=k;const y=L[k]=L[k]||{n:x.n,g:x.g,op:{},gstin:"",st:""};if(!y.gstin&&x.gstin){y.gstin=x.gstin;y.st=x.st}y.op[fy]=r2((y.op[fy]||0)+r2(x.op&&x.op[fy]||0))});
+    Object.keys(B.I||{}).forEach(i=>{const x=B.I[i];if(x.del)return;const k="ci:"+x.n.toLowerCase();imap[id][i]=k;const y=I[k]=I[k]||{n:x.n,hsn:x.hsn,u:x.u,r:x.r,op:{}};const o=(x.op&&x.op[fy])||{};const yo=y.op[fy]=y.op[fy]||{q:0,v:0};yo.q+=+o.q||0;yo.v=r2(yo.v+r2(o.v))});
+    if(B.cs&&B.cs[fy])cs[fy]=r2((cs[fy]||0)+B.cs[fy]);
+    const all={};for(const k in vms[id]){const v=vms[id][k].v||{};for(const vid in v){const x=v[vid];if(!all[vid]||(x.at||"")>(all[vid].at||"")||((x.at||"")===(all[vid].at||"")&&all[vid].del&&!x.del))all[vid]=x}}
+    const sc=(B.gstin||"").slice(0,2)||B.st||"";
+    Object.keys(all).forEach(vid=>{const x=all[vid];if(x.del||!x.d)return;const nx=JSON.parse(JSON.stringify(x));nx.ln=(x.ln||[]).map(y=>({l:map[id][y.l]||"c:?",a:y.a}));
+      if(nx.gst){nx.gst.party=map[id][x.gst.party];nx.gst.items=(x.gst.items||[]).map(y=>Object.assign({},y,{l:map[id][y.l],it:y.it?imap[id][y.it]:undefined}))}nx.nar="["+sc+"] "+(x.nar||"");V[id+":"+vid]=nx})});
+  const first=books[use[0]]||{};
+  return{book:{pid,name:first.name||"",gstin:"",st:first.st||"",L,I,cs,info:first.info||{}},vm:{cons:{pid,fy,v:V}},info:{use:use.map(id=>({id,g:books[id].gstin||"",n:books[id].name||"",biz:(bkUnits(bkPidParts(id).pid).find(u=>u.id===id)||{}).biz||""})),skipped:[],notStarted,gst:/~GST~/.test(pid)}}};
+/* P&L with internal transfers on their own lines */
+function bkPlHtml(R){const line=(a,b,bo,c)=>`<tr${c?` style="background:${c}"`:""}>${bkTd(esc(a),0,bo)}${bkTd(bkN(b),1,bo)}</tr>`,grp=(g,sign)=>R.G(g).filter(l=>Math.abs(R.B[l.id]||0)>=0.005).map(l=>`<tr class="bkLg" data-id="${esc(l.id)}" style="cursor:pointer">${bkTd("&nbsp;&nbsp;"+esc(l.n))}${bkTd(bkN(sign*(R.B[l.id]||0)),1)}</tr>`).join("");
+  const tr="#f3f0ff",rows=[`<tr><td colspan="2" style="padding:6px;font-weight:700">${esc(bt("ट्रेडिंग खाता","Trading Account"))}</td></tr>`,line(bt("बिक्री (बाहर)","Sales (outside)"),r2(R.sales-R.bOut),1),grp("sales",-1)];
+  if(R.bOut)rows.push(line(bt(`🔁 आंतरिक शाखा ट्रांसफ़र — भेजा (${R.nOut} बिल)`,`🔁 Internal branch transfer — sent (${R.nOut} bills)`),R.bOut,1,tr));
+  rows.push(line(bt("प्रत्यक्ष आय","Direct incomes"),R.dinc),line(bt("क्लोज़िंग स्टॉक","Closing stock"),R.cs),line(bt("घटाएँ: ओपनिंग स्टॉक","Less: Opening stock"),R.os),line(bt("घटाएँ: ख़रीद (बाहर से)","Less: Purchases (outside)"),r2(R.purch-R.bIn),1),grp("purch",1));
+  if(R.bIn)rows.push(line(bt(`घटाएँ: 🔁 आंतरिक शाखा ट्रांसफ़र — आया (${R.nIn} बिल)`,`Less: 🔁 Internal branch transfer — received (${R.nIn} bills)`),R.bIn,1,tr));
+  rows.push(line(bt("घटाएँ: प्रत्यक्ष ख़र्च","Less: Direct expenses"),R.dexp),grp("dexp",1),line(R.gp>=0?bt("सकल लाभ","Gross profit"):bt("सकल हानि","Gross loss"),R.gp,1),
+    `<tr><td colspan="2" style="padding:6px;font-weight:700">${esc(bt("लाभ-हानि खाता","Profit & Loss Account"))}</td></tr>`,line(bt("अप्रत्यक्ष आय","Indirect incomes"),R.iinc,1),grp("iinc",-1),line(bt("घटाएँ: अप्रत्यक्ष ख़र्च","Less: Indirect expenses"),R.iexp,1),grp("iexp",1),
+    `<tr style="background:${R.np>=0?"#eaf7ee":"#fdecec"}">${bkTd(esc(R.np>=0?bt("शुद्ध लाभ","Net profit"):bt("शुद्ध हानि","Net loss")),0,1)}${bkTd(bkN(R.np),1,1)}</tr>`);
+  let note="";if(bk.cons&&(R.bOut||R.bIn)){const d=r2(R.bOut-R.bIn);note=`<div class="note" style="background:${tr}">🔁 ${esc(bt(`आंतरिक ट्रांसफ़र: भेजा ₹${bkN(R.bOut)} · आया ₹${bkN(R.bIn)} · फ़र्क़ ₹${bkN(d)}`,`Internal transfers: sent ₹${bkN(R.bOut)} · received ₹${bkN(R.bIn)} · difference ₹${bkN(d)}`))}${Math.abs(d)>=1?" — "+esc(bt("दोनों तरफ़ की एंट्री / रेट जाँचें","check both sides' entries / values")):" ✔"}</div>`}
+  else if(R.bOut||R.bIn)note=`<div class="note" style="background:${tr}">🔁 ${esc(bt("अपने ही PAN की दूसरी शाखा / राज्य से लेन-देन अलग लाइन में है। GST में ये सप्लाई है (GSTR-1 / 3B में शामिल)।","Dealings with your own PAN's other branch / state are on separate lines. Under GST they are supplies (included in GSTR-1 / 3B)."))}</div>`;
+  const csIn=R.hasI?`<div class="note">${esc(bt("क्लोज़िंग स्टॉक 📦 स्टॉक के आइटमों से अपने-आप (औसत रेट पर)।","Closing stock comes from the 📦 Stock items (average rate)."))}</div>`:bkCan()?`<div class="filters" style="margin-top:8px"><label style="flex:1 1 100%;font-size:13px">${esc(bt("साल के अंत का स्टॉक (क्लोज़िंग स्टॉक) ₹","Closing stock at year end ₹"))}</label><input id="bkCs" type="number" step="0.01" value="${R.cs||""}"><button class="btn ghost" id="bkCsS">${esc(bt("सेव","Save"))}</button></div>`:"";
+  return note+bkTbl(rows,[bt("विवरण","Particulars"),"₹"])+csIn}
+/* consolidated header (no bills dropped any more) + GST-only view + P&L */
+{const _t=bkTab;bkTab=function(R){if(bk.tab==="pl"&&!bk.cons)return bkPlHtml(R);if(!bk.cons)return _t(R);const I=bk.consInfo||{},br=R.L.filter(l=>l.g==="br"),brNet=r2(br.reduce((s,l)=>s+(R.B[l.id]||0),0));
+  const head=`<div class="note" style="background:#eef3ff">${I.gst?"🧾":"🧩"} <b>${esc(I.gst?bt("एक GSTIN, सभी बिज़नेस — GST देखने के लिए","One GSTIN, all businesses — for GST"):bt("एक बिज़नेस, सभी राज्य मिलाकर — सिर्फ़ देखने के लिए","One business, all states together — view only"))}</b><br>${(I.use||[]).map(m=>`<a href="#" class="bkGoM" data-id="${esc(m.id)}">${esc((m.biz?m.biz+" · ":"")+(m.g||m.n))}${m.g?" ("+esc(STATES[m.g.slice(0,2)]||m.g.slice(0,2))+")":""}</a>`).join(" · ")}
+    ${!I.gst&&br.length?"<br>🔁 "+esc(bt("शाखा / डिवीज़न खातों का कुल (दोनों तरफ़ की एंट्री हो तो 0): ","Branch / division accounts net (0 when both sides are entered): "))+"<b style='color:"+(Math.abs(brNet)>=1?"var(--red)":"inherit")+"'>"+bkDC(brNet)+"</b>":""}
+    ${(I.notStarted||[]).length?"<br>⚠ "+esc(bt("इनकी किताबें अभी शुरू नहीं हुईं: ","Books not started yet for: "))+esc(I.notStarted.map(x=>x.split("~").pop()).join(", ")):""}</div>`;
+  const raw=()=>{bk.cons=false;bk.consRO=true;try{return _t(R)}finally{bk.cons=true;bk.consRO=false}};
+  if(I.gst)return head+(["gst","day","reg"].includes(bk.tab)?raw():`<div class="empty">${esc(bt("यह view सिर्फ़ GST के लिए है — बाईं ओर \"GST रिपोर्ट\" दबाएँ। हिसाब हर बिज़नेस की अपनी किताबों में देखें।","This view is for GST only — press \"GST returns\". See accounts in each business's own books."))}</div>`);
+  if(bk.tab==="gst")return head+`<div class="empty">${esc(bt("GST रिपोर्ट हर GSTIN की अलग होती है — ऊपर किसी GSTIN पर दबाएँ।","GST returns are per GSTIN — tap a GSTIN above."))}</div>`;
+  return head+(bk.tab==="pl"?bkPlHtml(R):raw())}}
+/* GST view keeps the GST tab in the menu */
+{const _m=bkMenu;bkMenu=function(tabs){if(bk.cons&&bk.consGst){bk.cons=false;bk.consRO=true;let h;try{h=_m(tabs)}finally{bk.cons=true;bk.consRO=false}return h.replace(/<div class="bkSec">[^<]*<\/div><div class="bkVg">[\s\S]*?<\/div>(?=<div class="bkSec">)/,"").replace(/<button class="bkMk" data-k="(led|item|info|tally)">[\s\S]*?<\/button>/g,"")}return _m(tabs)}}
 
 paintStatic();render();init();
 </script>
