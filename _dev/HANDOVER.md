@@ -311,3 +311,4 @@ Approach that worked for GST: ask him for REAL sample files of one client, read 
 - 🧩 all-states view: ledgers are merged by GSTIN (parties) or by a normalised name (word order, Pvt/Private, Ltd/Limited, A/c ignored), so "CGST Output @9%" and "Output CGST 9%" become one line. A merged ledger shows "How much from each state" (opening / year / balance per state).
 - TB / BS / P&L open condensed (groups only, like Tally); tap a group to expand; "Show all ledgers (Detailed)" button.
 - Outstanding rebuilt: Debtors / Creditors / Both cards, views Party-wise, Bill-wise (FIFO: payments settle oldest bills first), Ageing (0–30…180+), By due date; credit days, overdue only, sort, search.
+- 🔍 Duplicate check report (menu + dashboard warning): same bill no. (sales/CN/DN), same supplier bill no. (purchase), same day+party+amount = likely; same party+amount within 7 days = possible. Period bar applies; not in the merged views.

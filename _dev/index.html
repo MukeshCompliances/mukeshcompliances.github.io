@@ -6503,6 +6503,31 @@ function bkOutHtml(R){const o=bk.oo=Object.assign({side:"dr",view:"party",sort:"
   const q=g("#bkOq");if(q){let tm;q.oninput=()=>{clearTimeout(tm);tm=setTimeout(()=>{set({q:q.value});const n=$("#bkOq");if(n){n.focus();n.setSelectionRange(n.value.length,n.value.length)}},350)}}}}
 (function(){const st=document.createElement("style");st.textContent=`.bkOcs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}.bkOc{font:inherit;text-align:left;background:var(--card);border:2px solid var(--line);border-radius:12px;padding:8px 10px;cursor:pointer;display:flex;flex-direction:column;gap:2px;color:var(--ink)}.bkOc span{font-size:12px;color:var(--mute)}.bkOc b{font-size:16px}.bkOc small{font-size:11px;color:var(--red)}.bkOc.on{box-shadow:0 0 0 3px rgba(26,115,232,.25);background:var(--grey-soft)}@media(max-width:600px){.bkOcs{grid-template-columns:1fr 1fr}.bkOc b{font-size:14px}}`;document.head.appendChild(st)})();
 
+/* ===== Duplicate entries: same bill number, or same party + amount on the same day / within a week ===== */
+BK_PER_TABS.push("dup");
+function bkVParty(v){if(v.gst&&v.gst.party)return v.gst.party;const L=bk.book.L||{},ln=(v.ln||[]).filter(x=>x.l);const p=ln.find(x=>L[x.l]&&["sdr","scr","br"].includes(L[x.l].g));if(p)return p.l;
+  const nc=ln.filter(x=>!(L[x.l]&&["cash","bank","bod"].includes(L[x.l].g)));const s=(nc.length?nc:ln).slice().sort((a,b)=>Math.abs(b.a)-Math.abs(a.a))[0];return s?s.l:""}
+const bkVAmt=v=>r2((v.ln||[]).reduce((s,x)=>s+(x.a>0?+x.a:0),0));
+function bkDups(V){const P=bkPer();V=V.filter(v=>v.d>=P.f&&v.d<=P.t);const seen=new Set(),out=[];const pk=(a,b)=>[a.id,b.id].sort().join("|");
+  const add=(lv,why,list)=>{const fresh=list.filter((v,i)=>list.some((w,j)=>j!==i&&!seen.has(pk(v,w))));if(fresh.length<2)return;for(let i=0;i<list.length;i++)for(let j=i+1;j<list.length;j++)seen.add(pk(list[i],list[j]));out.push({lv,why,list})};
+  const grp=(f)=>{const m={};V.forEach(v=>{const k=f(v);if(k)(m[k]=m[k]||[]).push(v)});return Object.values(m).filter(a=>a.length>1)};
+  const norm=s=>String(s||"").toUpperCase().replace(/[^A-Z0-9]/g,"").replace(/^0+/,"");
+  grp(v=>["sales","cn","dn"].includes(v.t)&&norm((v.gst&&v.gst.inv)||v.no)?v.t+"|"+norm((v.gst&&v.gst.inv)||v.no):"").forEach(a=>add(1,bt("एक ही बिल नंबर दो बार","Same bill number twice"),a));
+  grp(v=>v.t==="purch"&&v.gst&&norm(v.gst.inv)?bkVParty(v)+"|"+norm(v.gst.inv):"").forEach(a=>add(1,bt("एक ही सप्लायर का एक ही बिल नंबर दो बार","Same supplier bill number twice"),a));
+  grp(v=>v.t+"|"+v.d+"|"+bkVParty(v)+"|"+bkVAmt(v)).forEach(a=>add(1,bt("एक ही दिन, एक ही पार्टी, एक ही रकम","Same day, same party, same amount"),a));
+  grp(v=>v.t+"|"+bkVParty(v)+"|"+bkVAmt(v)).forEach(a=>{a.sort((x,y)=>x.d<y.d?-1:1);let cur=[a[0]];for(let i=1;i<a.length;i++){const gap=(new Date(a[i].d)-new Date(cur[cur.length-1].d))/864e5;if(gap<=7)cur.push(a[i]);else{if(cur.length>1)add(2,bt("7 दिन के अंदर एक ही पार्टी, एक ही रकम","Same party, same amount within 7 days"),cur);cur=[a[i]]}}if(cur.length>1)add(2,bt("7 दिन के अंदर एक ही पार्टी, एक ही रकम","Same party, same amount within 7 days"),cur)});
+  return out}
+function bkDupHtml(R){if(bk.cons)return `<div class="empty">${esc(bt("डुप्लीकेट हर राज्य की अपनी किताबों में देखें — ऊपर किसी GSTIN पर दबाएँ।","Check duplicates in each state's own books — tap a GSTIN above."))}</div>`;
+  const D=bkDups(R.V),n1=D.filter(x=>x.lv===1).length,n2=D.length-n1;
+  let h=`<div class="note">🔍 ${esc(bt("ये एंट्री दो बार हुई लगती हैं। एंट्री पर दबाकर खोलें — गलत हो तो वहीं से हटाएँ। Tally से आई एंट्री Tally में भी जाँचें।","These entries look like they were made twice. Tap an entry to open it — delete it there if it is wrong. For entries that came from Tally, check in Tally too."))}</div>`;
+  if(!D.length)return h+`<div class="empty">✅ ${esc(bt("इस अवधि में कोई डुप्लीकेट एंट्री नहीं मिली।","No duplicate entries found in this period."))}</div>`;
+  h+=`<div class="m" style="margin:4px 0 8px"><b style="color:var(--red)">${n1}</b> ${esc(bt("पक्के","likely"))} · <b style="color:#b06000">${n2}</b> ${esc(bt("शायद","possible"))}</div>`;
+  return h+D.sort((a,b)=>a.lv-b.lv).map(g=>`<div style="border:1px solid ${g.lv===1?"#f1b0ab":"#f6d48b"};border-radius:12px;margin:0 0 10px;overflow:hidden"><div style="background:${g.lv===1?"#fdecec":"#fff7e6"};padding:6px 10px;font-size:13px"><b>${g.lv===1?"⛔ "+esc(bt("पक्का डुप्लीकेट लगता है","Looks like a duplicate")):"⚠ "+esc(bt("शायद डुप्लीकेट","Possible duplicate"))}</b> · ${esc(g.why)} · ${esc(bkLN(bkVParty(g.list[0])))}</div>`+
+    g.list.map(v=>`<div class="item bkV" data-id="${esc(v.id)}" style="margin:0;border:0;border-top:1px solid var(--line);border-radius:0"><div class="main"><div class="t">${esc(bkDt(v.d))} · ${esc(bkTN(v.t))} #${esc((v.gst&&v.gst.inv)||v.no||"")}</div><div class="m">${esc(bkLN(bkVParty(v)))}${v.nar?" · "+esc(v.nar.slice(0,80)):""}${v.src==="tally"?" · Tally":""}</div></div><div style="font-weight:600;white-space:nowrap">₹${bkN(bkVAmt(v))}</div></div>`).join("")+`</div>`).join("")}
+{const _t=bkTab;bkTab=function(R){if(bk.tab==="dup")return bkDupHtml(R);const h=_t(R);if(bk.tab==="home"&&!bk.cons){const n=bkDups(R.V).length;if(n)return `<div class="warn" id="bkDupW" style="cursor:pointer">🔍 ${esc(bt(`${n} जगह एंट्री दो बार होने का शक है — देखने के लिए दबाएँ`,`${n} possible duplicate entries — tap to see`))}</div>`+h}return h}}
+{const _m=bkMenu;bkMenu=function(tabs){const i=tabs.findIndex(x=>x[0]==="mst");const t=tabs.slice();t.splice(i<0?t.length:i,0,["dup",bt("डुप्लीकेट जाँच","Duplicate check")]);return _m(t).replace('data-t="dup"><span class="bkIc"></span>','data-t="dup"><span class="bkIc">🔍</span>')}}
+{const _w=bkWire;bkWire=function(){_w();const w=$("#bkDupW");if(w)w.onclick=()=>{bk.tab="dup";renderBk()}}}
+
 paintStatic();render();init();
 </script>
 </body>
