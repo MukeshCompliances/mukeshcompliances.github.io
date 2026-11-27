@@ -8051,11 +8051,11 @@ function bkMisAutoPost(){const body=$("#bkBody");if(!body||bk.tab!=="mis")return
 function bkTlDisp(v){const g=n=>{const e=v.getElementsByTagName(n)[0];return e?e.textContent.trim():""};const x={};const via=g("BASICSHIPPEDBY"),dd=g("BASICSHIPDOCUMENTNO"),dest=g("BASICFINALDESTINATION"),veh=g("VEHICLENUMBER"),ord=g("BASICPURCHASEORDERNO"),od=g("BASICORDERDATE");
   if(via)x.via=via.slice(0,60);if(dd)x.dd=dd.slice(0,40);if(dest)x.dest=dest.slice(0,80);if(veh)x.veh=veh.slice(0,20);if(ord)x.ord=ord.slice(0,40);if(/^\d{8}$/.test(od))x.ordD=od.slice(0,4)+"-"+od.slice(4,6)+"-"+od.slice(6,8);return x}
 const bkNum=s=>{const m=/(\d+)\s*$/.exec(String(s||""));return m?+m[1]:null},bkNrm=s=>String(s||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
-function bkFrIndex(){const k=bk.pid+"|"+bk.fy+"|"+(bk.fyTo||0)+"|"+bkV().length;if(bk._frIx&&bk._frIx.k===k)return bk._frIx;const L=bk.book.L||{},bills=bkV().filter(v=>["sales","purch","cn","dn"].includes(v.t));
+function bkFrIndex(){const k=bk.pid+"|"+bk.fy+"|"+(bk.fyTo||0);if(bk._frIx&&bk._frIx.k===k&&bk._frIx.vm===bk.vm&&bk._frIx.book===bk.book)return bk._frIx;const L=bk.book.L||{},bills=bkV().filter(v=>["sales","purch","cn","dn"].includes(v.t));
   const byInv={},byNum={},byVeh={},byOrd={},byParty={};bills.forEach(v=>{const inv=String((v.gst&&v.gst.inv)||v.no||"").trim();if(inv)byInv[inv.toLowerCase()]=v;const n=bkNum(inv);if(n!=null){const mh=/\/MH\//i.test(inv)?"MH":"";(byNum[mh+n]=byNum[mh+n]||[]).push(v)}
     const x=(v.gst&&v.gst.x)||{};if(x.veh)(byVeh[bkNrm(x.veh)]=byVeh[bkNrm(x.veh)]||[]).push(v);if(x.ord)(byOrd[bkNrm(x.ord)]=byOrd[bkNrm(x.ord)]||[]).push(v);const p=(v.gst&&v.gst.party)||"";if(p)(byParty[p]=byParty[p]||[]).push(v)});
   const pw={};Object.keys(byParty).forEach(id=>{const n=((L[id]||{}).n||"").toLowerCase().replace(/\b(pvt|private|ltd|limited|llp|industries|india|the|and|co|company|enterprises?|international|m\/s)\b\.?/g," ").replace(/[^a-z0-9 ]/g," ").split(/\s+/).filter(w=>w.length>=4);if(n.length)pw[id]=n.slice(0,2)});
-  bk._frIx={k,byInv,byNum,byVeh,byOrd,byParty,pw};return bk._frIx}
+  bk._frIx={k,vm:bk.vm,book:bk.book,byInv,byNum,byVeh,byOrd,byParty,pw};return bk._frIx}
 function bkFrLink(v){const X=bkFrIndex(),fq=v.fq||{},nar=(String(fq.ref||"")+" "+(v.nar||"").replace(/^\[\d{2}\]\s*/,"")+" "+(v.lnar||"")+" "+(fq.ptx||"")+" "+((v.bw||[]).map(b=>b.ref||"").filter(r=>!/^JV\//i.test(r)).join(" "))),low=nar.toLowerCase(),near=(arr)=>{if(!arr||!arr.length)return null;return arr.slice().sort((a,b)=>{const da=Math.abs(new Date(v.d)-new Date(a.d)),db=Math.abs(new Date(v.d)-new Date(b.d));const pa=a.d<=v.d?0:1,pb=b.d<=v.d?0:1;return pa-pb||da-db})[0]};
   const found=new Map(),add=(b,how)=>{if(b&&!found.has(b.id))found.set(b.id,{b,how})};
   for(const k in X.byInv){if(k.length>=5&&low.includes(k))add(X.byInv[k],"inv")}
@@ -8110,6 +8110,14 @@ function bkFqAttUI(V){const box=$("#fqBox");if(!box||$("#fqAtt"))return;bk._fqAt
 {const _vf=bkVForm;bkVForm=function(id,pre){const r=_vf.apply(this,arguments);try{const V=id&&bkV().find(x=>x.id===id);bk._fqAtt=[];bkFqAttUI(V||(pre&&pre.fq?{fq:pre.fq}:null))}catch(e){}return r}}
 /* line narrations from Tally show under the voucher's narration */
 {const _vf=bkVForm;bkVForm=function(id,pre){const r=_vf.apply(this,arguments);try{const V=id&&bkV().find(x=>x.id===id);if(V&&V.lnar&&$("#bvNar")&&!$("#bvLnar"))$("#bvNar").insertAdjacentHTML("afterend",`<div class="m" id="bvLnar" style="margin-top:2px">📝 ${esc(bt("लेजर लाइनों का विवरण (Tally): ","Ledger line descriptions (Tally): "))}${esc(V.lnar)}</div>`)}catch(e){}return r}}
+
+/* bk39: speed — heavy screens are worked out once and reused until the data, the period or the language changes */
+{const _fr=bkFrRecs;bkFrRecs=function(V){const c=bk._frC,k=(V&&V.length)+"|"+(V&&V.length?V[0].id+V[V.length-1].id:"")+"|"+bk.pid;if(c&&c.vm===bk.vm&&c.book===bk.book&&c.k===k)return c.r;const r=_fr(V);bk._frC={vm:bk.vm,book:bk.book,k,r};return r}}
+{const _m=bkMisHtml;bkMisHtml=function(R0){const P=bkPer(),k=[bk.pid,bk.fy,bk.fyTo||0,P.f,P.t,lang,bkCan()?1:0].join("|"),c=bk._misC;if(c&&c.vm===bk.vm&&c.book===bk.book&&c.k===k){bk._misD=c.D;bk._misX=c.X;bk.misF=c.f;bk.misM=c.m;return c.h}
+  const h=_m(R0);bk._misC={vm:bk.vm,book:bk.book,k,h,D:bk._misD,X:bk._misX,f:bk.misF,m:bk.misM};return h}}
+{const _a=bkMisAutoData;bkMisAutoData=function(){const c=bk._misC;if(c&&c.auto&&c.D===bk._misD)return c.auto;const r=_a();if(c)c.auto=r;return r}}
+{const _cs=bkCustSales;bkCustSales=function(f,t){const c=bk._csC||(bk._csC={});if(c.vm!==bk.vm||c.book!==bk.book){for(const k in c)delete c[k];c.vm=bk.vm;c.book=bk.book}const k=f+"|"+t;if(c[k])return c[k];return c[k]=_cs(f,t)}}
+{const _ag=bkAgeing;bkAgeing=function(d){const c=bk._agC||(bk._agC={});if(c.vm!==bk.vm||c.book!==bk.book){for(const k in c)delete c[k];c.vm=bk.vm;c.book=bk.book}return c[d]||(c[d]=_ag(d))}}
 
 paintStatic();render();init();
 </script>
