@@ -6322,9 +6322,9 @@ const bkOwnGstins=()=>bk.cons?((bk.consInfo&&bk.consInfo.use)||[]).map(m=>m.g).f
   R.bOut=r2(bOut);R.bIn=r2(bIn);R.nOut=nOut;R.nIn=nIn;return R}}
 /* the cons loader no longer drops branch bills: rebuild without that step */
 bkConsLoad=async function(pid,fy){const ids=bkConsMembers(pid),books={},vms={};
-  if(mode!=="db"){const s0=bkLocal();ids.forEach(id=>{if(s0.books[id])books[id]=s0.books[id];vms[id]={};for(const k in s0.vm){const d=s0.vm[k];if(d.pid===id&&d.fy===fy)vms[id][k]=d}})}
+  if(mode!=="db"){const s0=bkLocal();ids.forEach(id=>{if(s0.books[id])books[id]=s0.books[id];vms[id]={};for(const k in s0.vm){const d=s0.vm[k];if(d.pid===id&&d.fy>=fy&&d.fy<=Math.max(fy,bk.fyTo||0))vms[id][k]=d}})}
   else await Promise.all(ids.map(async id=>{try{const d=await appDb.collection("bk_books").doc(id).get();if(d.exists)books[id]=d.data()}catch(e){}
-    try{const q=await appDb.collection("bk_vm").where("pid","==",id).where("fy","==",fy).get();vms[id]={};q.docs.forEach(x=>vms[id][x.id]=x.data())}catch(e){vms[id]={}}}));
+    try{const yrs=[];for(let y=fy;y<=Math.max(fy,bk.fyTo||0)&&yrs.length<10;y++)yrs.push(y);const q=await appDb.collection("bk_vm").where("pid","==",id).where("fy","in",yrs).get();vms[id]={};q.docs.forEach(x=>vms[id][x.id]=x.data())}catch(e){vms[id]={}}}));
   const use=ids.filter(id=>books[id]),notStarted=ids.filter(id=>!books[id]),L={},I={},map={},imap={},cs={},V={},src={};
   use.forEach(id=>{const B=books[id];map[id]={};imap[id]={};
     Object.keys(B.L||{}).forEach(l=>{const x=B.L[l];if(x.del)return;const k=bkMergeKey(x);map[id][l]=k;const y=L[k]=L[k]||{n:x.n,g:x.g,op:{},gstin:"",st:""};if(!y.gstin&&x.gstin){y.gstin=x.gstin;y.st=x.st}y.op[fy]=r2((y.op[fy]||0)+r2(x.op&&x.op[fy]||0));
@@ -6336,7 +6336,7 @@ bkConsLoad=async function(pid,fy){const ids=bkConsMembers(pid),books={},vms={};
     Object.keys(all).forEach(vid=>{const x=all[vid];if(x.del||!x.d)return;const nx=JSON.parse(JSON.stringify(x));nx.ln=(x.ln||[]).map(y=>({l:map[id][y.l]||"c:?",a:y.a}));
       if(nx.gst){nx.gst.party=map[id][x.gst.party];nx.gst.items=(x.gst.items||[]).map(y=>Object.assign({},y,{l:map[id][y.l],it:y.it?imap[id][y.it]:undefined}))}if(x.inv)nx.inv=x.inv.map(y=>Object.assign({},y,{it:imap[id][y.it]})).filter(y=>y.it);if(x.bat)nx.bat=x.bat.map(y=>Object.assign({},y,{it:imap[id][y.it]})).filter(y=>y.it);if(x.bw)nx.bw=x.bw.map(y=>Object.assign({},y,{l:map[id][y.l]}));nx.nar="["+sc+"] "+(x.nar||"");V[id+":"+vid]=nx})});
   const first=books[use[0]]||{};
-  return{book:{pid,name:first.name||"",gstin:"",st:first.st||"",L,I,cs,info:first.info||{},SGL:[...new Set(use.flatMap(id=>books[id].SGL||[]))],hsnDef:(use.map(id=>books[id].hsnDef).find(Boolean)||"")},vm:{cons:{pid,fy,v:V}},info:{src,use:use.map(id=>({id,g:books[id].gstin||"",n:books[id].name||"",biz:(bkUnits(bkPidParts(id).pid).find(u=>u.id===id)||{}).biz||""})),skipped:[],notStarted,gst:/~GST~/.test(pid)}}};
+  return{book:{pid,name:first.name||"",gstin:"",st:first.st||"",L,I,cs,info:first.info||{},SGL:[...new Set(use.flatMap(id=>books[id].SGL||[]))],hsnDef:(use.map(id=>books[id].hsnDef).find(Boolean)||""),misHist:(use.map(id=>books[id].misHist).find(Boolean)||null),fy0:Math.min(...use.map(id=>+books[id].fy0||9999))<9999?Math.min(...use.map(id=>+books[id].fy0||9999)):0},vm:{cons:{pid,fy,v:V}},info:{src,use:use.map(id=>({id,g:books[id].gstin||"",n:books[id].name||"",biz:(bkUnits(bkPidParts(id).pid).find(u=>u.id===id)||{}).biz||""})),skipped:[],notStarted,gst:/~GST~/.test(pid)}}};
 /* P&L with internal transfers on their own lines */
 function bkPlHtml(R){const line=(a,b,bo,c)=>`<tr${c?` style="background:${c}"`:""}>${bkTd(esc(a),0,bo)}${bkTd(bkN(b),1,bo)}</tr>`,grp=(g,sign)=>R.G(g).filter(l=>Math.abs(R.B[l.id]||0)>=0.005).map(l=>`<tr class="bkLg" data-id="${esc(l.id)}" style="cursor:pointer">${bkTd("&nbsp;&nbsp;"+esc(l.n))}${bkTd(bkN(sign*(R.B[l.id]||0)),1)}</tr>`).join("");
   const tr="#f3f0ff",rows=[`<tr><td colspan="2" style="padding:6px;font-weight:700">${esc(bt("ट्रेडिंग खाता","Trading Account"))}</td></tr>`,line(bt("बिक्री (बाहर)","Sales (outside)"),r2(R.sales-R.bOut),1),grp("sales",-1)];
@@ -7256,7 +7256,7 @@ function bkChart(o){const W=680,H=o.h||240,pl=58,pr=o.series.some(s=>s.axis==="r
 const bkChartBox=(svg)=>svg?`<div class="misChart" style="margin:6px 0 10px;overflow-x:auto">${svg}</div>`:"";
 /* ---------- MIS: From – To months and charts ---------- */
 {const _mh=bkMisHtml;bkMisHtml=function(R0){const fs=bkFyS().slice(0,7);if(!bk.misF||bk.misF<fs||bk.misF>bkFyE().slice(0,7))bk.misF=fs;
-  let h=_mh(R0);const ym=bk.misM;if(bk.misF>ym)bk.misF=fs;const opts=[];let d=new Date(bkFyS()+"T00:00:00");for(let i=0;i<12;i++){const m=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");opts.push(m);d.setMonth(d.getMonth()+1)}
+  let h=_mh(R0);const ym=bk.misM;if(bk.misF>ym)bk.misF=fs;const opts=[];let d=new Date(bkFyS()+"T00:00:00");for(let i=0;i<120;i++){const m=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");if(m>bkFyE().slice(0,7))break;opts.push(m);d.setMonth(d.getMonth()+1)}
   h=h.replace(/<label style="font-weight:700">📅[^<]*<\/label>/,`<label style="font-weight:700">📅 ${esc(bt("से","From"))}</label><select id="misF" style="width:auto">${opts.map(m=>`<option value="${m}"${m===bk.misF?" selected":""}>${bkML(m)}</option>`).join("")}</select><label style="font-weight:700">${esc(bt("तक","To"))}</label>`);
   return h}}
 /* hide months before "From" in every MIS table, and add the charts (built from the same numbers) */
@@ -7334,6 +7334,7 @@ async function bkLoadPrevMar(){const key=bk.pid+"|"+bk.fy;if(bk._pmK===key||bk._
         const base=Math.abs((v.ln||[]).filter(x=>(L[x.l]||{}).g===(v.t==="purch"?"purch":"sales")).reduce((a,x)=>a+(+x.a||0),0));const k=((v.gst&&v.gst.items)||[]).reduce((a,it)=>{const x=I[it.it];return a+(x&&BK_WT[x.u]?Math.abs(+it.q||0)*BK_WT[x.u]:0)},0);
         if(v.t==="sales"){sales+=base;kg+=k}else if(v.t==="cn"){sales-=base;kg-=k}else if(cr){sales-=base;kg-=k}})}
     if(any)res={sales:r2(sales),kg:r2(kg)}}catch(e){}
+  if(res.none){const H=bkMisHistOf((bk.fy-1+1)+"-03");if(H)res={sales:+H.sales||0,kg:+H.kg||0,np:H.np,hist:true}}
   bk._pm=res;bk._pmK=key;bk._pmBusy=false;if(bk.tab==="mis")renderBk()}
 
 /* ===== Stock Groups like Tally (Batteries › Plastics › Non-Active …): pulled from Tally, Stock Summary grouped with totals ===== */
@@ -7420,7 +7421,8 @@ function bkBatchClose(V,S){if(!V.some(v=>!v.del&&(v.bat||[]).some(b=>b.it===S.id
 
 /* bk29: a period can run across financial years — From/To pick the years to load; no switching FY by hand.
    Opening = opening of the first year + every entry before From (carried forward like Tally). */
-function bkSetSpan(f,t){const a=bkFyOfD(f),b=bkFyOfD(t);const need=a!==bk.fy||b!==(bk.fyTo&&bk.fyTo>bk.fy?bk.fyTo:bk.fy);
+function bkFy0(){const B=bk.book||{};return +B.fy0||0}
+function bkSetSpan(f,t){const y0=bkFy0();let a=bkFyOfD(f),b=bkFyOfD(t);if(y0){if(a<y0)a=y0;if(b<y0)b=y0}const need=a!==bk.fy||b!==(bk.fyTo&&bk.fyTo>bk.fy?bk.fyTo:bk.fy);
   if(need){bk.fyTo=b>a?b:0;bkOpen(bk.pid,a);bk.per={fy:a,pid:bk.pid,f,t};const fy=$("#bkFy");if(fy&&[...fy.options].some(o=>+o.value===a))fy.value=String(a)}else{bk.per={fy:bk.fy,pid:bk.pid,f,t};renderBk()}}
 {const _o=bkOpen;bkOpen=function(pid,fy){const keepTo=bk.fyTo&&bk.fyTo>fy?bk.fyTo:0;_o(pid,fy);bk.fyTo=keepTo;
   if(keepTo&&pid&&mode==="db"&&bk.un.length>1){try{bk.un[bk.un.length-1]()}catch(e){}bk.un.pop();const yrs=[];for(let y=fy;y<=keepTo&&yrs.length<10;y++)yrs.push(y);
@@ -7470,6 +7472,51 @@ function bkBatVchHtml(R,b){const S=R.SK.list.find(x=>x.id===bk.item);if(!S)retur
 {const _ih=bkItmHtml;bkItmHtml=function(R){if(bk.itmM&&bk.itmM.startsWith("B:"))return bkBatVchHtml(R,bk.itmM.slice(2));return _ih(R)}}
 {const _w=bkWire;bkWire=function(){_w();if(bk.tab==="stk")document.querySelectorAll("#bkBody .bkBt").forEach(r=>{if(r.dataset.b)r.onclick=()=>{bk.tab="itm";bk.item=r.dataset.it;bk.itmB=true;bk.itmM="B:"+r.dataset.b;renderBk()}});if(bk.tab!=="itm")return;const sel=$("#itmBat");if(sel)sel.onchange=()=>{bk.itmB=true;bk.itmM=sel.value?"B:"+sel.value:"";renderBk()};
   if(false)0;if(bk.itmM&&bk.itmM.startsWith("B:"))document.querySelectorAll("#bkBody .bkV").forEach(r=>{if(!r.onclick)r.onclick=()=>bkVForm(r.dataset.id)})}}
+
+/* a year before the books start: say so plainly, one click to the first year */
+{const _rb=renderBk;renderBk=function(){_rb();try{const y0=bkFy0(),body=$("#bkBody");if(!body||!bk.book||!y0||bk.fy>=y0||$("#bkNoFy"))return;
+  body.insertAdjacentHTML("beforebegin",`<div class="warn" id="bkNoFy">${esc(bt(`FY ${bk.fy}-${String(bk.fy+1).slice(2)} का कोई डेटा सिस्टम में नहीं है — किताबें FY ${y0}-${String(y0+1).slice(2)} से शुरू हैं।`,`There is no data for FY ${bk.fy}-${String(bk.fy+1).slice(2)} in the system — these books start in FY ${y0}-${String(y0+1).slice(2)}.`))} <button class="btn ghost" id="bkGoFy0" style="padding:3px 10px">${esc(bt(`FY ${y0}-${String(y0+1).slice(2)} खोलें`,`Open FY ${y0}-${String(y0+1).slice(2)}`))}</button></div>`);
+  $("#bkGoFy0").onclick=()=>{bk.fyTo=0;bk.per=null;const f=$("#bkFy");if(f){f.value=String(y0);f.dispatchEvent(new Event("change",{bubbles:true}))}else bkOpen(bk.pid,y0)}}catch(e){}}}
+
+/* bk32: MIS — earlier months not in the books (taken once from the company's own MIS), section panel, charts that show figures under the cursor */
+function bkMisHistOf(m){const H=(bk.book&&bk.book.misHist)||null;if(!H||!H[m])return null;if(H._scope==="all"&&!bk.cons)return null;return H[m]}
+function bkMisHistForm(){const H=Object.assign({},(bk.book&&bk.book.misHist)||{});const ms=[];const y=bk.fy;["01","02","03"].forEach(mm=>ms.push(y+"-"+mm));
+  openSheet(`<h3>${esc(bt("पिछले महीने (जो किताबों में नहीं हैं)","Earlier months (not in the books)"))}</h3><div class="m">${esc(bt("ये आँकड़े सिर्फ़ ट्रेंड के लिए हैं (अप्रैल बनाम मार्च)। किताबों में डेटा आ जाए तो वही इस्तेमाल होगा।","Used only for trends (April vs March). Once the books have that month, the books are used."))}</div>`+
+    ms.map(m=>{const x=H[m]||{};return `<div class="row2" style="grid-template-columns:90px 1fr 1fr 1fr;gap:6px;margin-top:6px;align-items:center"><b>${esc(bkML(m))}</b><input class="mhS" data-m="${m}" type="number" step="0.01" placeholder="${esc(bt("बिक्री ₹","Sales ₹"))}" value="${x.sales??""}"><input class="mhK" type="number" step="0.001" placeholder="kg" value="${x.kg??""}"><input class="mhP" type="number" step="0.01" placeholder="${esc(bt("टैक्स से पहले लाभ","Profit before tax"))}" value="${x.np??""}"></div>`}).join("")+
+    `<div class="actions"><button class="btn" id="mhGo">${esc(bt("सेव","Save"))}</button><button class="btn ghost" id="mhX" type="button">${esc(bt("रद्द","Cancel"))}</button></div>`,{k:"mh"});
+  $("#mhX").onclick=closeSheet;$("#mhGo").onclick=async()=>{const out={};document.querySelectorAll(".mhS").forEach(i=>{const r=i.parentNode,m=i.dataset.m,sv=i.value,k=r.querySelector(".mhK").value,np=r.querySelector(".mhP").value;if(sv!==""||k!=="")out[m]={sales:+sv||0,kg:+k||0,np:np===""?null:+np}});
+    const pid=bk.cons?bkConsMembers(bk.pid)[0]:bk.pid;out._scope=bk.cons?"all":"one";try{await bkMerge("bk_books",pid,{misHist:out},true);if(bk.book)bk.book.misHist=out;bk._pmK="";closeSheet();toast(bt("सेव हुआ","Saved"));bkLoadPrevMar()}catch(e){toast(t("saveFail"))}}}
+/* the note under Sales says where March came from, with a way to change it */
+{const _w=bkWire;bkWire=function(){_w();if(bk.tab!=="mis")return;const pm=bk._pm;const sec=document.querySelector('#bkBody .misSec[data-sec="s"]');if(!sec||$("#mhEdit"))return;const h4=sec.querySelector("h4");if(!h4)return;
+  const txt=pm&&pm.hist?bt(`मार्च-${String(bk.fy).slice(2)} के आँकड़े आपकी MIS से (किताबों में FY ${bk.fy-1}-${String(bk.fy).slice(2)} नहीं है) — अप्रैल का ट्रेंड इन्हीं से।`,`Mar-${String(bk.fy).slice(2)} figures are from your MIS (FY ${bk.fy-1}-${String(bk.fy).slice(2)} is not in the books) — the April trend uses them.`):"";
+  h4.insertAdjacentHTML("afterend",`<div class="m" style="margin:2px 0 6px">${esc(txt)} <a href="#" id="mhEdit">✏ ${esc(bt("पिछले महीने के आँकड़े","Earlier months' figures"))}</a></div>`);$("#mhEdit").onclick=e=>{e.preventDefault();bkMisHistForm()};
+  if(pm&&pm.hist)sec.querySelectorAll(".m").forEach(d=>{if(/needs last year March|पिछले साल के मार्च से बनता/.test(d.textContent)&&d.id!=="mhEdit")d.remove()})}}
+/* section panel: choose which reports show (remembered on this device) */
+const BK_MIS_HIDE="bkMisHide";
+function bkMisHidden(){try{return JSON.parse(localStorage.getItem(BK_MIS_HIDE)||"[]")}catch(e){return[]}}
+function bkMisPanel(){const body=$("#bkBody");if(!body||bk.tab!=="mis"||$("#misSide"))return;const secs=[...body.querySelectorAll(".misSec")];if(!secs.length)return;const hid=new Set(bkMisHidden());
+  secs.forEach(s=>{s.style.display=hid.has(s.dataset.sec)?"none":""});
+  const wrap=document.createElement("div");wrap.id="misMain";while(body.firstChild)wrap.appendChild(body.firstChild);body.appendChild(wrap);body.classList.add("misGrid");
+  body.insertAdjacentHTML("beforeend",`<aside id="misSide" class="bkNoPrint"><details open><summary>📑 ${esc(bt("रिपोर्ट चुनें","Choose reports"))}</summary><div class="misSideB">${secs.map(s=>`<label class="chk" style="margin:0"><input type="checkbox" data-sec="${esc(s.dataset.sec)}"${hid.has(s.dataset.sec)?"":" checked"}> ${esc(s.dataset.title)}</label>`).join("")}</div><div class="misSideA"><a href="#" id="misAll">${esc(bt("सभी","All"))}</a> · <a href="#" id="misNone">${esc(bt("कोई नहीं","None"))}</a></div></details></aside>`);
+  const save=()=>{const h=[...document.querySelectorAll("#misSide input")].filter(i=>!i.checked).map(i=>i.dataset.sec);try{localStorage.setItem(BK_MIS_HIDE,JSON.stringify(h))}catch(e){}secs.forEach(s=>{s.style.display=h.includes(s.dataset.sec)?"none":""});
+    document.querySelectorAll("#bkBody a[href^='#'],#bkBody .chip").forEach(()=>{})};
+  document.querySelectorAll("#misSide input").forEach(i=>i.onchange=save);$("#misAll").onclick=e=>{e.preventDefault();document.querySelectorAll("#misSide input").forEach(i=>i.checked=true);save()};$("#misNone").onclick=e=>{e.preventDefault();document.querySelectorAll("#misSide input").forEach(i=>i.checked=false);save()}}
+{const _w=bkWire;bkWire=function(){_w();if(bk.tab==="mis")bkMisPanel()}}
+{const _p=bkRepPrint;bkRepPrint=function(){_p();document.querySelectorAll("#bkPrint #misSide").forEach(x=>x.remove());document.querySelectorAll("#bkPrint .misSec").forEach(x=>{if(x.style.display==="none")x.remove()})}}
+{const _mx=bkMisExcel;bkMisExcel=async function(){const hid=[...document.querySelectorAll('#bkBody .misSec')].filter(s=>s.style.display==="none");hid.forEach(s=>s.classList.replace("misSec","misSecX"));try{return await _mx.apply(this,arguments)}finally{hid.forEach(s=>s.classList.replace("misSecX","misSec"))}}}
+/* charts: a band per month — move the cursor (or tap) to see every figure of that month */
+{const _c=bkChart;bkChart=function(o){let svg=_c(o);if(!svg)return svg;const W=680,H=o.h||240,pl=58,pr=o.series.some(s=>s.axis==="r")?52:14,pt=28,pb=36,cw=W-pl-pr,n=o.labels.length,xw=cw/n;
+  let g="";for(let i=0;i<n;i++){const tip=[o.labels[i]].concat(o.series.map(s=>{const v=s.data[i];if(v==null||v==="")return null;return s.name+": "+(s.fmt?s.fmt(v):bkN(+v))}).filter(Boolean)).join("\n");g+=`<rect class="chHv" x="${(pl+xw*i).toFixed(1)}" y="${pt}" width="${xw.toFixed(1)}" height="${H-pt-pb}" fill="#1a73e8" fill-opacity="0" data-tip="${esc(tip)}"/>`}
+  return svg.replace(/<\/svg>$/,g+"</svg>")}}
+(function(){let tipEl=null,last=null;const show=(r,x,y)=>{if(!tipEl){tipEl=document.createElement("div");tipEl.id="chTip";document.body.appendChild(tipEl)}if(last&&last!==r)last.setAttribute("fill-opacity","0");r.setAttribute("fill-opacity","0.08");last=r;
+    const lines=(r.getAttribute("data-tip")||"").split("\n");tipEl.innerHTML=`<b>${esc(lines[0])}</b>`+lines.slice(1).map(l=>`<div>${esc(l)}</div>`).join("");tipEl.style.display="block";const w=tipEl.offsetWidth,h=tipEl.offsetHeight;let L=x+14,T=y+14;if(L+w>innerWidth-8)L=x-w-14;if(T+h>innerHeight-8)T=y-h-14;tipEl.style.left=L+"px";tipEl.style.top=T+"px"};
+  const hide=()=>{if(tipEl)tipEl.style.display="none";if(last){last.setAttribute("fill-opacity","0");last=null}};
+  document.addEventListener("mousemove",e=>{const r=e.target&&e.target.closest&&e.target.closest("rect.chHv");if(r)show(r,e.clientX,e.clientY);else if(last)hide()},{passive:true});
+  document.addEventListener("touchstart",e=>{const t=e.touches[0],r=e.target&&e.target.closest&&e.target.closest("rect.chHv");if(r)show(r,t.clientX,t.clientY);else hide()},{passive:true});
+  const st=document.createElement("style");st.textContent=`#chTip{position:fixed;z-index:9999;display:none;pointer-events:none;background:#202124;color:#fff;font-size:12px;line-height:1.45;padding:7px 10px;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.25);max-width:260px}
+#bkBody.misGrid{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:14px;align-items:start}#misSide{position:sticky;top:64px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 10px;font-size:13px}
+#misSide summary{font-weight:700;cursor:pointer;margin-bottom:6px}.misSideB{display:flex;flex-direction:column;gap:6px}.misSideA{margin-top:8px;font-size:12px}
+@media(max-width:1000px){#bkBody.misGrid{grid-template-columns:1fr}#misSide{position:static;order:-1}#misSide .misSideB{flex-direction:row;flex-wrap:wrap;gap:4px 12px}}@media print{#misSide,#chTip{display:none!important}}`;document.head.appendChild(st)})();
 
 paintStatic();render();init();
 </script>
