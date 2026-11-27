@@ -6092,7 +6092,7 @@ async function bkTallyApply(X,o){const chk={op:0,del:0,delHeld:0},L=(bk.book&&bk
   missingL.forEach(n=>{const nid=mk();byName[bkNK(n)]=nid;Lp[nid]={n:n.slice(0,80),g:"sus",op:{},src:"tally"}});
   const Ip={},iBy={};bkItems().forEach(x=>iBy[bkNK(x.n)]=x.id);X.IT.forEach(x=>{const ex=iBy[bkNK(x.n)];if(ex){const E=(bk.book.I||{})[ex]||{},cu=E.u;if(o.check){const eo=(E.op||{})[bk.fy]||{};if(Math.abs((+x.oq||0)-(+eo.q||0))>0.0005||Math.abs((+x.ov||0)-(+eo.v||0))>0.5){Ip[ex]=Object.assign(Ip[ex]||{},{op:{[bk.fy]:{q:+x.oq||0,v:r2(+x.ov||0)}}});chk.op++}}if(x.u&&x.u!=="OTH"&&(!cu||cu==="OTH"||(BK_WT[x.u]&&!BK_WT[cu])))Ip[ex]=Object.assign(Ip[ex]||{},{u:x.u});if(x.sg&&x.sg!==E.sg)Ip[ex]=Object.assign(Ip[ex]||{},{sg:x.sg.slice(0,80)});if(/^\d{4,8}$/.test(x.hsn||"")&&!E.hsn)Ip[ex]=Object.assign(Ip[ex]||{},{hsn:x.hsn});return}const nid="i"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);iBy[bkNK(x.n)]=nid;
     Ip[nid]={n:x.n.slice(0,80),hsn:/^\d{4,8}$/.test(x.hsn)?x.hsn:"",sg:(x.sg||"").slice(0,80),u:x.u||"OTH",r:x.r==null?18:x.r,op:{[bk.fy]:{q:x.oq||0,v:r2(x.ov||0)}},src:"tally"}});
-  const hdNew=X.hsnDef&&X.hsnDef!==bk.book.hsnDef;if(hdNew||Object.keys(Lp).length||Object.keys(Ip).length||(X.SGL&&X.SGL.length&&JSON.stringify(X.SGL)!==JSON.stringify(bk.book.SGL||[]))){const patch={};if(Object.keys(Lp).length)patch.L=Lp;if(hdNew)patch.hsnDef=X.hsnDef;if(Object.keys(Ip).length)patch.I=Ip;if(X.SGL&&X.SGL.length)patch.SGL=X.SGL.map(x=>x[0].slice(0,80)+"\u0001"+(x[1]||"").slice(0,80));await bkMerge("bk_books",bk.pid,patch,true)}
+  const hdNew=X.hsnDef&&X.hsnDef!==bk.book.hsnDef;if(hdNew||Object.keys(Lp).length||Object.keys(Ip).length||(X.SGL&&X.SGL.length&&JSON.stringify(X.SGL)!==JSON.stringify(bk.book.SGL||[]))){const patch={};if(Object.keys(Lp).length)patch.L=Lp;if(hdNew)patch.hsnDef=X.hsnDef;if(Object.keys(Ip).length)patch.I=Ip;if(X.SGL&&X.SGL.length)patch.SGL=X.SGL.map(x=>x[0].slice(0,80)+"\u0001"+(x[1]||"").slice(0,80));await bkMerge("bk_books",bk.pid,patch,true);try{bkDeep(bk.book,JSON.parse(JSON.stringify(patch)))}catch(e){}}
   const LmapG={};Object.keys(L).forEach(id=>{if(!L[id].del)LmapG[L[id].n]=L[id].g});Object.keys(Lp).forEach(id=>{if(Lp[id].n)LmapG[Lp[id].n]=Lp[id].g});
   const now=new Date().toISOString(),who=me.id||"local",by={};let n=0;
   const recOf=v=>{const ln=[];v.ln.forEach(x=>{const id=byName[bkNK(x.n)];const e=ln.find(y=>y.l===id);if(e)e.a=r2(e.a+x.a);else ln.push({l:id,a:r2(x.a)})});
@@ -7525,6 +7525,31 @@ function bkMisPanel(){const body=$("#bkBody");if(!body||bk.tab!=="mis"||$("#misS
   let h=_m(R0);const notes=[];if(f0<fs)notes.push(bt(`किताबें ${bkDt(bkFyS())} से शुरू हैं — उससे पहले की कोई एंट्री नहीं`,`the books start on ${bkDt(bkFyS())} — no entries before that`));if(t0>t)notes.push(bt(`${bkML(t)} के बाद अभी कोई एंट्री नहीं`,`no entries after ${bkML(t)} yet`));
   return h.replace(/<div class="filters"><label style="font-weight:700">📅[\s\S]*?<\/div>/,`<div class="m" style="margin:0 0 8px;font-size:13px">📅 <b>MIS: ${esc(bkML(f))} – ${esc(bkML(t))}</b> · ${esc(bt("ऊपर की अवधि (Period) से","from the Period above"))}${notes.length?" · "+esc(notes.join(" · ")):""}</div>`)}}
 {const _w=bkWire;bkWire=function(){_w();if(bk.tab!=="mis")return;const bar=document.querySelector(".bkPer");if(bar)bar.querySelectorAll("input[type=date],#bkPq,#bkPf+span").forEach(e=>e.style.display="")}}
+
+/* bk34: Tally sync brings the WHOLE company — every financial year from the books' first year to today, each with Tally's own opening for that year
+   (Tally only answers the dates it is given as TYPE="Date"; without it, it silently sends just the current year) */
+const tlSV=y=>`<SVFROMDATE TYPE="Date">${y}0401</SVFROMDATE><SVTODATE TYPE="Date">${y+1}0331</SVTODATE>`;
+async function tlFirstYear(co){try{const d=tlDoc(await tlPost(tlColl("MCCo","Company","NAME,BOOKSFROM,STARTINGFROM","")));const c=[...d.getElementsByTagName("COMPANY")].find(x=>((x.getAttribute("NAME")||bkTx(x,"NAME")||"").trim().toLowerCase())===co.trim().toLowerCase());
+  const bf=c?(bkTx(c,"BOOKSFROM")||bkTx(c,"STARTINGFROM")||"").trim():"";if(/^\d{8}$/.test(bf))return bkFyOfD(bf.slice(0,4)+"-"+bf.slice(4,6)+"-"+bf.slice(6,8))}catch(e){}return 0}
+async function tlPullYear(co,y){const sv=tlSV(y),docs=[],C=(n,t,f)=>tlEnvExport(n,"Collection",`<TDL><TDLMESSAGE><COLLECTION NAME="${n}" ISMODIFY="No"><TYPE>${t}</TYPE><FETCH>${f}</FETCH></COLLECTION></TDLMESSAGE></TDL>`,co,sv);
+  docs.push(tlDoc(await tlPost(C("MCGroups","Group","NAME,PARENT"))));
+  docs.push(tlDoc(await tlPost(C("MCLedgers","Ledger","NAME,PARENT,OPENINGBALANCE,PARTYGSTIN,LEDSTATENAME,ADDRESS,LEDGSTREGDETAILS"))));
+  docs.push(tlDoc(await tlPost(C("MCItems","StockItem","NAME,PARENT,BASEUNITS,OPENINGBALANCE,OPENINGVALUE,GSTDETAILS,HSNDETAILS"))));docs.push(tlDoc(await tlPost(C("MCSGroups","StockGroup","NAME,PARENT"))));docs.push(tlDoc(await tlPost(C("MCVTypes","VoucherType","NAME,PARENT"))));
+  docs.push(tlDoc(await tlPost(C("MCVch","Voucher","DATE,VOUCHERTYPENAME,VOUCHERNUMBER,REFERENCE,GUID,ALTERID,NARRATION,PARTYLEDGERNAME,CMPGSTIN,ISCANCELLED,ISOPTIONAL,ISDELETED,ALLLEDGERENTRIES.LIST,LEDGERENTRIES.LIST,ALLINVENTORYENTRIES.LIST,INVENTORYENTRIESIN.LIST,INVENTORYENTRIESOUT.LIST,AllInventoryEntries.BatchAllocations.GodownName,InventoryEntriesIn.BatchAllocations.GodownName,InventoryEntriesOut.BatchAllocations.GodownName,AllInventoryEntries.GSTHSNName,AllInventoryEntries.HSNSourceType,AllLedgerEntries.BillAllocations.Name,AllLedgerEntries.BillAllocations.BillType,AllLedgerEntries.BillAllocations.Amount,AllLedgerEntries.BillAllocations.BillCreditPeriod"),240000)));
+  const X=bkTallyParse(docs);X.VS=X.VS.filter(v=>!/^mcbk-/.test(v.remote)&&!/^mcbk-/.test(v.guid));X.full=!docs.some(d=>d.getElementsByTagName("parsererror").length);return X}
+/* apply one year's Tally data into that year's books (the screen stays on the year being viewed) */
+async function tlApplyYear(X,y){const keepFy=bk.fy,keepVm=bk.vm,keepTo=bk.fyTo;let vm={};
+  if(mode==="db"){const q=await appDb.collection("bk_vm").where("pid","==",bk.pid).where("fy","==",y).get();q.docs.forEach(d=>vm[d.id]=d.data())}else{const s0=bkLocal();for(const k in s0.vm){const d=s0.vm[k];if(d.pid===bk.pid&&d.fy===y)vm[k]=d}}
+  bk._tlYear=y;bk.fy=y;bk.fyTo=0;bk.vm=vm;try{return await bkTallyApply(X,{takeOp:true,live:true,check:true})}finally{bk.fy=keepFy;bk.vm=keepVm;bk.fyTo=keepTo;bk._tlYear=0}}
+async function tlPull(co){const now=bkFyOfD(todayStr());let y0=await tlFirstYear(co);if(!y0||y0>bk.fy)y0=bk.fy;if(y0<now-15)y0=now-15;const last=Math.max(now,bk.fy);
+  const tot={l:0,i:0,v:0,u:0,skipped:0,years:[],chk:{n:0,fixed:0,fresh:0,op:0,del:0,held:0,full:true}};
+  for(let y=y0;y<=last;y++){tlState.msg=bt(`Tally से FY ${y}-${String(y+1).slice(2)} आ रहा है…`,`Bringing FY ${y}-${String(y+1).slice(2)} from Tally…`);try{tlPaint()}catch(e){}
+    const X=await tlPullYear(co,y);if(!X.VS.length&&y<bk.fy&&!X.LG.some(l=>l.op))continue;const r=await tlApplyYear(X,y);
+    ["l","i","v","u","skipped"].forEach(k=>tot[k]+=r[k]||0);if(r.chk){["n","fixed","fresh","op","del","held"].forEach(k=>tot.chk[k]+=r.chk[k]||0);tot.chk.full=tot.chk.full&&r.chk.full}tot.years.push(y)}
+  if(tot.years.length&&(!(+bk.book.fy0)||tot.years[0]<+bk.book.fy0)){try{await bkMerge("bk_books",bk.pid,{fy0:tot.years[0]},true);bk.book.fy0=tot.years[0]}catch(e){}}
+  tot.chk.years=tot.years;try{await bkMerge("bk_books",bk.pid,{tl:{chk:Object.assign({at:new Date().toISOString()},tot.chk)}},true)}catch(e){}return tot}
+/* the sync message names the years */
+{const _s=tlSync;tlSync=async function(manual){await _s.apply(this,arguments);try{const c=bk.book&&bk.book.tl&&bk.book.tl.chk;if(c&&c.years&&c.years.length>1&&tlState.msg&&!/FY \d{4}-\d{2} – FY/.test(tlState.msg)){tlState.msg+=" · "+bt(`FY ${c.years[0]}-${String(c.years[0]+1).slice(2)} से FY ${c.years[c.years.length-1]}-${String(c.years[c.years.length-1]+1).slice(2)} तक`,`FY ${c.years[0]}-${String(c.years[0]+1).slice(2)} – FY ${c.years[c.years.length-1]}-${String(c.years[c.years.length-1]+1).slice(2)}`);tlPaint()}}catch(e){}}}
 
 paintStatic();render();init();
 </script>
