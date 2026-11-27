@@ -192,6 +192,10 @@ function topBar(){let b=$g("siteBar");if(!b){b=document.createElement("div");b.i
   if(isSuper){$g("sbSuper").onclick=superPanel;fs.collection("firms").onSnapshot(q=>{const n=q.docs.filter(d=>d.data().status==="pending").length,bb=$g("sbSuper");if(bb){bb.textContent="🛠 फ़र्में"+(n?" ("+n+" नया)":"");bb.style.background=n?"#fff3cd":"#fff"}},()=>{})}$g("sbMe").onclick=meMenu;$g("sbUpd").onclick=siteUpdate;idleStart()}
 /* the 🔄 button: fresh copy of the site, does not count as "reloading again and again" */
 async function siteUpdate(){const b=$g("sbUpd");if(b){b.disabled=true;b.textContent="⏳"}
+  /* same version: no reload — the screen stays and only the figures refresh; new version: reload and come back to the same screen */
+  let same=false;try{const cur=(document.querySelector('meta[name="mc-build"]')||{}).content||"";const t=await (await fetch(location.pathname+"?chk="+Date.now(),{cache:"no-store"})).text();const m=/<meta name="mc-build" content="([^"]+)"/.exec(t);same=!!cur&&!!m&&m[1]===cur}catch(e){}
+  if(same&&typeof window.__appSoftRefresh==="function"){try{await window.__appSoftRefresh()}catch(e){}if(b){b.disabled=false;b.textContent="✔ ताज़ा";setTimeout(()=>{const x=$g("sbUpd");if(x)x.textContent="🔄 अपडेट"},2500)}return}
+  try{if(typeof window.__appSaveUi==="function")window.__appSaveUi()}catch(e){}
   try{sessionStorage.setItem("__site_okrl","1")}catch(e){}
   try{await fetch(location.pathname,{cache:"reload"})}catch(e){}
   location.replace(location.pathname+"?v="+Date.now()+location.hash)}

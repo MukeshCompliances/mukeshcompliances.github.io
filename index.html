@@ -2,6 +2,7 @@
 <html lang="hi">
 <head>
 <meta charset="utf-8">
+<meta name="mc-build" content="85724d7fb443">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#1f4fd1">
 <meta name="google-site-verification" content="0z9lx5LPH3LpMKj8Zf6bDn8M0cDAMnfVWD7FPrtMaOQ">
@@ -324,6 +325,10 @@ function topBar(){let b=$g("siteBar");if(!b){b=document.createElement("div");b.i
   if(isSuper){$g("sbSuper").onclick=superPanel;fs.collection("firms").onSnapshot(q=>{const n=q.docs.filter(d=>d.data().status==="pending").length,bb=$g("sbSuper");if(bb){bb.textContent="🛠 फ़र्में"+(n?" ("+n+" नया)":"");bb.style.background=n?"#fff3cd":"#fff"}},()=>{})}$g("sbMe").onclick=meMenu;$g("sbUpd").onclick=siteUpdate;idleStart()}
 /* the 🔄 button: fresh copy of the site, does not count as "reloading again and again" */
 async function siteUpdate(){const b=$g("sbUpd");if(b){b.disabled=true;b.textContent="⏳"}
+  /* same version: no reload — the screen stays and only the figures refresh; new version: reload and come back to the same screen */
+  let same=false;try{const cur=(document.querySelector('meta[name="mc-build"]')||{}).content||"";const t=await (await fetch(location.pathname+"?chk="+Date.now(),{cache:"no-store"})).text();const m=/<meta name="mc-build" content="([^"]+)"/.exec(t);same=!!cur&&!!m&&m[1]===cur}catch(e){}
+  if(same&&typeof window.__appSoftRefresh==="function"){try{await window.__appSoftRefresh()}catch(e){}if(b){b.disabled=false;b.textContent="✔ ताज़ा";setTimeout(()=>{const x=$g("sbUpd");if(x)x.textContent="🔄 अपडेट"},2500)}return}
+  try{if(typeof window.__appSaveUi==="function")window.__appSaveUi()}catch(e){}
   try{sessionStorage.setItem("__site_okrl","1")}catch(e){}
   try{await fetch(location.pathname,{cache:"reload"})}catch(e){}
   location.replace(location.pathname+"?v="+Date.now()+location.hash)}
@@ -8275,6 +8280,31 @@ BK_PER_TABS.push("close","price");
 {const _w=bkWire;bkWire=function(){_w();if(bk.tab==="close")bkCloseWire();if(bk.tab==="price")bkPriceWire()}}
 {const _o=bkOpen;bkOpen=function(pid,fy){if(bk._home&&bk._home.pid!==(pid||""))bk._home=null;return _o.apply(this,arguments)}}
 {const _p=bkHomeData;bkHomeData=async function(f){const d=await _p(f);if(d&&d.ys&&bk.book&&!bk.book.ys){bk.book.ys=d.ys}return d}}
+
+/* bk44: the screen survives a refresh — the open book, year, period, report and position are remembered; after a reload the last screen shows at once
+   (dimmed) until fresh figures arrive. "Update" with no new version only refreshes the figures, without reloading. */
+const BK_UI="bkUiState",BK_UISNAP="bkUiSnap";
+function bkUiState(){return{pid:bk.pid,fy:bk.fy,fyTo:bk.fyTo||0,per:bk.per&&bk.per.pid===bk.pid?{f:bk.per.f,t:bk.per.t,fy:bk.per.fy}:null,tab:bk.tab,led:bk.led||"",grp:bk.grp||"",rt:bk.rt||"",item:bk.item||"",itmM:bk.itmM||"",itmB:!!bk.itmB,exp:bk.exp||null,frS:bk.frS||"",y:Math.round(scrollY),at:Date.now()}}
+window.__appSaveUi=function(){try{if(!bk.pid)return;localStorage.setItem(BK_UI,JSON.stringify(bkUiState()));const b=$("#bkBody");if(b&&bk.book&&!bk.loading&&b.innerHTML.length<1500000)sessionStorage.setItem(BK_UISNAP,JSON.stringify({k:bk.pid+"|"+bk.tab,h:b.innerHTML,per:($(".bkPer")||{}).outerHTML||""}))}catch(e){}};
+let bkUiT=0;addEventListener("scroll",()=>{clearTimeout(bkUiT);bkUiT=setTimeout(()=>{try{const s=JSON.parse(localStorage.getItem(BK_UI)||"null");if(s&&s.pid===bk.pid){s.y=Math.round(scrollY);localStorage.setItem(BK_UI,JSON.stringify(s))}}catch(e){}},400)},{passive:true});
+addEventListener("pagehide",()=>window.__appSaveUi());addEventListener("beforeunload",()=>window.__appSaveUi());
+/* restore once, as soon as the books list can open that book */
+let bkUiDone=false,bkUiSave=0;
+function bkUiTry(){if(bkUiDone||!(mode==="db"||mode==="local"))return false;let S=null;try{S=JSON.parse(localStorage.getItem(BK_UI)||"null")}catch(e){}
+    const sel=$("#bkP");if(!S||!S.pid||Date.now()-S.at>7*864e5)bkUiDone=true;else if(sel&&[...sel.options].some(o=>o.value===S.pid)){bkUiDone=true;bk._uiRestore=S;
+      bk.fyTo=S.fyTo||0;bk.tab=S.tab||bk.tab;bk.led=S.led;bk.grp=S.grp;bk.rt=S.rt;bk.item=S.item;bk.itmM=S.itmM;bk.itmB=S.itmB;if(S.exp)bk.exp=S.exp;if(S.frS)bk.frS=S.frS;
+      if(bk.pid!==S.pid||bk.fy!==S.fy){bkOpen(S.pid,S.fy)}if(S.per)bk.per={fy:S.per.fy||S.fy,pid:S.pid,f:S.per.f,t:S.per.t};if(S.per){const y=bkFyOfD(S.per.f);bk._fyShow=y}return true}return false}
+{const iv=setInterval(()=>{if(bkUiDone){clearInterval(iv);return}if(bkUiTry())renderBk()},300);setTimeout(()=>clearInterval(iv),30000)}
+{const _rb=renderBk;renderBk=function(){bkUiTry();
+  _rb.apply(this,arguments);
+  /* while the restored book is still loading, keep showing the last screen */
+  const R=bk._uiRestore,b=$("#bkBody");if(R&&b){R.t0=R.t0||Date.now();const ready=bk.book&&!bk.loading&&(bkV().length||Date.now()-R.t0>5000);if(!ready)setTimeout(()=>{if(bk._uiRestore)renderBk()},1200);if(!ready){let sn=null;try{sn=JSON.parse(sessionStorage.getItem(BK_UISNAP)||"null")}catch(e){}if(sn&&sn.k===R.pid+"|"+R.tab&&!b.dataset.snap){b.dataset.snap=1;b.innerHTML=`<div class="bkSnapNote">⏳ ${esc(bt("ताज़ा आँकड़े आ रहे हैं — तब तक पिछली स्क्रीन","Fresh figures on the way — showing the last screen meanwhile"))}</div><div class="bkSnap">${sn.h}</div>`}}
+    else{bk._uiRestore=null;delete b.dataset.snap;if(R.y)setTimeout(()=>scrollTo(0,R.y),60)}}
+  clearTimeout(bkUiSave);bkUiSave=setTimeout(()=>{if(!bk._uiRestore)window.__appSaveUi()},700)}}
+/* refresh figures without reloading: listeners re-open on the same book, caches cleared, screen and position kept */
+window.__appSoftRefresh=async function(){const S=bkUiState();bk._frC=null;bk._misC=null;bk._home=null;bk._csC=null;bk._agC=null;try{if(window.__consC)for(const k in window.__consC)if(k.startsWith(bk.pid+"|"))delete window.__consC[k]}catch(e){}
+  if(!bk.pid)return;bk._uiRestore=Object.assign(S,{y:Math.round(scrollY)});const keepPer=bk.per;bkOpen(bk.pid,bk.fy);bk.per=keepPer;bk.tab=S.tab;bk.led=S.led;bk.item=S.item;bk.itmM=S.itmM;renderBk()};
+{const st=document.createElement("style");st.textContent=`.bkSnap{opacity:.55;pointer-events:none;filter:saturate(.7)}.bkSnapNote{position:sticky;top:6px;z-index:5;background:#fff8e1;border:1px solid #f2d27a;border-radius:10px;padding:6px 10px;margin:0 0 8px;font-size:13px}`;document.head.appendChild(st)}
 
 paintStatic();render();init();
 </script>
