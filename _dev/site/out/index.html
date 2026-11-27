@@ -5821,7 +5821,7 @@ function bkReport(){const V=bkV(),B=bkBal(V),L=bkL(),G=g=>L.filter(l=>l.g===g);
   return{SK,hasI,V,B,L,G,cs,os,sales,dinc,purch,dexp,iinc,iexp,gp,np,opDiff}}
 /* ---- screen ---- */
 function bkPartyOpts(){return `<option value="_self"${bk.pid==="_self"?" selected":""}>🏢 ${esc(bt("अपनी फ़र्म की किताबें","My own firm's books"))}</option>`+(typeof parties!=="undefined"?parties:[]).slice().sort((a,b)=>(a.name||"").localeCompare(b.name||"")).map(p=>`<option value="${esc(p.id)}"${p.id===bk.pid?" selected":""}>${esc(p.name)}</option>`).join("")}
-function bkFyOpts(){const n=bkFyNow(),a=[];for(let y=n+1;y>=n-6;y--)a.push(y);return a.map(y=>`<option value="${y}"${y===bk.fy?" selected":""}>FY ${y}-${String(y+1).slice(2)}</option>`).join("")}
+function bkFyOpts(){const n=bkFyNow(),a=[],sh=bkFyShown(),y0=Math.min(bkFy0()||n-6,n-6);for(let y=n+1;y>=y0;y--)a.push(y);return a.map(y=>`<option value="${y}"${y===sh?" selected":""}>FY ${y}-${String(y+1).slice(2)}</option>`).join("")}
 function renderBk(){const el=$("#bk");if(!el||el.hidden)return;
   let h=`<h2 style="margin:4px 0 10px">${esc(t("navBk"))}</h2><div class="filters"><select id="bkP"><option value="">${esc(bt("— ग्राहक चुनें —","— Choose client —"))}</option>${bkPartyOpts()}</select><select id="bkFy">${bkFyOpts()}</select></div>`;
   if(!bk.pid){el.innerHTML=h+`<div class="empty">${esc(bt("जिस ग्राहक का हिसाब रखना है, उसे ऊपर से चुनें।","Choose the client whose books you want to keep."))}</div>`;bkWire();return}
@@ -7812,11 +7812,13 @@ function bkBatchClose(V,S){if(!V.some(v=>!v.del&&(v.bat||[]).some(b=>b.it===S.id
    Opening = opening of the first year + every entry before From (carried forward like Tally). */
 function bkFy0(){const B=bk.book||{};return +B.fy0||0}
 function bkSetSpan(f,t,lf){const y0=bkFy0();let a=bkFyOfD(lf&&lf<f?lf:f),b=bkFyOfD(t);if(y0){if(a<y0)a=y0;if(b<y0)b=y0}const need=a!==bk.fy||b!==(bk.fyTo&&bk.fyTo>bk.fy?bk.fyTo:bk.fy);
-  if(need){bk.fyTo=b>a?b:0;bkOpen(bk.pid,a);bk.per={fy:a,pid:bk.pid,f,t};const fy=$("#bkFy");if(fy&&[...fy.options].some(o=>+o.value===a))fy.value=String(a)}else{bk.per={fy:bk.fy,pid:bk.pid,f,t};renderBk()}}
+  bk._fyShow=Math.max(bkFyOfD(f),y0||0);if(need){bk.fyTo=b>a?b:0;bkOpen(bk.pid,a);bk.per={fy:a,pid:bk.pid,f,t};const fy=$("#bkFy");if(fy&&[...fy.options].some(o=>+o.value===bk._fyShow))fy.value=String(bk._fyShow)}else{bk.per={fy:bk.fy,pid:bk.pid,f,t};renderBk()}}
 {const _o=bkOpen;bkOpen=function(pid,fy){const keepTo=bk.fyTo&&bk.fyTo>fy?bk.fyTo:0;_o(pid,fy);bk.fyTo=keepTo;
   if(keepTo&&pid&&mode==="db"&&bk.un.length>1){try{bk.un[bk.un.length-1]()}catch(e){}bk.un.pop();const yrs=[];for(let y=fy;y<=keepTo&&yrs.length<10;y++)yrs.push(y);
     bk.un.push(appDb.collection("bk_vm").where("pid","==",pid).where("fy","in",yrs).onSnapshot(s=>{const m={};s.docs.forEach(d=>m[d.id]=d.data());bk.vm=m;renderBk()},()=>{}))}}}
-{const _w=bkWire;bkWire=function(){_w();const f=$("#bkFy");if(f){const on=f.onchange;f.onchange=function(){bk.fyTo=0;bk.per=null;return on&&on.apply(this,arguments)}}}}
+{const _w=bkWire;bkWire=function(){_w();const f=$("#bkFy");if(f){const on=f.onchange;f.onchange=function(){bk.fyTo=0;bk.per=null;bk._fyShow=+f.value;bk._lyK="";return on&&on.apply(this,arguments)}}}}
+/* the year shown in the dropdown is the year of the Period, not the earlier year loaded behind it for comparisons */
+function bkFyShown(){if(bk.per&&bk.per.pid===bk.pid&&bk.per.f){const y=bkFyOfD(bk.per.f),y0=bkFy0();return y0&&y<y0?y0:y}return bk._fyShow||bk.fy}
 {const _ll=bkLoadLocal;bkLoadLocal=function(){_ll();if(bk.fyTo&&bk.fyTo>bk.fy){const st=bkLocal();for(const k in st.vm){const d=st.vm[k];if(d.pid===bk.pid&&d.fy>bk.fy&&d.fy<=bk.fyTo)bk.vm[k]=d}renderBk()}}}
 /* quick picks that cross years */
 {const _rb=renderBk;renderBk=function(){_rb();const pq=$("#bkPq");if(!pq||pq.dataset.x)return;pq.dataset.x=1;const td=todayStr(),y=bkFyOfD(td),d12=(()=>{const x=new Date(td+"T00:00:00");x.setFullYear(x.getFullYear()-1);x.setDate(x.getDate()+1);return x.toISOString().slice(0,10)})();
