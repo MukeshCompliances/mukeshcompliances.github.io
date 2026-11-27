@@ -5780,7 +5780,7 @@ const BK_G=[["cap","पूँजी खाता","Capital Account","L"],["res",
  ["sales","बिक्री","Sales Accounts","I",1],["dinc","प्रत्यक्ष आय","Direct Incomes","I",1],["iinc","अप्रत्यक्ष आय","Indirect Incomes","I",0],["purch","ख़रीद","Purchase Accounts","E",1],["dexp","प्रत्यक्ष ख़र्च","Direct Expenses","E",1],["iexp","अप्रत्यक्ष ख़र्च","Indirect Expenses","E",0]];
 const BK_GM=Object.fromEntries(BK_G.map(g=>[g[0],{id:g[0],hi:g[1],en:g[2],nat:g[3],dir:g[4]}]));
 const bkGN=g=>BK_GM[g]?bt(BK_GM[g].hi,BK_GM[g].en):g;
-const BK_T=[["pay","पेमेंट","Payment"],["rcpt","रसीद","Receipt"],["contra","कॉन्ट्रा","Contra"],["jrnl","जर्नल","Journal"],["sales","बिक्री","Sales"],["purch","ख़रीद","Purchase"],["cn","क्रेडिट नोट","Credit Note"],["dn","डेबिट नोट","Debit Note"]];
+const BK_T=[["pay","पेमेंट","Payment"],["rcpt","रसीद","Receipt"],["contra","कॉन्ट्रा","Contra"],["jrnl","जर्नल","Journal"],["sales","बिक्री","Sales"],["purch","ख़रीद","Purchase"],["cn","क्रेडिट नोट","Credit Note"],["dn","डेबिट नोट","Debit Note"],["stj","स्टॉक जर्नल","Stock Journal"]];
 const bkTN=t0=>{const x=BK_T.find(y=>y[0]===t0);return x?bt(x[1],x[2]):t0};
 const BK_DEF={cash:["Cash","cash"],capital:["Capital","cap"],sales:["Sales","sales"],purch:["Purchase","purch"],ocgst:["Output CGST","dt"],osgst:["Output SGST","dt"],oigst:["Output IGST","dt"],icgst:["Input CGST","dt"],isgst:["Input SGST","dt"],iigst:["Input IGST","dt"],round:["Round Off","iexp"]};
 const bkN=n=>(Math.round((+n||0)*100)/100).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -6094,7 +6094,7 @@ function bkOutHtml(R){const last={};R.V.forEach(v=>(v.ln||[]).forEach(x=>{if(v.t
 /* ===== 📒 Accounts part 3: stock items (inventory), HSN, business details, invoice print =====
    bk_books/{pid}.I : {id:{n,hsn,u,r,op:{fy:{q,v}},del}}   .info : {addr,ph,em,bank,ac,ifsc,pre,terms}
    bill item lines may carry it (item id), q (qty), p (rate); stock = weighted average cost */
-const BK_UQC=["NOS","PCS","KGS","GMS","TON","LTR","MLT","MTR","SQM","SQF","BOX","CTN","BAG","SET","DOZ","PAC","ROL","OTH"];
+const BK_UQC=["NOS","PCS","KGS","GMS","TON","QTL","LTR","MLT","MTR","SQM","SQF","BOX","CTN","BAG","SET","DOZ","PAC","ROL","OTH"];
 const bkSelfName=()=>{const x=bk.pid&&bk.pid.startsWith("_self~")&&(bkMetaSelf()||[]).find(y=>y.id===bk.pid);return x?x.name:((window.__site&&__site.firm&&__site.firm.name)||bt("मेरी फ़र्म","My firm"))};
 function bkItems(){const I=(bk.book&&bk.book.I)||{};return Object.keys(I).filter(id=>!I[id].del).map(id=>Object.assign({id},I[id])).sort((a,b)=>a.n.localeCompare(b.n))}
 function bkItemOf(name){name=(name||"").trim().toLowerCase();if(!name)return"";const x=bkItems().find(i=>i.n.toLowerCase()===name);return x?x.id:""}
@@ -6353,11 +6353,13 @@ function bkTallyParse(docs){const G={},LG=[],VS=[],IT=[];
       ln.forEach(x=>{[...x.e.children].filter(c=>c.tagName==="BILLALLOCATIONS.LIST").forEach(b=>{const tp=TP[(bkTx(b,"BILLTYPE")||"").toLowerCase()],a=-bkTNum(bkTx(b,"AMOUNT"));if(!tp||!a)return;const r={n:x.n,tp,ref:(bkTx(b,"NAME")||"").slice(0,40),a:r2(a)};const cp=parseInt(bkTx(b,"BILLCREDITPERIOD"),10);if(tp==="new"&&cp>=0)r.cd=cp;bw.push(r)});delete x.e});
       const inv=[];[...v.children].filter(c=>c.tagName==="ALLINVENTORYENTRIES.LIST"||c.tagName==="INVENTORYENTRIES.LIST").forEach(e=>{const it=bkTx(e,"STOCKITEMNAME");if(!it)return;const q=Math.abs(bkTNum(bkTx(e,"BILLEDQTY")||bkTx(e,"ACTUALQTY"))),p=Math.abs(bkTNum(bkTx(e,"RATE")));
         [...e.children].filter(c=>c.tagName==="ACCOUNTINGALLOCATIONS.LIST").forEach(a=>{const n=bkTx(a,"LEDGERNAME"),amt=-bkTNum(bkTx(a,"AMOUNT"));if(n){if(!all.length)ln.push({n,a:amt});inv.push({it,q,p,l:n,v:Math.abs(amt)})}})});
-      VS.push({cg:(bkTx(v,"CMPGSTIN")||"").toUpperCase(),guid:bkTx(v,"GUID")||"",remote:v.getAttribute("REMOTEID")||"",alt:bkTx(v,"ALTERID")||"",tn,d:d.slice(0,4)+"-"+d.slice(4,6)+"-"+d.slice(6,8),no:bkTx(v,"VOUCHERNUMBER"),ref:bkTx(v,"REFERENCE"),nar:bkTx(v,"NARRATION"),party:bkTx(v,"PARTYLEDGERNAME"),ln,inv,bw})})});
+      const sinv=[];[...v.children].filter(c=>/^(ALLINVENTORYENTRIES|INVENTORYENTRIES|INVENTORYENTRIESIN|INVENTORYENTRIESOUT)\.LIST$/.test(c.tagName)).forEach(e=>{const it=bkTx(e,"STOCKITEMNAME");if(!it)return;const q=Math.abs(bkTNum(bkTx(e,"ACTUALQTY")||bkTx(e,"BILLEDQTY")));if(!q)return;
+        const inn=e.tagName==="INVENTORYENTRIESIN.LIST"?true:e.tagName==="INVENTORYENTRIESOUT.LIST"?false:bkTx(e,"ISDEEMEDPOSITIVE")==="Yes";const amt=Math.abs(bkTNum(bkTx(e,"AMOUNT")));if(e.tagName!=="INVENTORYENTRIES.LIST"||!sinv.some(x=>x.it===it))sinv.push({it,q:inn?q:-q,v:r2(amt)})});
+      VS.push({cg:(bkTx(v,"CMPGSTIN")||"").toUpperCase(),guid:bkTx(v,"GUID")||"",remote:v.getAttribute("REMOTEID")||"",alt:bkTx(v,"ALTERID")||"",tn,d:d.slice(0,4)+"-"+d.slice(4,6)+"-"+d.slice(6,8),no:bkTx(v,"VOUCHERNUMBER"),ref:bkTx(v,"REFERENCE"),nar:bkTx(v,"NARRATION"),party:bkTx(v,"PARTYLEDGERNAME"),ln,inv,bw,sinv})})});
   const grpOf=parent=>{let p=(parent||"").toLowerCase(),k=0;while(p&&k<20){if(BK_TALLY_GR[p])return BK_TALLY_GR[p];p=(G[p]||"").toLowerCase();k++}return"sus"};
   LG.forEach(l=>l.g=grpOf(l.parent));
-  const typ=tn=>{const s=tn.toLowerCase();if(/stock\s*journal|physical|memo|order|delivery\s*note|receipt\s*note|rejection|material|job\s*work|manufactur|attendance|payroll|reversing/.test(s))return"";return /credit\s*note/.test(s)?"cn":/debit\s*note/.test(s)?"dn":/purchase/.test(s)?"purch":/sales|invoice/.test(s)?"sales":/receipt/.test(s)?"rcpt":/payment/.test(s)?"pay":/contra/.test(s)?"contra":/journal/.test(s)?"jrnl":""};
-  VS.forEach(v=>{v.t=typ(v.tn)});return{LG,VS,IT,unknownTypes:[...new Set(VS.filter(v=>!v.t).map(v=>v.tn))]}}
+  const typ=tn=>{const s=tn.toLowerCase();if(/stock\s*journal|manufactur/.test(s))return"stj";if(/physical|memo|order|delivery\s*note|receipt\s*note|rejection|material|job\s*work|manufactur|attendance|payroll|reversing/.test(s))return"";return /credit\s*note/.test(s)?"cn":/debit\s*note/.test(s)?"dn":/purchase/.test(s)?"purch":/sales|invoice/.test(s)?"sales":/receipt/.test(s)?"rcpt":/payment/.test(s)?"pay":/contra/.test(s)?"contra":/journal/.test(s)?"jrnl":""};
+  VS.forEach(v=>{v.t=typ(v.tn);if(v.t==="stj"&&!(v.sinv&&v.sinv.length))v.t=""});return{LG,VS,IT,unknownTypes:[...new Set(VS.filter(v=>!v.t).map(v=>v.tn))]}}
 /* rebuild the GST block of an imported bill from its tax ledgers so GST reports and bill print work */
 function bkTallyGst(v,LmapG){if(!["sales","purch","cn","dn"].includes(v.t))return null;const side=v.t==="sales"||v.t==="cn"?["sales","dinc","iinc"]:["purch","dexp","iexp","fa"];
   const partyL=v.ln.find(x=>x.n===v.party)||v.ln.find(x=>["sdr","scr","cash","bank","bod"].includes(LmapG[x.n]));if(!partyL)return null;
@@ -6459,26 +6461,26 @@ async function tlPull(co){const docs=[];
   docs.push(tlDoc(await tlPost(tlColl("MCGroups","Group","NAME,PARENT",co))));
   docs.push(tlDoc(await tlPost(tlColl("MCLedgers","Ledger","NAME,PARENT,OPENINGBALANCE,PARTYGSTIN,LEDSTATENAME,ADDRESS,LEDGSTREGDETAILS",co))));
   docs.push(tlDoc(await tlPost(tlColl("MCItems","StockItem","NAME,BASEUNITS,OPENINGBALANCE,OPENINGVALUE,GSTDETAILS",co))));
-  docs.push(tlDoc(await tlPost(tlEnvExport("MCVch","Collection",`<TDL><TDLMESSAGE><COLLECTION NAME="MCVch" ISMODIFY="No"><TYPE>Voucher</TYPE><FETCH>DATE,VOUCHERTYPENAME,VOUCHERNUMBER,REFERENCE,GUID,ALTERID,NARRATION,PARTYLEDGERNAME,CMPGSTIN,ISCANCELLED,ISOPTIONAL,ISDELETED,ALLLEDGERENTRIES.LIST,LEDGERENTRIES.LIST,ALLINVENTORYENTRIES.LIST,AllLedgerEntries.BillAllocations.Name,AllLedgerEntries.BillAllocations.BillType,AllLedgerEntries.BillAllocations.Amount,AllLedgerEntries.BillAllocations.BillCreditPeriod</FETCH></COLLECTION></TDLMESSAGE></TDL>`,co,`<SVFROMDATE>${bk.fy}0401</SVFROMDATE><SVTODATE>${bk.fy+1}0331</SVTODATE>`),180000)));
+  docs.push(tlDoc(await tlPost(tlEnvExport("MCVch","Collection",`<TDL><TDLMESSAGE><COLLECTION NAME="MCVch" ISMODIFY="No"><TYPE>Voucher</TYPE><FETCH>DATE,VOUCHERTYPENAME,VOUCHERNUMBER,REFERENCE,GUID,ALTERID,NARRATION,PARTYLEDGERNAME,CMPGSTIN,ISCANCELLED,ISOPTIONAL,ISDELETED,ALLLEDGERENTRIES.LIST,LEDGERENTRIES.LIST,ALLINVENTORYENTRIES.LIST,INVENTORYENTRIESIN.LIST,INVENTORYENTRIESOUT.LIST,AllLedgerEntries.BillAllocations.Name,AllLedgerEntries.BillAllocations.BillType,AllLedgerEntries.BillAllocations.Amount,AllLedgerEntries.BillAllocations.BillCreditPeriod</FETCH></COLLECTION></TDLMESSAGE></TDL>`,co,`<SVFROMDATE>${bk.fy}0401</SVFROMDATE><SVTODATE>${bk.fy+1}0331</SVTODATE>`),180000)));
   const X=bkTallyParse(docs);X.VS=X.VS.filter(v=>!/^mcbk-/.test(v.remote)&&!/^mcbk-/.test(v.guid));return bkTallyApply(X,{takeOp:false,live:true})}
 /* bring parsed Tally data into the books: new ledgers / items, new vouchers, and vouchers altered in Tally (ALTERID changed) */
 async function bkTallyApply(X,o){const L=(bk.book&&bk.book.L)||{},byName={};Object.keys(L).filter(id=>!L[id].del).forEach(id=>byName[L[id].n.toLowerCase()]=id);
   const key=v=>v.guid||(v.tn+"|"+v.no+"|"+v.d),have={};tlAllV().filter(v=>v.tk).forEach(v=>have[v.tk]=v);
-  const inFy=X.VS.filter(v=>v.t&&bkFyOfD(v.d)===bk.fy&&bkCgOk(v)),fresh=inFy.filter(v=>!have[key(v)]),changed=o.live?inFy.filter(v=>{const h=have[key(v)];return h&&!h.del&&((v.alt&&h.ta&&v.alt!==h.ta)||(v.bw&&v.bw.length&&!h.bw))}):[];
+  const inFy=X.VS.filter(v=>v.t&&bkFyOfD(v.d)===bk.fy&&bkCgOk(v)),fresh=inFy.filter(v=>!have[key(v)]),changed=o.live?inFy.filter(v=>{const h=have[key(v)];return h&&!h.del&&((v.alt&&h.ta&&v.alt!==h.ta)||(v.bw&&v.bw.length&&!h.bw)||(v.sinv&&v.sinv.length&&!["sales","purch","cn","dn"].includes(v.t)&&!h.inv))}):[];
   const use=fresh.concat(changed),missingL=[...new Set(use.flatMap(v=>v.ln.map(x=>x.n)).filter(n=>!byName[n.toLowerCase()]&&!X.LG.some(l=>l.n.toLowerCase()===n.toLowerCase())))];
   const Lp={},mk=()=>"l"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
   X.LG.forEach(l=>{const id=byName[l.n.toLowerCase()];if(id){if(!L[id])return;if(l.op&&(o.takeOp||(o.live&&!(L[id].op&&+L[id].op[bk.fy]))))Lp[id]={op:{[bk.fy]:r2(l.op)}};if(l.gstin&&!L[id].gstin)Lp[id]=Object.assign(Lp[id]||{},{gstin:l.gstin,st:l.st})}
     else{const nid=mk();byName[l.n.toLowerCase()]=nid;Lp[nid]={n:l.n.slice(0,80),g:l.g,gstin:l.gstin||"",st:l.st||"",addr:(l.addr||"").slice(0,250),op:{[bk.fy]:r2(l.op)},src:"tally"}}});
   missingL.forEach(n=>{const nid=mk();byName[n.toLowerCase()]=nid;Lp[nid]={n:n.slice(0,80),g:"sus",op:{},src:"tally"}});
-  const Ip={},iBy={};bkItems().forEach(x=>iBy[x.n.toLowerCase()]=x.id);X.IT.forEach(x=>{if(iBy[x.n.toLowerCase()])return;const nid="i"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);iBy[x.n.toLowerCase()]=nid;
-    Ip[nid]={n:x.n.slice(0,80),hsn:/^\d{4,8}$/.test(x.hsn)?x.hsn:"",u:BK_UQC.includes(x.u)?x.u:"OTH",r:x.r==null?18:x.r,op:{[bk.fy]:{q:x.oq||0,v:r2(x.ov||0)}},src:"tally"}});
+  const Ip={},iBy={};bkItems().forEach(x=>iBy[x.n.toLowerCase()]=x.id);X.IT.forEach(x=>{const ex=iBy[x.n.toLowerCase()];if(ex){const cu=((bk.book.I||{})[ex]||{}).u;if(x.u&&x.u!=="OTH"&&(!cu||cu==="OTH"||(BK_WT[x.u]&&!BK_WT[cu])))Ip[ex]={u:x.u};return}const nid="i"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);iBy[x.n.toLowerCase()]=nid;
+    Ip[nid]={n:x.n.slice(0,80),hsn:/^\d{4,8}$/.test(x.hsn)?x.hsn:"",u:x.u||"OTH",r:x.r==null?18:x.r,op:{[bk.fy]:{q:x.oq||0,v:r2(x.ov||0)}},src:"tally"}});
   if(Object.keys(Lp).length||Object.keys(Ip).length){const patch={L:Lp};if(Object.keys(Ip).length)patch.I=Ip;await bkMerge("bk_books",bk.pid,patch,true)}
   const LmapG={};Object.keys(L).forEach(id=>{if(!L[id].del)LmapG[L[id].n]=L[id].g});Object.keys(Lp).forEach(id=>{if(Lp[id].n)LmapG[Lp[id].n]=Lp[id].g});
   const now=new Date().toISOString(),who=me.id||"local",by={};let n=0;
   const recOf=v=>{const ln=[];v.ln.forEach(x=>{const id=byName[x.n.toLowerCase()];const e=ln.find(y=>y.l===id);if(e)e.a=r2(e.a+x.a);else ln.push({l:id,a:r2(x.a)})});
     const rec={d:v.d,t:v.t,no:v.no||"",nar:(v.nar||"").slice(0,300),ln:ln.filter(x=>Math.abs(x.a)>=0.005),by:who,at:now,tpAt:now,tk:key(v),ta:v.alt||"",src:"tally"};if(v.bw&&v.bw.length){const bw=v.bw.map(b=>Object.assign({l:byName[b.n.toLowerCase()]},b)).filter(b=>b.l);bw.forEach(b=>delete b.n);if(bw.length)rec.bw=bw}
     const G0=bkTallyGst(v,LmapG);if(G0){const P0=byName[G0.partyN.toLowerCase()],PL=Lp[P0]||L[P0]||{};const ps=PL.st||(PL.gstin||"").slice(0,2)||bk.book.st;
-      rec.gst={party:P0,inv:G0.inv,ro:false,inter:G0.inter||(!!ps&&ps!==bk.book.st),ps,pg:PL.gstin||"",items:G0.items.map(x=>Object.assign({l:byName[x.l.toLowerCase()],v:x.v,r:x.r},x.it&&iBy[x.it.toLowerCase()]?{it:iBy[x.it.toLowerCase()],q:x.q,p:x.p}:{}))}}return rec};
+      rec.gst={party:P0,inv:G0.inv,ro:false,inter:G0.inter||(!!ps&&ps!==bk.book.st),ps,pg:PL.gstin||"",items:G0.items.map(x=>Object.assign({l:byName[x.l.toLowerCase()],v:x.v,r:x.r},x.it&&iBy[x.it.toLowerCase()]?{it:iBy[x.it.toLowerCase()],q:x.q,p:x.p}:{}))}}if(!["sales","purch","cn","dn"].includes(v.t)&&v.sinv&&v.sinv.length){const iv=v.sinv.map(x=>({it:iBy[x.it.toLowerCase()],q:x.q,v:x.v})).filter(x=>x.it);if(iv.length)rec.inv=iv}return rec};
   fresh.forEach(v=>{const m=v.d.slice(5,7);(by["new|"+m]=by["new|"+m]||{})["v"+Date.now().toString(36)+(n++).toString(36)+Math.random().toString(36).slice(2,5)]=recOf(v)});
   changed.forEach(v=>{const h=have[key(v)],rec=recOf(v);if(h.d.slice(0,7)===v.d.slice(0,7)){(by["old|"+h.doc]=by["old|"+h.doc]||{})[h.id]=rec}else{(by["old|"+h.doc]=by["old|"+h.doc]||{})[h.id]={del:true,at:now,tpAt:""};const m=v.d.slice(5,7);(by["new|"+m]=by["new|"+m]||{})[h.id]=rec}});
   for(const k of Object.keys(by)){const [kind,ref]=k.split("|"),ids=Object.keys(by[k]);
@@ -6898,7 +6900,7 @@ BK_PER_TABS.push("dup");
 function bkVParty(v){if(v.gst&&v.gst.party)return v.gst.party;const L=bk.book.L||{},ln=(v.ln||[]).filter(x=>x.l);const p=ln.find(x=>L[x.l]&&["sdr","scr","br"].includes(L[x.l].g));if(p)return p.l;
   const nc=ln.filter(x=>!(L[x.l]&&["cash","bank","bod"].includes(L[x.l].g)));const s=(nc.length?nc:ln).slice().sort((a,b)=>Math.abs(b.a)-Math.abs(a.a))[0];return s?s.l:""}
 const bkVAmt=v=>r2((v.ln||[]).reduce((s,x)=>s+(x.a>0?+x.a:0),0));
-function bkDups(V){const P=bkPer();V=V.filter(v=>v.d>=P.f&&v.d<=P.t);const seen=new Set(),out=[];const pk=(a,b)=>[a.id,b.id].sort().join("|");
+function bkDups(V){const P=bkPer();V=V.filter(v=>v.d>=P.f&&v.d<=P.t&&v.t!=="stj"&&bkVAmt(v)>0);const seen=new Set(),out=[];const pk=(a,b)=>[a.id,b.id].sort().join("|");
   const add=(lv,why,list)=>{const fresh=list.filter((v,i)=>list.some((w,j)=>j!==i&&!seen.has(pk(v,w))));if(fresh.length<2)return;for(let i=0;i<list.length;i++)for(let j=i+1;j<list.length;j++)seen.add(pk(list[i],list[j]));out.push({lv,why,list})};
   const grp=(f)=>{const m={};V.forEach(v=>{const k=f(v);if(k)(m[k]=m[k]||[]).push(v)});return Object.values(m).filter(a=>a.length>1)};
   const norm=s=>String(s||"").toUpperCase().replace(/[^A-Z0-9]/g,"").replace(/^0+/,"");
