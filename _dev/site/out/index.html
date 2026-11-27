@@ -5795,7 +5795,9 @@ const bkLocal=()=>lget(BK_LK,'{"books":{},"vm":{}}');
 function bkDeep(a,b){for(const k in b){if(b[k]&&typeof b[k]==="object"&&!Array.isArray(b[k])&&a[k]&&typeof a[k]==="object"&&!Array.isArray(a[k]))bkDeep(a[k],b[k]);else a[k]=b[k]}return a}
 /* merge-write that works the same on the Claude db (update merges deep) and on Firestore (set merge) */
 async function bkMerge(col,id,patch,exists){if(mode!=="db"){const s=bkLocal(),k=col==="bk_books"?"books":"vm";s[k][id]=bkDeep(s[k][id]||{},JSON.parse(JSON.stringify(patch)));lset(BK_LK,s);bkLoadLocal();return}
-  const ref=appDb.collection(col).doc(id);if(window.__site)return ref.set(patch,{merge:true});if(exists)return ref.update(patch);return ref.set(patch)}
+  patch=bkNoEmpty(patch);const ref=appDb.collection(col).doc(id);if(window.__site)return ref.set(patch,{merge:true});if(exists)return ref.update(patch);return ref.set(patch)}
+/* Firestore replaces a map with an empty {} even in a merge, which wiped all ledgers once ({L:{}} during a Tally sync) — empty maps are dropped before writing */
+function bkNoEmpty(o){if(!o||typeof o!=="object"||Array.isArray(o))return o;const r={};for(const k in o){const v=o[k];if(v&&typeof v==="object"&&!Array.isArray(v)&&!(v instanceof Date)&&!(typeof v.toDate==="function")&&!(v.constructor&&v.constructor.name&&!["Object"].includes(v.constructor.name))){const c=bkNoEmpty(v);if(Object.keys(c).length)r[k]=c}else r[k]=v}return r}
 function bkLoadLocal(){const s=bkLocal();bk.book=s.books[bk.pid]||null;bk.vm={};for(const k in s.vm){const d=s.vm[k];if(d.pid===bk.pid&&d.fy===bk.fy)bk.vm[k]=d}renderBk()}
 function bkOpen(pid,fy){bk.un.forEach(u=>{try{u()}catch(e){}});bk.un=[];bk.pid=pid;bk.fy=fy;bk.book=null;bk.vm={};bk.led="";
   if(!pid){renderBk();return}
@@ -6410,7 +6412,7 @@ function bkTallyPreview(X){const P=$("#tiP"),L=(bk.book&&bk.book.L)||{},byName={
     missingL.forEach(n=>{const nid=mk();byName[n.toLowerCase()]=nid;Lp[nid]={n:n.slice(0,80),g:"sus",op:{}}});
     const Ip={},iBy={};bkItems().forEach(x=>iBy[x.n.toLowerCase()]=x.id);X.IT.forEach(x=>{if(iBy[x.n.toLowerCase()])return;const nid="i"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);iBy[x.n.toLowerCase()]=nid;
       Ip[nid]={n:x.n.slice(0,80),hsn:/^\d{4,8}$/.test(x.hsn)?x.hsn:"",u:BK_UQC.includes(x.u)?x.u:"OTH",r:x.r==null?18:x.r,op:{[bk.fy]:{q:x.oq||0,v:r2(x.ov||0)}}}});
-    M.textContent=bt("लेजर सेव हो रहे हैं…","Saving ledgers…");const patch={L:Lp};if(Object.keys(Ip).length)patch.I=Ip;await bkMerge("bk_books",bk.pid,patch,true);
+    M.textContent=bt("लेजर सेव हो रहे हैं…","Saving ledgers…");const patch={};if(Object.keys(Lp).length)patch.L=Lp;if(Object.keys(Ip).length)patch.I=Ip;await bkMerge("bk_books",bk.pid,patch,true);
     const LmapG={};Object.keys(Lp).forEach(id=>LmapG[Lp[id].n||(L[id]&&L[id].n)]=Lp[id].g||(L[id]&&L[id].g));Object.keys(L).forEach(id=>{if(!L[id].del)LmapG[L[id].n]=L[id].g});
     /* 2. vouchers, grouped by month document */
     const by={},now=new Date().toISOString(),who=me.id||"local";let n=0;
@@ -6477,7 +6479,7 @@ async function bkTallyApply(X,o){const L=(bk.book&&bk.book.L)||{},byName={};Obje
   missingL.forEach(n=>{const nid=mk();byName[n.toLowerCase()]=nid;Lp[nid]={n:n.slice(0,80),g:"sus",op:{},src:"tally"}});
   const Ip={},iBy={};bkItems().forEach(x=>iBy[x.n.toLowerCase()]=x.id);X.IT.forEach(x=>{const ex=iBy[x.n.toLowerCase()];if(ex){const E=(bk.book.I||{})[ex]||{},cu=E.u;if(x.u&&x.u!=="OTH"&&(!cu||cu==="OTH"||(BK_WT[x.u]&&!BK_WT[cu])))Ip[ex]=Object.assign(Ip[ex]||{},{u:x.u});if(x.sg&&x.sg!==E.sg)Ip[ex]=Object.assign(Ip[ex]||{},{sg:x.sg.slice(0,80)});if(/^\d{4,8}$/.test(x.hsn||"")&&!E.hsn)Ip[ex]=Object.assign(Ip[ex]||{},{hsn:x.hsn});return}const nid="i"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);iBy[x.n.toLowerCase()]=nid;
     Ip[nid]={n:x.n.slice(0,80),hsn:/^\d{4,8}$/.test(x.hsn)?x.hsn:"",sg:(x.sg||"").slice(0,80),u:x.u||"OTH",r:x.r==null?18:x.r,op:{[bk.fy]:{q:x.oq||0,v:r2(x.ov||0)}},src:"tally"}});
-  const hdNew=X.hsnDef&&X.hsnDef!==bk.book.hsnDef;if(hdNew||Object.keys(Lp).length||Object.keys(Ip).length||(X.SGL&&X.SGL.length&&JSON.stringify(X.SGL)!==JSON.stringify(bk.book.SGL||[]))){const patch={L:Lp};if(hdNew)patch.hsnDef=X.hsnDef;if(Object.keys(Ip).length)patch.I=Ip;if(X.SGL&&X.SGL.length)patch.SGL=X.SGL.map(x=>x[0].slice(0,80)+"\u0001"+(x[1]||"").slice(0,80));await bkMerge("bk_books",bk.pid,patch,true)}
+  const hdNew=X.hsnDef&&X.hsnDef!==bk.book.hsnDef;if(hdNew||Object.keys(Lp).length||Object.keys(Ip).length||(X.SGL&&X.SGL.length&&JSON.stringify(X.SGL)!==JSON.stringify(bk.book.SGL||[]))){const patch={};if(Object.keys(Lp).length)patch.L=Lp;if(hdNew)patch.hsnDef=X.hsnDef;if(Object.keys(Ip).length)patch.I=Ip;if(X.SGL&&X.SGL.length)patch.SGL=X.SGL.map(x=>x[0].slice(0,80)+"\u0001"+(x[1]||"").slice(0,80));await bkMerge("bk_books",bk.pid,patch,true)}
   const LmapG={};Object.keys(L).forEach(id=>{if(!L[id].del)LmapG[L[id].n]=L[id].g});Object.keys(Lp).forEach(id=>{if(Lp[id].n)LmapG[Lp[id].n]=Lp[id].g});
   const now=new Date().toISOString(),who=me.id||"local",by={};let n=0;
   const recOf=v=>{const ln=[];v.ln.forEach(x=>{const id=byName[x.n.toLowerCase()];const e=ln.find(y=>y.l===id);if(e)e.a=r2(e.a+x.a);else ln.push({l:id,a:r2(x.a)})});
