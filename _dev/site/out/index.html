@@ -7907,6 +7907,14 @@ function bkMisPanel(){const body=$("#bkBody");if(!body||bk.tab!=="mis"||$("#misS
 #misSide summary{font-weight:700;cursor:pointer;margin-bottom:6px}.misSideB{display:flex;flex-direction:column;gap:6px}.misSideA{margin-top:8px;font-size:12px}
 @media(max-width:1000px){#bkBody.misGrid{grid-template-columns:1fr}#misSide{position:static;order:-1}#misSide .misSideB{flex-direction:row;flex-wrap:wrap;gap:4px 12px}}@media print{#misSide,#chTip{display:none!important}}`;document.head.appendChild(st)})();
 
+/* bk33: MIS runs on the Period at the top (From–To dates) — no separate MIS month boxes, no tie to the financial year */
+{const _m=bkMisHtml;bkMisHtml=function(R0){const P=bkPer(),fs=bkFyS().slice(0,7),fe=bkFyE().slice(0,7),today=todayStr().slice(0,7);
+  const withV=[...new Set(bkV().map(v=>v.d.slice(0,7)))].sort();let f=P.f.slice(0,7),t=P.t.slice(0,7);const f0=f,t0=t;if(f<fs)f=fs;if(t>fe)t=fe;
+  const lastData=withV.filter(m=>m<=t&&m<=today).pop();if(lastData&&t>lastData)t=lastData;if(t<f)t=f;bk.misF=f;bk.misM=t;
+  let h=_m(R0);const notes=[];if(f0<fs)notes.push(bt(`किताबें ${bkDt(bkFyS())} से शुरू हैं — उससे पहले की कोई एंट्री नहीं`,`the books start on ${bkDt(bkFyS())} — no entries before that`));if(t0>t)notes.push(bt(`${bkML(t)} के बाद अभी कोई एंट्री नहीं`,`no entries after ${bkML(t)} yet`));
+  return h.replace(/<div class="filters"><label style="font-weight:700">📅[\s\S]*?<\/div>/,`<div class="m" style="margin:0 0 8px;font-size:13px">📅 <b>MIS: ${esc(bkML(f))} – ${esc(bkML(t))}</b> · ${esc(bt("ऊपर की अवधि (Period) से","from the Period above"))}${notes.length?" · "+esc(notes.join(" · ")):""}</div>`)}}
+{const _w=bkWire;bkWire=function(){_w();if(bk.tab!=="mis")return;const bar=document.querySelector(".bkPer");if(bar)bar.querySelectorAll("input[type=date],#bkPq,#bkPf+span").forEach(e=>e.style.display="")}}
+
 paintStatic();render();init();
 </script>
 </body>
