@@ -6584,15 +6584,15 @@ function bkVchPrintHtml(v){const B=bk.book,f=B.info||{},e=s=>esc(s==null?"":Stri
    Alt+G Go To · Ctrl+A save · Ctrl+Q quit · Alt+P print · Alt+E export · F2 period · Alt+F1 detailed · Alt+D delete
    Alt+C new ledger · Ctrl+R repeat narration · Alt+2 duplicate voucher · PgUp/PgDn previous/next voucher · Ctrl+Enter alter master */
 bk.nav=[];
-const bkKey=()=>[bk.pid,bk.tab,bk.led||"",bk.grp||"",bk.rt||""].join("|");
-const bkRows=()=>[...document.querySelectorAll("#bkBody .bkLg,#bkBody .bkV,#bkBody .bkGh")].filter(r=>r.offsetParent!==null);
+const bkKey=()=>[bk.pid,bk.tab,bk.led||"",bk.grp||"",bk.rt||"",bk.item||"",bk.itmM||""].join("|");
+const bkRows=()=>[...document.querySelectorAll("#bkBody .bkLg,#bkBody .bkV,#bkBody .bkGh,#bkBody .bkIe,#bkBody .bkIm")].filter(r=>r.offsetParent!==null);
 function bkSetHi(i,scroll){const rs=bkRows();document.querySelectorAll("#bkBody .bkHi").forEach(r=>r.classList.remove("bkHi"));if(!rs.length){bk._hi=-1;return}
   i=Math.max(0,Math.min(rs.length-1,i|0));bk._hi=i;rs[i].classList.add("bkHi");if(scroll)rs[i].scrollIntoView({block:"nearest"})}
-function bkBack(){const s=bk.nav.pop();if(!s)return false;bk._back=true;bk.tab=s.tab;bk.led=s.led;bk.grp=s.grp;bk.rt=s.rt;bk._restore={y:s.y,hi:s.hi};renderBk();return true}
+function bkBack(){const s=bk.nav.pop();if(!s)return false;bk._back=true;bk.tab=s.tab;bk.led=s.led;bk.grp=s.grp;bk.rt=s.rt;bk.item=s.item;bk.itmM=s.itmM;bk._restore={y:s.y,hi:s.hi};renderBk();return true}
 function bkOpenGrp(g){if(!g)return;bk.grp=g;bk.tab="grp";renderBk()}
 {const _rb=renderBk;renderBk=function(){const k=bkKey(),y=window.scrollY;
   if(bk._cur){if(bk._cur.k.split("|")[0]!==String(bk.pid))bk.nav=[];else if(bk._cur.k!==k&&!bk._back){bk.nav.push(Object.assign({},bk._cur,{y,hi:bk._hi}));if(bk.nav.length>60)bk.nav.shift()}}
-  const same=bk._cur&&bk._cur.k===k,keepHi=bk._hi;bk._back=false;_rb();bk._cur={k,tab:bk.tab,led:bk.led,grp:bk.grp,rt:bk.rt};
+  const same=bk._cur&&bk._cur.k===k,keepHi=bk._hi;bk._back=false;_rb();bk._cur={k,tab:bk.tab,led:bk.led,grp:bk.grp,rt:bk.rt,item:bk.item,itmM:bk.itmM};
   const body=$("#bkBody");if(!body)return;
   /* group rows: the arrow opens/closes, the name drills into the group (Tally: Enter on a group) */
   body.querySelectorAll("tr.bkGh").forEach(r=>{const c0=r.cells[0],nm=[...c0.childNodes].filter(n=>!(n.classList&&(n.classList.contains("bkTw")||n.classList.contains("bkCnt")))).map(n=>n.textContent).join("").trim();
@@ -7280,6 +7280,29 @@ function bkSvgPng(svg,w,h){return new Promise((res,rej)=>{const img=new Image();
         row.eachCell((c,i)=>{if(typeof c.value==="number"&&i>1)c.numFmt="#,##0.00"})});ws.addRow([])}
     const n=sec.querySelector(".misNote");if(n&&n.value.trim())ws.addRow([bt("टिप्पणी","Comments")+": "+n.value.trim()])}
   const buf=await wb.xlsx.writeBuffer();await bkSaveBlob(new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),"Monthly_MIS-"+String(H.nm||"").replace(/[^\w]+/g,"_").replace(/^_+|_+$/g,"").slice(0,40)+"-"+bkML(bk.misF)+"_to_"+bkML(bk.misM)+".xlsx")}}
+
+/* ===== Stock like Tally: Stock Summary → item Monthly Summary → Stock Item Vouchers → voucher (Enter / click; Esc back) ===== */
+BK_PER_TABS.push("itm");BK_OUT_TABS.push("itm");
+function bkItemMv(R,id){const out=[];R.V.forEach(v=>{if(v.del)return;if(v.gst)(v.gst.items||[]).forEach(it=>{if(it.it!==id||!+it.q)return;const q=Math.abs(+it.q),inn=v.t==="purch"||v.t==="cn";out.push({v,q:inn?q:-q,val:Math.abs(+it.v||0),party:v.gst.party,rate:+it.p||0,inv:v.t==="purch"})});
+  (v.inv||[]).forEach(it=>{if(it.it!==id||!+it.q)return;out.push({v,q:+it.q,val:Math.abs(+it.v||0),party:"",rate:Math.abs(+it.v||0)/Math.abs(+it.q),inv:+it.q>0})})});return out.sort((a,b)=>a.v.d<b.v.d?-1:a.v.d>b.v.d?1:0)}
+function bkItmHtml(R){const id=bk.item,S=R.SK.list.find(x=>x.id===id);if(!S)return `<div class="empty">—</div>`;const I=bk.book.I[id]||{},u=S.u||"",avg=S.avg,P=R.per||bkPer(),mv=bkItemMv(R,id),q=n=>bkQ(n)+" "+esc(u);
+  let h=`<div class="m" style="margin:0 0 6px">${esc(bt("स्टॉक आइटम","Stock Item"))}${I.hsn?" · HSN "+esc(I.hsn):""} · ${esc(bt("औसत लागत ₹","Avg cost ₹"))}${bkN(avg)} · Esc = ${esc(bt("वापस","back"))}${bkCan()?` · <a href="#" id="bkItmAlt">${esc(bt("आइटम बदलें (Ctrl+Enter)","Alter item (Ctrl+Enter)"))}</a>`:""}</div><h3 style="margin:0 0 8px">${esc(S.n)}${bk.itmM?" · "+esc(bkML(bk.itmM)):""}</h3>`;
+  if(!bk.itmM){const ms=[];let d=new Date(bkFyS()+"T00:00:00");while(true){const m=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");if(m>P.t.slice(0,7))break;ms.push(m);d.setMonth(d.getMonth()+1)}
+    let cq=S.oq;const rows=[`<tr>${bkTd(esc(bt("ओपनिंग बैलेंस","Opening Balance")))}${bkTd("")}${bkTd("")}${bkTd("")}${bkTd("")}${bkTd(q(S.oq),1)}${bkTd(bkN(S.ov),1)}</tr>`];let ti=0,tiv=0,to=0;
+    ms.forEach(m=>{const a=mv.filter(x=>x.v.d.slice(0,7)===m),iq=a.filter(x=>x.q>0).reduce((s,x)=>s+x.q,0),iv=a.filter(x=>x.q>0).reduce((s,x)=>s+(x.inv?x.val:x.q*avg),0),oq=a.filter(x=>x.q<0).reduce((s,x)=>s-x.q,0);cq=Math.round((cq+iq-oq)*1000)/1000;ti+=iq;tiv+=iv;to+=oq;
+      rows.push(`<tr class="bkIm" data-m="${m}" style="cursor:pointer">${bkTd(esc(bkML(m)))}${bkTd(iq?q(iq):"",1)}${bkTd(iq?bkN(r2(iv)):"",1)}${bkTd(oq?q(oq):"",1)}${bkTd(oq?bkN(r2(oq*avg)):"",1)}${bkTd((cq<0?"<span style='color:var(--red)'>":"")+q(cq)+(cq<0?"</span>":""),1)}${bkTd(bkN(r2(Math.max(0,cq)*avg)),1)}</tr>`)});
+    rows.push(`<tr style="font-weight:700">${bkTd(esc(bt("कुल","Grand Total")))}${bkTd(q(ti),1)}${bkTd(bkN(r2(tiv)),1)}${bkTd(q(to),1)}${bkTd(bkN(r2(to*avg)),1)}${bkTd(q(S.cq),1)}${bkTd(bkN(S.cv),1)}</tr>`);
+    return h+bkTbl(rows,[bt("महीना","Particulars"),bt("आया मात्रा","Inwards qty"),bt("आया ₹","Inwards value"),bt("गया मात्रा","Outwards qty"),bt("गया ₹ (लागत)","Outwards value"),bt("क्लोज़िंग मात्रा","Closing qty"),bt("क्लोज़िंग ₹","Closing value")])}
+  const m=bk.itmM;let cq=S.oq+mv.filter(x=>x.v.d.slice(0,7)<m).reduce((s,x)=>s+x.q,0);cq=Math.round(cq*1000)/1000;const rows=[`<tr>${bkTd(esc(bt("ओपनिंग बैलेंस","Opening Balance")))}${bkTd("")}${bkTd("")}${bkTd("")}${bkTd("")}${bkTd("")}${bkTd(q(cq),1)}</tr>`];
+  mv.filter(x=>x.v.d.slice(0,7)===m).forEach(x=>{cq=Math.round((cq+x.q)*1000)/1000;const other=x.party?bkLN(x.party):((x.v.ln||[]).filter(l=>!bkIsTax(l.l)).sort((a,b)=>Math.abs(b.a)-Math.abs(a.a)).map(l=>bkLN(l.l))[0]||x.v.nar||"");
+    rows.push(`<tr class="bkV" data-id="${esc(x.v.id)}" style="cursor:pointer">${bkTd(esc(bkDt(x.v.d)))}${bkTd(esc(other))}${bkTd(esc(bkTN(x.v.t)))}${bkTd(esc((x.v.gst&&x.v.gst.inv)||x.v.no||""))}${bkTd(x.q>0?q(x.q)+"<br><span class='m'>"+bkN(r2(x.inv?x.val:x.q*avg))+"</span>":"",1)}${bkTd(x.q<0?q(-x.q)+"<br><span class='m'>"+bkN(r2(-x.q*(x.rate||avg)))+"</span>":"",1)}${bkTd((cq<0?"<span style='color:var(--red)'>":"")+q(cq)+(cq<0?"</span>":""),1)}</tr>`)});
+  return h+bkTbl(rows,[bt("तारीख़","Date"),bt("विवरण","Particulars"),bt("वाउचर","Vch type"),bt("नंबर","Vch no."),bt("आया","Inwards"),bt("गया (बिल रेट)","Outwards (bill rate)"),bt("क्लोज़िंग","Closing")])}
+{const _t=bkTab;bkTab=function(R){if(bk.tab==="itm")return bkItmHtml(R);return _t(R)}}
+{const _w=bkWire;bkWire=function(){_w();
+  if(bk.tab==="stk")document.querySelectorAll("#bkBody .bkIe").forEach(r=>{r.onclick=()=>{bk.item=r.dataset.id;bk.itmM="";bk.tab="itm";renderBk()}});
+  if(bk.tab==="itm"){document.querySelectorAll("#bkBody .bkIm").forEach(r=>r.onclick=()=>{bk.itmM=r.dataset.m;renderBk()});const a=$("#bkItmAlt");if(a)a.onclick=e=>{e.preventDefault();bkIForm(bk.item)}}}}
+document.addEventListener("keydown",e=>{if(!(e.ctrlKey||e.metaKey)||e.key!=="Enter"||!$("#bk")||$("#bk").hidden||bkSheetOn())return;const r=bkRows()[bk._hi];if(bk.tab==="stk"&&r&&r.classList.contains("bkIe")&&bkCan()){e.preventDefault();e.stopImmediatePropagation();bkIForm(r.dataset.id)}else if(bk.tab==="itm"&&bkCan()){e.preventDefault();e.stopImmediatePropagation();bkIForm(bk.item)}},true);
+{const _rt=bkRepTitle;bkRepTitle=function(){if(bk.tab==="itm"&&bk.item){const I=bk.book.I[bk.item]||{};return bt("स्टॉक आइटम: ","Stock Item: ")+(I.n||"")+(bk.itmM?" — "+bkML(bk.itmM):"")}return _rt()}}
 
 paintStatic();render();init();
 </script>
