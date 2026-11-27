@@ -5568,16 +5568,16 @@ function bkVForm(id,draft){if(!bkCan()&&!id)return;const V=id?bkV().find(v=>v.id
     body=`<div id="bvLines">${ln.map((x,i)=>bkLineRow(x,i)).join("")}</div><button class="btn ghost" id="bvAddL" type="button">＋ ${esc(bt("और लाइन","Another line"))}</button><div id="bvSum" class="note"></div>`}
   openSheet(`<h3>${esc(id?bt("वाउचर","Voucher"):bt("नया वाउचर","New voucher"))}</h3>${dl}
    <div class="chips" style="margin-bottom:8px">${BK_T.map(x=>`<button type="button" class="chip bvT" data-t="${x[0]}" style="${d0.t===x[0]?"background:var(--blue,#1a56db);color:#fff":""}"${ro?" disabled":""}>${esc(bkTN(x[0]))}</button>`).join("")}</div>
-   <div class="row2"><div><label>${esc(bt("तारीख़","Date"))}</label><input id="bvD" type="date" value="${esc(d0.d)}" min="${bk.fy}-04-01" max="${bk.fy+1}-03-31"></div><div><label>${esc(bt("नंबर","No."))}</label><input id="bvNo" value="${esc(d0.no)}" maxlength="16"></div></div>
+   <div class="row2"><div><label>${esc(bt("तारीख़","Date"))}</label><input id="bvD" type="date" value="${esc(d0.d)}"></div><div><label>${esc(bt("नंबर","No."))}</label><input id="bvNo" value="${esc(d0.no)}" maxlength="16"></div></div>
    ${body}<label>${esc(bt("विवरण (नैरेशन)","Narration"))}</label><textarea id="bvNar" rows="2" maxlength="300">${esc(d0.nar||"")}</textarea>
    ${V&&V.by?`<div class="m">${esc(bt("बनाया/बदला: ","Made/changed: "))}${esc(names&&names[V.by]||"")} ${esc((V.at||"").slice(0,10))}</div>`:""}
    <div class="actions">${ro?"":`<button class="btn" id="bvGo">${esc(bt("सेव","Save"))}</button><button class="btn ghost" id="bvNewL" type="button">＋ ${esc(bt("नया लेजर","New ledger"))}</button>`}${!id&&bk.lastV&&(bk.lastV.t==="sales"||bk.lastV.t==="cn")?`<button class="btn ghost" id="bvPrL" type="button">🖨 ${esc(bt("पिछला बिल प्रिंट","Print last bill"))}</button>`:""}${id&&V?`<button class="btn ghost" id="bvPr" type="button">🖨 ${esc(V.gst&&["sales","cn","dn"].includes(V.t)?bt("बिल प्रिंट","Print invoice"):bt("वाउचर प्रिंट","Print voucher"))}</button>`:""}${id&&!ro?`<button class="btn ghost red" id="bvDel">🗑 ${esc(bt("हटाएँ","Delete"))}</button>`:""}<button class="btn ghost" id="bvX">${esc(t("cancel")||"Close")}</button></div><div class="err" id="bvE"></div>`,{k:"bkv",id});
   const grab=()=>{const d={t:d0.t,d:$("#bvD").value,no:$("#bvNo").value.trim(),nar:$("#bvNar").value.trim()};
-    if(isInv){d.gst={party:bkIdOf($("#bvParty").value),inv:$("#bvInv").value.trim(),ro:$("#bvRo").checked,...bkXGrab(),items:[...document.querySelectorAll(".bvI")].map(r=>({it:bkItemOf(r.querySelector(".biIt").value)||r.querySelector(".biIt").value.trim(),q:r.querySelector(".biQ").value,p:r.querySelector(".biP").value,l:bkIdOf(r.querySelector(".biL").value)||r.querySelector(".biL").value,v:r.querySelector(".biV").value,r:+r.querySelector(".biR").value}))}}
+    if(isInv){d.gst={party:bkIdOf($("#bvParty").value),inv:$("#bvInv").value.trim(),ro:$("#bvRo").checked,...bkXGrab(),items:[...document.querySelectorAll(".bvI")].map(r=>({it:bkItemOf(r.querySelector(".biIt").value)||r.querySelector(".biIt").value.trim(),q:r.querySelector(".biQ").value,p:r.querySelector(".biP").value,l:bkIdOf(r.querySelector(".biL").value)||r.querySelector(".biL").value,v:r.querySelector(".biV").value,r:+r.querySelector(".biR").value,b:((r.querySelector(".biB")||{}).value||"").trim().slice(0,40),g:((r.querySelector(".biB")||{}).selectedOptions&&r.querySelector(".biB").selectedOptions[0]?(r.querySelector(".biB").selectedOptions[0].dataset.g||""):"")}))}}
     else d.ln=[...document.querySelectorAll(".bvL")].map(r=>({l:bkIdOf(r.querySelector(".blL").value)||r.querySelector(".blL").value,a:r2(r.querySelector(".blA").value)*(+r.querySelector(".blDC").value)}));if($("#bwBox"))d.bw=bkBwGrab();if($("#fqBox")){const fq=bkFqGrab();if(fq)d.fq=fq}return d};bkGrab=grab;
   const sum=()=>{const d=grab(),p=bkPost(d);const s=$("#bvSum");if(!s)return;if(p.err){s.innerHTML=esc(p.err);return}
     const dr=r2(p.ln.reduce((a,x)=>a+(x.a>0?x.a:0),0)),cr=r2(p.ln.reduce((a,x)=>a+(x.a<0?-x.a:0),0));
-    s.innerHTML=(isInv?p.ln.map(x=>`${esc(bkLN(x.l))}: ${bkDC(x.a)}`).join("<br>")+"<br>":"")+`<b>Dr ${bkN(dr)} · Cr ${bkN(cr)}</b>${Math.abs(dr-cr)>=0.005?` <span style="color:var(--red)">${esc(bt("फ़र्क़ ","Difference "))}${bkN(dr-cr)}</span>`:" ✔"}`};
+    s.innerHTML=(isInv?p.ln.map(x=>`${esc(bkLN(x.l))}: ${bkDC(x.a)}`).join("<br>")+"<br>":"")+`<b>Dr ${bkN(dr)} · Cr ${bkN(cr)}</b>${Math.abs(dr-cr)>=0.005?` <span style="color:var(--red)">${esc(bt("फ़र्क़ ","Difference "))}${bkN(dr-cr)}</span>`:" ✔"}${p.warn?`<br><span style="color:var(--red)">⚠ ${esc(p.warn)}</span>`:""}`};
   document.querySelectorAll(".bvT").forEach(b=>b.onclick=()=>{const d=grab();d.t=b.dataset.t;if(!id||d.t!==d0.t)d.no=bkNextNo(d.t);if(["sales","purch","cn","dn"].includes(d.t)!==isInv){delete d.ln;delete d.gst}else if(d.gst){const want=d.t==="purch"||d.t==="dn"?"purch":"sales";d.gst.items.forEach(it=>{if(!it.l||it.l==="sales"||it.l==="purch"||!bk.book.L[it.l])it.l=want})}bkVForm(id,d)});
   const sheet=$("#sheet");sheet.oninput=sheet.onchange=e=>{if(!$("#bvD")){sheet.oninput=sheet.onchange=null;return}const row=e.target&&e.target.closest&&e.target.closest(".bvI");if(row)bkItemAuto(row,e.target,d0.t);if(e.target&&e.target.id!=="bvNar")sum()};sum();
   const ai=$("#bvAddI");if(ai)ai.onclick=()=>{$("#bvItems").insertAdjacentHTML("beforeend",bkItemRow({l:d0.t==="purch"||d0.t==="dn"?"purch":"sales",v:"",r:18},document.querySelectorAll(".bvI").length));sum()};
@@ -5587,12 +5587,12 @@ function bkVForm(id,draft){if(!bkCan()&&!id)return;const V=id?bkV().find(v=>v.id
   const del=$("#bvDel");if(del)del.onclick=async()=>{if(!del.dataset.sure){del.dataset.sure=1;del.textContent=bt("पक्का हटाएँ?","Delete for sure?");return}
     try{await bkMerge("bk_vm",V.doc,{v:{[id]:{del:true,at:new Date().toISOString(),by:me.id||"local"}}},true);closeSheet();toast(bt("वाउचर हटाया","Voucher deleted"))}catch(e){$("#bvE").textContent=t("saveFail")}};
   const go=$("#bvGo");if(go)go.onclick=async()=>{const d=grab(),p=bkPost(d);if(p.err){$("#bvE").textContent=p.err;return}
-    if(!d.d||bkFyOfD(d.d)!==bk.fy){$("#bvE").textContent=bt("तारीख़ इसी साल (FY) की होनी चाहिए","The date must be in this financial year");return}
+    if(!d.d){$("#bvE").textContent=bt("तारीख़ भरें","Enter the date");return}
     const dr=r2(p.ln.reduce((a,x)=>a+(x.a>0?x.a:0),0)),cr=r2(p.ln.reduce((a,x)=>a+(x.a<0?-x.a:0),0));if(!dr||Math.abs(dr-cr)>=0.005){$("#bvE").textContent=bt("Dr और Cr बराबर होने चाहिए","Dr and Cr must be equal");return}
-    const rec={d:d.d,t:d.t,no:d.no||bkNextNo(d.t),nar:d.nar,ln:p.ln,by:me.id||"local",at:new Date().toISOString()};if(d.gst)rec.gst=Object.assign({},d.gst,{items:p.items,pg:bk.book.L[d.gst.party]&&bk.book.L[d.gst.party].gstin||"",ps:p.ps,inter:p.inter});if(d.bw&&d.bw.length)rec.bw=d.bw;if(d.fq)rec.fq=d.fq;
+    const rec={d:d.d,t:d.t,no:d.no||bkNextNo(d.t),nar:d.nar,ln:p.ln,by:me.id||"local",at:new Date().toISOString()};if(d.gst){rec.gst=Object.assign({},d.gst,{items:p.items,pg:bk.book.L[d.gst.party]&&bk.book.L[d.gst.party].gstin||"",ps:p.ps,inter:p.inter});bkBatAttach(rec,d)}if(d.bw&&d.bw.length)rec.bw=d.bw;if(d.fq)rec.fq=d.fq;
     if(V)["tpAt","tk","src","ta","bd"].forEach(k=>{if(V[k]!=null&&V[k]!=="")rec[k]=V[k]});const vid=id||("v"+Date.now().toString(36)+Math.random().toString(36).slice(2,6));go.disabled=true;
     try{const doc=bkDocFor(d.d,JSON.stringify(rec).length);if(V&&V.doc!==doc.id)await bkMerge("bk_vm",V.doc,{v:{[vid]:{del:true,at:rec.at,by:rec.by}}},true);
-      await bkMerge("bk_vm",doc.id,Object.assign(doc.exists?{}:{pid:bk.pid,fy:bk.fy,ym:d.d.slice(0,7)},{v:{[vid]:rec}}),doc.exists);
+      await bkMerge("bk_vm",doc.id,Object.assign(doc.exists?{}:{pid:bk.pid,fy:bkFyOfD(d.d),ym:d.d.slice(0,7)},{v:{[vid]:rec}}),doc.exists);
       toast(bt("वाउचर सेव हुआ","Voucher saved"));bk.lastV={id:vid,t:d.t};if(id)closeSheet();else bkVForm(null,{t:d.t,d:d.d,nar:"",ln:[]})}catch(e){go.disabled=false;$("#bvE").textContent=t("saveFail")}}}
 function bkNewOf(t0){if(!bkCan()||!bk.book)return;bkVForm(null,{t:t0,d:(bkFyOfD(todayStr())===bk.fy?todayStr():(bk.fy+1)+"-03-31"),nar:"",ln:[]})}
 /* Tally keys on a computer: F4 contra, F5 payment, F6 receipt, F7 journal, F8 sales, F9 purchase, Ctrl+F8 credit note, Ctrl+F9 debit note */
@@ -5619,7 +5619,7 @@ function bkPost(d){if(!["sales","purch","cn","dn"].includes(d.t)){const ln=(d.ln
   for(const k of Object.keys(m))if(!bk.book.L[k]&&BK_DEF[k]&&!bk.cons)return{err:bt("GST / Round Off लेजर नहीं मिला — लेजर सूची देखें","GST / Round Off ledger missing — check the ledger list")};
   return{ln:Object.keys(m).filter(k=>Math.abs(m[k])>=0.005).map(k=>({l:k,a:m[k]})),items:items.map(it=>Object.assign({l:it.l,v:r2(it.v),r:+it.r||0},it.it?{it:it.it,q:+it.q,p:r2(it.p)}:{})),ps,inter}}
 /* which month document gets this voucher (a new part when one grows past ~700 KB) */
-function bkDocFor(d,sz){const base=bk.pid+"_"+bk.fy+"_"+d.slice(5,7);for(let k=1;k<50;k++){const id=k===1?base:base+"_"+k,doc=bk.vm[id];if(!doc)return{id,exists:false};if(JSON.stringify(doc).length+sz<700000)return{id,exists:true}}return{id:base+"_x"+Date.now(),exists:false}}
+function bkDocFor(d,sz){const base=bk.pid+"_"+bkFyOfD(d)+"_"+d.slice(5,7);for(let k=1;k<50;k++){const id=k===1?base:base+"_"+k,doc=bk.vm[id];if(!doc)return{id,exists:false};if(JSON.stringify(doc).length+sz<700000)return{id,exists:true}}return{id:base+"_x"+Date.now(),exists:false}}
 /* carry closing balances to next year */
 async function bkCarry(){const b=$("#bkCf");if(!b.dataset.sure){b.dataset.sure=1;b.textContent=bt("पक्का? अगले साल के ओपनिंग बैलेंस बदल जाएँगे","Sure? Next year's opening balances will be replaced");return}
   const R=bkReport(),ny=bk.fy+1,L={};R.L.forEach(l=>{const nat=BK_GM[l.g]&&BK_GM[l.g].nat;let v=(nat==="A"||nat==="L")?(R.B[l.id]||0):0;if(l.g==="stock")v=0;L[l.id]={op:{[ny]:r2(v)}}});
@@ -5933,7 +5933,7 @@ function bkTallyXml(opt){const B=bk.book,L=B.L||{},I=B.I||{},V=bkV().filter(v=>!
     const lines=(v.ln||[]).map(x=>({n:bkLN(x.l),a:x.a,l:x.l}));
     if(useInv){const itemLedgers=new Set(g.items.filter(it=>it.it&&I[it.it]&&+it.q).map(it=>it.l));
       body+=g.items.filter(it=>it.it&&I[it.it]&&+it.q).map(it=>{const x=I[it.it],sgn=(v.t==="sales"||v.t==="dn")?1:-1,amt=r2(it.v)*sgn,qty=`${+it.q} ${xe(x.u||"NOS")}`;
-        return `<ALLINVENTORYENTRIES.LIST><STOCKITEMNAME>${xe(x.n)}</STOCKITEMNAME><ISDEEMEDPOSITIVE>${sgn<0?"Yes":"No"}</ISDEEMEDPOSITIVE><RATE>${r2(it.p||it.v/it.q)}/${xe(x.u||"NOS")}</RATE><AMOUNT>${amt.toFixed(2)}</AMOUNT><ACTUALQTY>${qty}</ACTUALQTY><BILLEDQTY>${qty}</BILLEDQTY>`+
+        return `<ALLINVENTORYENTRIES.LIST><STOCKITEMNAME>${xe(x.n)}</STOCKITEMNAME><ISDEEMEDPOSITIVE>${sgn<0?"Yes":"No"}</ISDEEMEDPOSITIVE><RATE>${r2(it.p||it.v/it.q)}/${xe(x.u||"NOS")}</RATE><AMOUNT>${amt.toFixed(2)}</AMOUNT><ACTUALQTY>${qty}</ACTUALQTY><BILLEDQTY>${qty}</BILLEDQTY>`+(it.b?`<BATCHALLOCATIONS.LIST><GODOWNNAME>${xe(it.g||"Main Location")}</GODOWNNAME><BATCHNAME>${xe(it.b)}</BATCHNAME><AMOUNT>${amt.toFixed(2)}</AMOUNT><ACTUALQTY>${qty}</ACTUALQTY><BILLEDQTY>${qty}</BILLEDQTY></BATCHALLOCATIONS.LIST>`:"")+
           `<ACCOUNTINGALLOCATIONS.LIST><LEDGERNAME>${xe(bkLN(it.l))}</LEDGERNAME><ISDEEMEDPOSITIVE>${sgn<0?"Yes":"No"}</ISDEEMEDPOSITIVE><AMOUNT>${amt.toFixed(2)}</AMOUNT></ACCOUNTINGALLOCATIONS.LIST></ALLINVENTORYENTRIES.LIST>`}).join("");
       /* item ledgers are carried by the inventory lines; the rest stay as ledger lines (party, tax, round off, non-stock lines) */
       const left={};lines.forEach(x=>{left[x.l]=r2((left[x.l]||0)+x.a)});g.items.filter(it=>it.it&&I[it.it]&&+it.q).forEach(it=>{const sg=(v.t==="sales"||v.t==="dn")?-1:1;left[it.l]=r2((left[it.l]||0)-sg*r2(it.v))});
@@ -6381,7 +6381,7 @@ let tlVia="";
 
 /* ===== Period (From–To) like Tally, searchable ledger, opening stock in the opening difference, Tally-style invoice ===== */
 const BK_PER_TABS=["home","day","led","tb","pl","bs","out","stk"];
-const bkFyS=()=>bk.fy+"-04-01",bkFyE=()=>(bk.fy+1)+"-03-31";
+const bkFyS=()=>bk.fy+"-04-01",bkFyE=()=>((bk.fyTo&&bk.fyTo>bk.fy?bk.fyTo:bk.fy)+1)+"-03-31";
 function bkPer(){const p=bk.per;if(p&&p.fy===bk.fy&&p.pid===bk.pid)return p;return{fy:bk.fy,pid:bk.pid,f:bkFyS(),t:bkFyE()}}
 const bkDayBefore=d=>{const x=new Date(d+"T00:00:00");x.setDate(x.getDate()-1);return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0")};
 const bkDt=d=>{const m=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];const [y,mo,da]=d.split("-");return (+da)+"-"+m[+mo-1]+"-"+y.slice(2)};
@@ -6406,8 +6406,8 @@ function bkPerPL(R){const b=R.before;if(!b)return R;const B={};R.L.forEach(l=>{B
   const q=[[fs,fe,bt("पूरा साल","Full year")],[fs,bk.fy+"-06-30","Q1"],[bk.fy+"-07-01",bk.fy+"-09-30","Q2"],[bk.fy+"-10-01",bk.fy+"-12-31","Q3"],[(bk.fy+1)+"-01-01",fe,"Q4"]];
   const opt=[...q,...ms].map(x=>`<option value="${x[0]}|${x[1]}"${P.f===x[0]&&P.t===x[1]?" selected":""}>${esc(x[2])}</option>`).join("");
   const isAt=["bs","out","home"].includes(bk.tab)||(bk.tab==="tb"&&!bk.tbX);
-  body.insertAdjacentHTML("beforebegin",`<div class="bkPer"><span class="bkPerL">📅 ${esc(isAt?bt("तक (As on)","As on"):bt("अवधि","Period"))}</span>${isAt?"":`<input type="date" id="bkPf" value="${P.f}" min="${fs}" max="${fe}"><span>→</span>`}<input type="date" id="bkPt" value="${P.t}" min="${fs}" max="${fe}"><select id="bkPq"><option value="">${esc(bt("जल्दी चुनें…","Quick…"))}</option>${opt}</select><b class="bkPerT">${isAt?esc(bkDt(P.t)):esc(bkDt(P.f)+" to "+bkDt(P.t))}</b></div>`);
-  const set=(f,t)=>{if(!f||f<fs)f=fs;if(!t||t>fe)t=fe;if(f>t){const x=f;f=t;t=x}bk.per={fy:bk.fy,pid:bk.pid,f,t};renderBk()};
+  body.insertAdjacentHTML("beforebegin",`<div class="bkPer"><span class="bkPerL">📅 ${esc(isAt?bt("तक (As on)","As on"):bt("अवधि","Period"))}</span>${isAt?"":`<input type="date" id="bkPf" value="${P.f}"><span>→</span>`}<input type="date" id="bkPt" value="${P.t}"><select id="bkPq"><option value="">${esc(bt("जल्दी चुनें…","Quick…"))}</option>${opt}</select><b class="bkPerT">${isAt?esc(bkDt(P.t)):esc(bkDt(P.f)+" to "+bkDt(P.t))}</b></div>`);
+  const set=(f,t)=>{if(!f)f=fs;if(!t)t=fe;if(f>t){const x=f;f=t;t=x}bkSetSpan(f,t)};
   const pf=$("#bkPf"),pt=$("#bkPt"),pq=$("#bkPq");if(pf)pf.onchange=()=>set(pf.value,P.t);pt.onchange=()=>set(P.f,pt.value);pq.onchange=()=>{if(!pq.value)return;const [f,t]=pq.value.split("|");set(isAt?P.f:f,t)};
   const lq=$("#bkLsQ");if(lq){const pick=()=>{const n=lq.value.trim().toLowerCase();if(!n)return;const L=bkL(),x=L.find(l=>l.n.toLowerCase()===n);if(x&&x.id!==bk.led){bk.led=x.id;renderBk()}};lq.oninput=()=>{if(bkL().some(l=>l.n.toLowerCase()===lq.value.trim().toLowerCase()))pick()};lq.onchange=pick;lq.onfocus=()=>lq.select()}}}
 (function(){const st=document.createElement("style");st.textContent=`.bkPer{display:flex;flex-wrap:wrap;gap:6px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px 10px;margin:0 0 10px;font-size:13px}
@@ -7417,6 +7417,42 @@ function bkWideHead(){const it=$("#bvItems");if(it&&!$("#bvHd"))it.insertAdjacen
 /* bk28: closing value batch by batch, as Tally does for items kept in batches (each batch at its own inward cost) */
 function bkBatchClose(V,S){if(!V.some(v=>!v.del&&(v.bat||[]).some(b=>b.it===S.id)))return null;const rows=bkBatchCalc(V,S,S.id);if(rows.some(x=>x.cq<-0.0005))return null;const q=rows.reduce((s,x)=>s+x.cq,0);if(Math.abs(q-S.cq)>0.01)return null;return r2(rows.reduce((s,x)=>s+x.cv,0))}
 {const _st=bkStock;bkStock=function(V){const R=_st(V);try{const VV=(V||bkV());R.list.forEach(x=>{if(x.cq<=0)return;const bv=bkBatchClose(VV,x);if(bv!=null){x.cv=bv;x.bv=1}});R.cv=r2(R.list.reduce((s,x)=>s+x.cv,0))}catch(e){}return R}}
+
+/* bk29: a period can run across financial years — From/To pick the years to load; no switching FY by hand.
+   Opening = opening of the first year + every entry before From (carried forward like Tally). */
+function bkSetSpan(f,t){const a=bkFyOfD(f),b=bkFyOfD(t);const need=a!==bk.fy||b!==(bk.fyTo&&bk.fyTo>bk.fy?bk.fyTo:bk.fy);
+  if(need){bk.fyTo=b>a?b:0;bkOpen(bk.pid,a);bk.per={fy:a,pid:bk.pid,f,t};const fy=$("#bkFy");if(fy&&[...fy.options].some(o=>+o.value===a))fy.value=String(a)}else{bk.per={fy:bk.fy,pid:bk.pid,f,t};renderBk()}}
+{const _o=bkOpen;bkOpen=function(pid,fy){const keepTo=bk.fyTo&&bk.fyTo>fy?bk.fyTo:0;_o(pid,fy);bk.fyTo=keepTo;
+  if(keepTo&&pid&&mode==="db"&&bk.un.length>1){try{bk.un[bk.un.length-1]()}catch(e){}bk.un.pop();const yrs=[];for(let y=fy;y<=keepTo&&yrs.length<10;y++)yrs.push(y);
+    bk.un.push(appDb.collection("bk_vm").where("pid","==",pid).where("fy","in",yrs).onSnapshot(s=>{const m={};s.docs.forEach(d=>m[d.id]=d.data());bk.vm=m;renderBk()},()=>{}))}}}
+{const _w=bkWire;bkWire=function(){_w();const f=$("#bkFy");if(f){const on=f.onchange;f.onchange=function(){bk.fyTo=0;bk.per=null;return on&&on.apply(this,arguments)}}}}
+{const _ll=bkLoadLocal;bkLoadLocal=function(){_ll();if(bk.fyTo&&bk.fyTo>bk.fy){const st=bkLocal();for(const k in st.vm){const d=st.vm[k];if(d.pid===bk.pid&&d.fy>bk.fy&&d.fy<=bk.fyTo)bk.vm[k]=d}renderBk()}}}
+/* quick picks that cross years */
+{const _rb=renderBk;renderBk=function(){_rb();const pq=$("#bkPq");if(!pq||pq.dataset.x)return;pq.dataset.x=1;const td=todayStr(),y=bkFyOfD(td),d12=(()=>{const x=new Date(td+"T00:00:00");x.setFullYear(x.getFullYear()-1);x.setDate(x.getDate()+1);return x.toISOString().slice(0,10)})();
+  const ex=[[d12,td,bt("पिछले 12 महीने","Last 12 months")],[(y-1)+"-04-01",(y-1+1)+"-03-31",bt("पिछला वित्त वर्ष","Previous financial year")],[(y-1)+"-04-01",td,bt("पिछला + यह वित्त वर्ष","Previous + this financial year")]];
+  pq.insertAdjacentHTML("beforeend",`<optgroup label="${esc(bt("सालों के पार","Across years"))}">`+ex.map(x=>`<option value="${x[0]}|${x[1]}">${esc(x[2])}</option>`).join("")+`</optgroup>`)}}
+
+/* bk30: batch on every item line, as in Tally's Batch Allocation — outward bills pick from the batches in stock (qty left and cost shown), inward bills name the batch */
+function bkBatAttach(rec,d){const src=(d.gst&&d.gst.items)||[];const out=["sales","dn"].includes(rec.t);const bat=[];
+  (rec.gst.items||[]).forEach((it,k)=>{const s=src[k]||{};if(s.b&&it.it){it.b=s.b;if(s.g)it.g=s.g;const q=Math.abs(+it.q||0);if(q)bat.push({it:it.it,b:s.b,g:s.g||"",q:out?-q:q,v:r2(+it.v||0)})}});
+  if(bat.length)rec.bat=bat;else delete rec.bat}
+function bkBatOpts(itId,date,skipId){const S=(bkStock().list||[]).find(x=>x.id===itId);if(!S)return[];const V=bkV().filter(v=>v.d<=date&&v.id!==skipId);return bkBatchCalc(V,S,itId).filter(x=>!x.nob)}
+function bkBatUI(row){const box=row.querySelector(".biInfo");if(!box)return;let w=row.querySelector(".biBw");const nm=row.querySelector(".biIt").value,itId=bkItemOf(nm),t=(bk._vf&&bk._vf.t)||"sales";
+  const hasB=itId&&bkV().some(v=>(v.bat||[]).some(b=>b.it===itId));if(!hasB){if(w)w.remove();return}
+  const out=["sales","dn"].includes(t),date=($("#bvD")||{}).value||todayStr(),cur=w?(w.querySelector(".biB")||{}).value:(row.dataset.b||""),u=((bk.book.I||{})[itId]||{}).u||"";
+  if(w&&w.dataset.it===itId&&w.dataset.d===date)return;
+  const opts=bkBatOpts(itId,date,bk._vf&&bk._vf.id);let html;
+  if(out){const av=opts.filter(x=>x.cq>0.0005||x.b===cur);html=`<select class="biB" style="width:auto;max-width:460px;padding:5px 8px;margin:0"><option value="">${esc(bt("— बैच चुनें —","— choose batch —"))}</option>${av.map(x=>`<option value="${esc(x.b)}" data-g="${esc(x.g||"")}"${x.b===cur?" selected":""}>${esc(x.b)} · ${esc(bkQ(x.cq)+" "+u)} ${esc(bt("बचा","left"))} · @ ₹${bkN(r2(x.rate))}${x.g?" · "+esc(x.g):""}</option>`).join("")}</select>`+(av.length?"":` <span class="m">${esc(bt("इस आइटम का कोई बैच स्टॉक में नहीं","no batch of this item in stock"))}</span>`)}
+  else html=`<input class="biB" list="bkDlB_${esc(itId)}" placeholder="${esc(bt("बैच नंबर (नया या पुराना)","Batch no. (new or existing)"))}" value="${esc(cur)}" maxlength="40" style="max-width:240px"><datalist id="bkDlB_${esc(itId)}">${opts.map(x=>`<option value="${esc(x.b)}">`).join("")}</datalist>`;
+  if(!w){box.insertAdjacentHTML("afterend",`<div class="biBw" style="grid-column:1/-1;display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:4px"></div>`);w=row.querySelector(".biBw")}
+  w.dataset.it=itId;w.dataset.d=date;w.innerHTML=`<b style="font-size:12px">🏷 ${esc(bt("बैच","Batch"))}</b>`+html}
+{const _vf=bkVForm;bkVForm=function(id,draft){const V=id?bkV().find(v=>v.id===id):null;const d0=draft||V||{};bk._vf={id,t:d0.t||"sales"};const r=_vf.apply(this,arguments);
+  try{const rows=[...document.querySelectorAll("#bvItems .bvI")],items=(d0.gst&&d0.gst.items)||[];rows.forEach((row,k)=>{const it=items[k]||{};let b=it.b;if(!b&&V&&V.bat){const m=V.bat.find(x=>x.it===it.it);if(m)b=m.b}if(b)row.dataset.b=b;bkBatUI(row)});
+    const sh=$("#sheet");if(sh&&!sh.dataset.bat){sh.dataset.bat=1;sh.addEventListener("change",e=>{if(!$("#bvItems"))return;const row=e.target.closest&&e.target.closest(".bvI");if(row&&e.target.classList.contains("biIt"))bkBatUI(row);if(e.target.id==="bvD")document.querySelectorAll("#bvItems .bvI").forEach(bkBatUI)})}
+    const ai=$("#bvAddI");if(ai){const on=ai.onclick;ai.onclick=function(){on&&on.apply(this,arguments);document.querySelectorAll("#bvItems .bvI").forEach(bkBatUI)}}}catch(e){}return r}}
+/* a batch picked for more than is left in it is flagged before saving */
+{const _p=bkPost;bkPost=function(d){const p=_p.apply(this,arguments);try{if(!p.err&&d&&d.gst&&["sales","dn"].includes(d.t)){const by={};(d.gst.items||[]).forEach(it=>{const id=(bk.book.I||{})[it.it]?it.it:(bkItemOf(it.it)||it.it);if(it.b&&id){const k=id+"|"+it.b;by[k]=(by[k]||0)+Math.abs(+it.q||0)}});
+  for(const k in by){const [id,b]=k.split("|");const o=bkBatOpts(id,d.d,bk._vf&&bk._vf.id).find(x=>x.b===b);if(o&&by[k]>o.cq+0.0005)p.warn=(p.warn?p.warn+" · ":"")+bt(`बैच ${b} में सिर्फ़ ${bkQ(o.cq)} बचा है`,`batch ${b} has only ${bkQ(o.cq)} left`)}}}catch(e){}return p}}
 
 paintStatic();render();init();
 </script>
