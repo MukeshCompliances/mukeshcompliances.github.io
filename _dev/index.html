@@ -6227,7 +6227,7 @@ async function bkConsLoad(pid,fy){const ids=bkConsMembers(pid),books={},vms={};
   use.forEach(id=>{const B=books[id];map[id]={};imap[id]={};
     Object.keys(B.L||{}).forEach(l=>{const x=B.L[l];if(x.del)return;const k="c:"+x.n.toLowerCase();map[id][l]=k;const y=L[k]=L[k]||{n:x.n,g:x.g,op:{},gstin:"",st:""};if(!y.gstin&&x.gstin){y.gstin=x.gstin;y.st=x.st}
       if(x.gstin&&gstins.includes(x.gstin))y.ib=true;y.op[fy]=r2((y.op[fy]||0)+r2(x.op&&x.op[fy]||0))});
-    Object.keys(B.I||{}).forEach(i=>{const x=B.I[i];if(x.del)return;const k="ci:"+x.n.toLowerCase();imap[id][i]=k;const y=I[k]=I[k]||{n:x.n,hsn:x.hsn,u:x.u,r:x.r,op:{}};const o=(x.op&&x.op[fy])||{};const yo=y.op[fy]=y.op[fy]||{q:0,v:0};yo.q+=+o.q||0;yo.v=r2(yo.v+r2(o.v))});
+    Object.keys(B.I||{}).forEach(i=>{const x=B.I[i];if(x.del)return;const k="ci:"+x.n.toLowerCase();imap[id][i]=k;const y=I[k]=I[k]||{n:x.n,hsn:x.hsn,u:x.u,r:x.r,op:{}};if(x.sg&&!y.sg)y.sg=x.sg;const o=(x.op&&x.op[fy])||{};const yo=y.op[fy]=y.op[fy]||{q:0,v:0};yo.q+=+o.q||0;yo.v=r2(yo.v+r2(o.v))});
     if(B.cs&&B.cs[fy])cs[fy]=r2((cs[fy]||0)+B.cs[fy]);
     const all={};for(const k in vms[id]){const v=vms[id][k].v||{};for(const vid in v){const x=v[vid];if(!all[vid]||(x.at||"")>(all[vid].at||"")||((x.at||"")===(all[vid].at||"")&&all[vid].del&&!x.del))all[vid]=x}}
     const sc=(B.gstin||"").slice(0,2)||B.st||"";
@@ -6312,7 +6312,7 @@ bkConsLoad=async function(pid,fy){const ids=bkConsMembers(pid),books={},vms={};
   use.forEach(id=>{const B=books[id];map[id]={};imap[id]={};
     Object.keys(B.L||{}).forEach(l=>{const x=B.L[l];if(x.del)return;const k=bkMergeKey(x);map[id][l]=k;const y=L[k]=L[k]||{n:x.n,g:x.g,op:{},gstin:"",st:""};if(!y.gstin&&x.gstin){y.gstin=x.gstin;y.st=x.st}y.op[fy]=r2((y.op[fy]||0)+r2(x.op&&x.op[fy]||0));
       (src[k]=src[k]||[]).push({sc:(B.gstin||"").slice(0,2)||B.st||"",n:x.n,op:r2(x.op&&x.op[fy]||0)})});
-    Object.keys(B.I||{}).forEach(i=>{const x=B.I[i];if(x.del)return;const k="ci:"+x.n.toLowerCase();imap[id][i]=k;const y=I[k]=I[k]||{n:x.n,hsn:x.hsn,u:x.u,r:x.r,op:{}};const o=(x.op&&x.op[fy])||{};const yo=y.op[fy]=y.op[fy]||{q:0,v:0};yo.q+=+o.q||0;yo.v=r2(yo.v+r2(o.v))});
+    Object.keys(B.I||{}).forEach(i=>{const x=B.I[i];if(x.del)return;const k="ci:"+x.n.toLowerCase();imap[id][i]=k;const y=I[k]=I[k]||{n:x.n,hsn:x.hsn,u:x.u,r:x.r,op:{}};if(x.sg&&!y.sg)y.sg=x.sg;const o=(x.op&&x.op[fy])||{};const yo=y.op[fy]=y.op[fy]||{q:0,v:0};yo.q+=+o.q||0;yo.v=r2(yo.v+r2(o.v))});
     if(B.cs&&B.cs[fy])cs[fy]=r2((cs[fy]||0)+B.cs[fy]);
     const all={};for(const k in vms[id]){const v=vms[id][k].v||{};for(const vid in v){const x=v[vid];if(!all[vid]||(x.at||"")>(all[vid].at||"")||((x.at||"")===(all[vid].at||"")&&all[vid].del&&!x.del))all[vid]=x}}
     const sc=(B.gstin||"").slice(0,2)||B.st||"";
