@@ -193,12 +193,13 @@ function topBar(){let b=$g("siteBar");if(!b){b=document.createElement("div");b.i
 /* the 🔄 button: fresh copy of the site, does not count as "reloading again and again" */
 async function siteUpdate(){const b=$g("sbUpd");if(b){b.disabled=true;b.textContent="⏳"}
   /* same version: no reload — the screen stays and only the figures refresh; new version: reload and come back to the same screen */
-  let same=false;try{const cur=(document.querySelector('meta[name="mc-build"]')||{}).content||"";const t=await (await fetch(location.pathname+"?chk="+Date.now(),{cache:"no-store"})).text();const m=/<meta name="mc-build" content="([^"]+)"/.exec(t);same=!!cur&&!!m&&m[1]===cur}catch(e){}
+  let same=false;try{const cur=(document.querySelector('meta[name="mc-build"]')||{}).content||"";const t=await (await fetch("/index.html?chk="+Date.now(),{cache:"no-store"})).text();const m=/<meta name="mc-build" content="([^"]+)"/.exec(t);same=!!cur&&!!m&&m[1]===cur}catch(e){}
   if(same&&typeof window.__appSoftRefresh==="function"){try{await window.__appSoftRefresh()}catch(e){}if(b){b.disabled=false;b.textContent="✔ ताज़ा";setTimeout(()=>{const x=$g("sbUpd");if(x)x.textContent="🔄 अपडेट"},2500)}return}
   try{if(typeof window.__appSaveUi==="function")window.__appSaveUi()}catch(e){}
   try{sessionStorage.setItem("__site_okrl","1")}catch(e){}
-  try{await fetch(location.pathname,{cache:"reload"})}catch(e){}
-  location.replace(location.pathname+"?v="+Date.now()+location.hash)}
+  try{await fetch("/index.html",{cache:"reload"});await fetch("/",{cache:"reload"})}catch(e){}
+  const fslug=new URLSearchParams(location.search).get("f")||(location.pathname.split("/").filter(Boolean)[0]||"");
+  location.replace(fslug?"/?f="+encodeURIComponent(fslug)+"&v="+Date.now()+location.hash:location.pathname+"?v="+Date.now()+location.hash)}
 function meMenu(){let m=$g("siteMenu");if(m){m.remove();return}m=document.createElement("div");m.id="siteMenu";m.style.cssText="position:fixed;top:30px;right:8px;z-index:8000;background:#fff;border:1px solid #d5dcf5;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.15);padding:12px;width:min(300px,92vw);font:14px system-ui,'Noto Sans Devanagari',sans-serif";
   const pw=(auth.currentUser.providerData||[]).some(p=>p.providerId==="password");
   m.innerHTML="<div style='font-weight:600;word-break:break-all'>"+site.email+"</div><div style='font-size:12px;color:#666;margin-bottom:10px'>🏢 "+escH(firm.name||"")+" · "+(isSuper?"सुपर-एडमिन":uid===ownerUid?"फ़र्म के मालिक / owner":"टीम सदस्य / member")+"</div>"+
