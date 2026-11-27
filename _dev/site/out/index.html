@@ -6706,7 +6706,7 @@ bkConsLoad=async function(pid,fy){const ids=bkConsMembers(pid),books={},vms={};
     const all={};for(const k in vms[id]){const v=vms[id][k].v||{};for(const vid in v){const x=v[vid];if(!all[vid]||(x.at||"")>(all[vid].at||"")||((x.at||"")===(all[vid].at||"")&&all[vid].del&&!x.del))all[vid]=x}}
     const sc=(B.gstin||"").slice(0,2)||B.st||"";
     Object.keys(all).forEach(vid=>{const x=all[vid];if(x.del||!x.d)return;const nx=JSON.parse(JSON.stringify(x));nx.ln=(x.ln||[]).map(y=>({l:map[id][y.l]||"c:?",a:y.a}));
-      if(nx.gst){nx.gst.party=map[id][x.gst.party];nx.gst.items=(x.gst.items||[]).map(y=>Object.assign({},y,{l:map[id][y.l],it:y.it?imap[id][y.it]:undefined}))}nx.nar="["+sc+"] "+(x.nar||"");V[id+":"+vid]=nx})});
+      if(nx.gst){nx.gst.party=map[id][x.gst.party];nx.gst.items=(x.gst.items||[]).map(y=>Object.assign({},y,{l:map[id][y.l],it:y.it?imap[id][y.it]:undefined}))}if(x.inv)nx.inv=x.inv.map(y=>Object.assign({},y,{it:imap[id][y.it]})).filter(y=>y.it);if(x.bw)nx.bw=x.bw.map(y=>Object.assign({},y,{l:map[id][y.l]}));nx.nar="["+sc+"] "+(x.nar||"");V[id+":"+vid]=nx})});
   const first=books[use[0]]||{};
   return{book:{pid,name:first.name||"",gstin:"",st:first.st||"",L,I,cs,info:first.info||{}},vm:{cons:{pid,fy,v:V}},info:{src,use:use.map(id=>({id,g:books[id].gstin||"",n:books[id].name||"",biz:(bkUnits(bkPidParts(id).pid).find(u=>u.id===id)||{}).biz||""})),skipped:[],notStarted,gst:/~GST~/.test(pid)}}};
 /* P&L with internal transfers on their own lines */
